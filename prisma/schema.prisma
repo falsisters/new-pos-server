@@ -12,3 +12,137 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
+model User {
+  id        String    @id @default(cuid())
+  email     String    @unique
+  name      String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  Cashier   Cashier[]
+}
+
+model Cashier {
+  id          String               @id @default(cuid())
+  name        String               @unique
+  accessKey   String
+  secureCode  String               @default(cuid())
+  permissions CashierPermissions[]
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+  user        User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String
+  Deliveries  Deliveries[]
+  Sale        Sale[]
+}
+
+enum CashierPermissions {
+  SALES
+  DELIVERIES
+  STOCKS
+  EDIT_PRICE
+  KAHON
+  PROFITS
+  ATTACHMENTS
+  SALES_HISTORY
+}
+
+model Product {
+  id           String         @id @default(cuid())
+  name         String
+  picture      String         @default("https://placehold.co/800x800?text=Product")
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  SackPrice    SackPrice[]
+  PerKiloPrice PerKiloPrice[]
+  DeliveryItem DeliveryItem[]
+  SaleItem     SaleItem[]
+}
+
+model SackPrice {
+  id           String         @id @default(cuid())
+  price        Float
+  stock        Int
+  type         SackType
+  product      Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
+  productId    String
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  SpecialPrice SpecialPrice[]
+}
+
+enum SackType {
+  FIFTY_KG
+  TWENTY_FIVE_KG
+  FIVE_KG
+}
+
+model SpecialPrice {
+  id          String    @id @default(cuid())
+  price       Float
+  minimumQty  Int
+  sackPrice   SackPrice @relation(fields: [sackPriceId], references: [id], onDelete: Cascade)
+  sackPriceId String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model PerKiloPrice {
+  id        String   @id @default(cuid())
+  price     Float
+  stock     Float
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  productId String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Sale {
+  id            String        @id @default(cuid())
+  cashier       Cashier       @relation(fields: [cashierId], references: [id], onDelete: Cascade)
+  cashierId     String
+  totalAmount   Float
+  paymentMethod PaymentMethod
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  SaleItem      SaleItem[]
+}
+
+enum PaymentMethod {
+  CASH
+  BANK_TRANSFER
+  CHECK
+}
+
+model SaleItem {
+  id        String   @id @default(cuid())
+  quantity  Float
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  productId String
+  sale      Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  saleId    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Deliveries {
+  id                String         @id @default(cuid())
+  driverName        String
+  deliveryTimeStart DateTime
+  cashier           Cashier        @relation(fields: [cashierId], references: [id], onDelete: Cascade)
+  cashierId         String
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  DeliveryItem      DeliveryItem[]
+}
+
+model DeliveryItem {
+  id         String     @id @default(cuid())
+  quantity   Float
+  product    Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+  productId  String
+  delivery   Deliveries @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+  deliveryId String
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+}
