@@ -14,13 +14,14 @@ datasource db {
 }
 
 model User {
-  id        String    @id @default(cuid())
-  email     String    @unique
+  id        String     @id @default(cuid())
+  email     String     @unique
   name      String
   password  String
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
   Cashier   Cashier[]
+  Employee  Employee[]
 }
 
 model Cashier {
@@ -51,7 +52,7 @@ enum CashierPermissions {
 
 model Shift {
   id        String          @id @default(cuid())
-  startTime DateTime
+  startTime DateTime        @default(now())
   endTime   DateTime?
   employee  ShiftEmployee[]
   cashier   Cashier         @relation(fields: [cashierId], references: [id], onDelete: Cascade)
@@ -73,6 +74,8 @@ model ShiftEmployee {
 model Employee {
   id            String          @id @default(cuid())
   name          String
+  userId        String
+  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
   ShiftEmployee ShiftEmployee[]

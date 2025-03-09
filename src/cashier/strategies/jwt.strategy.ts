@@ -20,6 +20,7 @@ export class JwtCashierStrategy extends PassportStrategy(
     return {
       id: payload.id,
       name: payload.name,
+      userId: payload.userId,
       permissions: payload.permissions,
     };
   }
