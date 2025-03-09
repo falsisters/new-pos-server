@@ -7,6 +7,8 @@ import { ConfigModule } from '@nestjs/config';
 import { CashierModule } from './cashier/cashier.module';
 import { ShiftModule } from './shift/shift.module';
 import { EmployeeModule } from './employee/employee.module';
+import { ProductModule } from './product/product.module';
+import { UploadModule } from './upload/upload.module';
 
 @Module({
   imports: [
@@ -18,6 +20,8 @@ import { EmployeeModule } from './employee/employee.module';
     CashierModule,
     ShiftModule,
     EmployeeModule,
+    ProductModule,
+    UploadModule,
   ],
   controllers: [AppController],
   providers: [AppService],

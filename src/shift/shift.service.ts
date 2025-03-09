@@ -16,7 +16,6 @@ export class ShiftService {
             id: cashierId,
           },
         },
-        startTime: new Date(),
         employee: {
           create: employees.map((employee) => ({
             employeeId: employee.id,
@@ -72,17 +71,12 @@ export class ShiftService {
   }
 
   async editShift(id: string, editShiftDto: EditShiftDto) {
-    const { cashierId, employees } = editShiftDto;
+    const { employees } = editShiftDto;
     return this.prisma.shift.update({
       where: {
         id,
       },
       data: {
-        cashier: {
-          connect: {
-            id: cashierId,
-          },
-        },
         employee: {
           deleteMany: {},
           create: employees.map((employee) => ({
