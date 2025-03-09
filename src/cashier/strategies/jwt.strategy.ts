@@ -4,8 +4,11 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 @Injectable()
-export class JwtStrategy extends PassportStrategy(Strategy, 'jwt-user') {
-  constructor(configService: ConfigService) {
+export class JwtCashierStrategy extends PassportStrategy(
+  Strategy,
+  'jwt-cashier',
+) {
+  constructor(private configService: ConfigService) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
@@ -14,6 +17,10 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt-user') {
   }
 
   async validate(payload: any) {
-    return { id: payload.id, email: payload.email, name: payload.name };
+    return {
+      id: payload.id,
+      name: payload.name,
+      permissions: payload.permissions,
+    };
   }
 }
