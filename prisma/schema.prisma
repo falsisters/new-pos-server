@@ -17,6 +17,7 @@ model User {
   id        String    @id @default(cuid())
   email     String    @unique
   name      String
+  password  String
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   Cashier   Cashier[]
@@ -32,8 +33,9 @@ model Cashier {
   updatedAt   DateTime             @updatedAt
   user        User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId      String
-  Deliveries  Deliveries[]
+  Delivery    Delivery[]
   Sale        Sale[]
+  Shift       Shift[]
 }
 
 enum CashierPermissions {
@@ -47,6 +49,35 @@ enum CashierPermissions {
   SALES_HISTORY
 }
 
+model Shift {
+  id        String          @id @default(cuid())
+  startTime DateTime
+  endTime   DateTime?
+  employee  ShiftEmployee[]
+  cashier   Cashier         @relation(fields: [cashierId], references: [id], onDelete: Cascade)
+  cashierId String
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+}
+
+model ShiftEmployee {
+  id         String   @id @default(cuid())
+  shift      Shift    @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+  shiftId    String
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  employeeId String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model Employee {
+  id            String          @id @default(cuid())
+  name          String
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  ShiftEmployee ShiftEmployee[]
+}
+
 model Product {
   id           String         @id @default(cuid())
   name         String
@@ -54,21 +85,21 @@ model Product {
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
   SackPrice    SackPrice[]
-  PerKiloPrice PerKiloPrice[]
+  perKiloPrice PerKiloPrice?
   DeliveryItem DeliveryItem[]
   SaleItem     SaleItem[]
 }
 
 model SackPrice {
-  id           String         @id @default(cuid())
+  id           String        @id @default(cuid())
   price        Float
   stock        Int
   type         SackType
-  product      Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
+  product      Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
   productId    String
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
-  SpecialPrice SpecialPrice[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  specialPrice SpecialPrice?
 }
 
 enum SackType {
@@ -82,7 +113,7 @@ model SpecialPrice {
   price       Float
   minimumQty  Int
   sackPrice   SackPrice @relation(fields: [sackPriceId], references: [id], onDelete: Cascade)
-  sackPriceId String
+  sackPriceId String    @unique
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 }
@@ -92,7 +123,7 @@ model PerKiloPrice {
   price     Float
   stock     Float
   product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  productId String
+  productId String   @unique
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -125,7 +156,7 @@ model SaleItem {
   updatedAt DateTime @updatedAt
 }
 
-model Deliveries {
+model Delivery {
   id                String         @id @default(cuid())
   driverName        String
   deliveryTimeStart DateTime
@@ -137,12 +168,12 @@ model Deliveries {
 }
 
 model DeliveryItem {
-  id         String     @id @default(cuid())
+  id         String   @id @default(cuid())
   quantity   Float
-  product    Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
   productId  String
-  delivery   Deliveries @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+  delivery   Delivery @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
   deliveryId String
-  createdAt  DateTime   @default(now())
-  updatedAt  DateTime   @updatedAt
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 }
