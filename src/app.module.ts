@@ -9,6 +9,7 @@ import { ShiftModule } from './shift/shift.module';
 import { EmployeeModule } from './employee/employee.module';
 import { ProductModule } from './product/product.module';
 import { UploadModule } from './upload/upload.module';
+import { SaleModule } from './sale/sale.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { UploadModule } from './upload/upload.module';
     EmployeeModule,
     ProductModule,
     UploadModule,
+    SaleModule,
   ],
   controllers: [AppController],
   providers: [AppService],
