@@ -10,6 +10,8 @@ import { EmployeeModule } from './employee/employee.module';
 import { ProductModule } from './product/product.module';
 import { UploadModule } from './upload/upload.module';
 import { SaleModule } from './sale/sale.module';
+import { DeliveryModule } from './delivery/delivery.module';
+import { TransferModule } from './transfer/transfer.module';
 
 @Module({
   imports: [
@@ -24,6 +26,8 @@ import { SaleModule } from './sale/sale.module';
     ProductModule,
     UploadModule,
     SaleModule,
+    DeliveryModule,
+    TransferModule,
   ],
   controllers: [AppController],
   providers: [AppService],

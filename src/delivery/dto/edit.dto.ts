@@ -1,0 +1,43 @@
+import { SackType } from '@prisma/client';
+import { IsNotEmpty, IsOptional } from 'class-validator';
+
+class PerKiloPriceDto {
+  id: string;
+  quantity: number;
+}
+
+class SackPriceDto {
+  id: string;
+  quantity: number;
+  type: SackType;
+}
+
+class ProductDto {
+  @IsNotEmpty()
+  id: string;
+
+  @IsOptional()
+  sackPrice: SackPriceDto;
+
+  @IsOptional()
+  perKiloPrice: PerKiloPriceDto;
+}
+
+class DeliveryItemDto {
+  @IsOptional()
+  quantity: number;
+
+  @IsOptional()
+  product: ProductDto;
+}
+
+export class EditDeliveryDto {
+  @IsOptional()
+  driverName: string;
+
+  @IsOptional()
+  deliveryTimeStart: Date;
+
+  @IsOptional()
+  deliveryItem: DeliveryItemDto[];
+}
