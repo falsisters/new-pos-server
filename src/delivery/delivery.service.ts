@@ -1,10 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateDeliveryDto } from './dto/create.dto';
+import { TransferService } from 'src/transfer/transfer.service';
 
 @Injectable()
 export class DeliveryService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private transferService: TransferService,
+  ) {}
 
   async createDelivery(
     cashierId: string,
@@ -14,6 +18,10 @@ export class DeliveryService {
 
     return this.prisma.$transaction(async (tx) => {
       for (const item of deliveryItem) {
+        const currentProduct = await tx.product.findUnique({
+          where: { id: item.product.id },
+        });
+
         if (item.product.sackPrice) {
           await tx.sackPrice.update({
             where: { id: item.product.sackPrice.id },
@@ -23,7 +31,12 @@ export class DeliveryService {
           });
         }
 
-        // TODO: Handle perKiloPrice updates separately
+        if (item.product.perKiloPrice && currentProduct) {
+          await this.transferService.transferDelivery(cashierId, {
+            name: `${currentProduct.name} ${item.quantity}KG`,
+            quantity: 0,
+          });
+        }
       }
 
       return tx.delivery.create({

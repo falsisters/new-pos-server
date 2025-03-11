@@ -38,6 +38,8 @@ model Cashier {
   Delivery    Delivery[]
   Sale        Sale[]
   Shift       Shift[]
+  Kahon       Kahon?
+  Inventory   Inventory?
 }
 
 enum CashierPermissions {
@@ -184,4 +186,44 @@ model DeliveryItem {
   deliveryId String
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
+}
+
+model Kahon {
+  id         String      @id @default(cuid())
+  name       String
+  cashier    Cashier     @relation(fields: [cashierId], references: [id], onDelete: Cascade)
+  cashierId  String      @unique
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  KahonItems KahonItem[]
+}
+
+model Inventory {
+  id             String          @id @default(cuid())
+  name           String
+  cashier        Cashier         @relation(fields: [cashierId], references: [id], onDelete: Cascade)
+  cashierId      String          @unique
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  InventoryItems InventoryItem[]
+}
+
+model KahonItem {
+  id        String   @id @default(cuid())
+  name      String
+  quantity  Float
+  kahon     Kahon    @relation(fields: [kahonId], references: [id], onDelete: Cascade)
+  kahonId   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model InventoryItem {
+  id          String    @id @default(cuid())
+  name        String
+  quantity    Float
+  inventory   Inventory @relation(fields: [inventoryId], references: [id], onDelete: Cascade)
+  inventoryId String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 }

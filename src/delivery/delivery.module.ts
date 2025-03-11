@@ -6,10 +6,12 @@ import { CashierModule } from 'src/cashier/cashier.module';
 import { PrismaModule } from 'src/prisma/prisma.module';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
+import { TransferModule } from 'src/transfer/transfer.module';
+import { TransferService } from 'src/transfer/transfer.service';
 
 @Module({
-  imports: [AuthModule, CashierModule, PrismaModule],
+  imports: [AuthModule, CashierModule, PrismaModule, TransferModule],
   controllers: [DeliveryController],
-  providers: [DeliveryService, PrismaService, JwtService],
+  providers: [DeliveryService, PrismaService, JwtService, TransferService],
 })
 export class DeliveryModule {}
