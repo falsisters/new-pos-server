@@ -4,6 +4,7 @@ import { CashierInvalidCredentialsException } from './cashier.exception';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { RegisterCashierDto } from './dto/register.dto';
 import { ConfigService } from '@nestjs/config';
+import { EditCashierDto } from './dto/edit.dto';
 
 @Injectable()
 export class CashierService {
@@ -79,8 +80,8 @@ export class CashierService {
     });
   }
 
-  async editCashier(id: string, registerCashierDto: RegisterCashierDto) {
-    const { name, accessKey, permissions } = registerCashierDto;
+  async editCashier(id: string, editCashierDto: EditCashierDto) {
+    const { name, accessKey, permissions } = editCashierDto
 
     return this.prisma.cashier.update({
       where: {
