@@ -9,7 +9,8 @@ export class ShiftService {
 
   async createShift(cashierId: string, createShiftDto: CreateShiftDto) {
     const { employees } = createShiftDto;
-    return this.prisma.shift.create({
+    console.log(createShiftDto);
+    const newShift = await this.prisma.shift.create({
       data: {
         cashier: {
           connect: {
@@ -18,7 +19,7 @@ export class ShiftService {
         },
         employee: {
           create: employees.map((employee) => ({
-            employeeId: employee.id,
+            employeeId: employee,
           })),
         },
       },
@@ -30,10 +31,27 @@ export class ShiftService {
         },
       },
     });
+
+    return {
+      ...newShift,
+      employees: newShift.employee.map((e) => e.employee),
+      employee: undefined,
+    };
+  }
+
+  async endShift(id: string) {
+    return this.prisma.shift.update({
+      where: {
+        id,
+      },
+      data: {
+        endTime: new Date(),
+      },
+    });
   }
 
   async getAllShiftsByCashierId(cashierId: string) {
-    return this.prisma.shift.findMany({
+    const shifts = await this.prisma.shift.findMany({
       where: {
         cashierId,
       },
@@ -45,6 +63,13 @@ export class ShiftService {
         },
       },
     });
+
+    // Transform the data to flatten the employee structure
+    return shifts.map((shift) => ({
+      ...shift,
+      employees: shift.employee.map((e) => e.employee),
+      employee: undefined, // Remove the nested structure
+    }));
   }
 
   async getShiftById(id: string) {

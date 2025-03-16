@@ -26,6 +26,12 @@ export class ShiftController {
     return this.shiftService.createShift(cashierId, createShiftDto);
   }
 
+  @UseGuards(JwtCashierAuthGuard)
+  @Post('end/:id')
+  async endShift(@Param('id') id: string) {
+    return this.shiftService.endShift(id);
+  }
+
   @UseGuards(JwtAuthGuard)
   @Patch(':id')
   async updateShift(@Request() req, @Body() editShiftDto: EditShiftDto) {
@@ -39,9 +45,10 @@ export class ShiftController {
     return this.shiftService.deleteShift(id);
   }
 
-  @UseGuards(JwtAuthGuard)
-  @Get('cashier/:id')
-  async getShifts(@Param('id') id: string) {
+  @UseGuards(JwtCashierAuthGuard)
+  @Get('cashier')
+  async getShifts(@Request() req) {
+    const id = req.user.id;
     return this.shiftService.getAllShiftsByCashierId(id);
   }
 
