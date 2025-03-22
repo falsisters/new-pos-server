@@ -16,141 +16,151 @@ export class DeliveryService {
   ) {
     const { driverName, deliveryTimeStart, deliveryItem } = createDeliveryDto;
 
-    return this.prisma.$transaction(async (tx) => {
-      for (const item of deliveryItem) {
-        const currentProduct = await tx.product.findUnique({
-          where: { id: item.product.id },
+    return this.prisma.$transaction(
+      async (tx) => {
+        for (const item of deliveryItem) {
+          const currentProduct = await tx.product.findUnique({
+            where: { id: item.product.id },
+          });
+
+          if (item.product.sackPrice) {
+            await tx.sackPrice.update({
+              where: { id: item.product.sackPrice.id },
+              data: {
+                stock: { increment: item.product.sackPrice.quantity },
+              },
+            });
+          }
+
+          if (item.product.perKiloPrice && currentProduct) {
+            await this.transferService.transferDelivery(cashierId, {
+              name: `${currentProduct.name} ${item.quantity}KG`,
+              quantity: 0,
+            });
+          }
+        }
+
+        return tx.delivery.create({
+          data: {
+            driverName,
+            deliveryTimeStart,
+            cashier: { connect: { id: cashierId } },
+            DeliveryItem: {
+              create: deliveryItem.map((item) => ({
+                quantity: item.quantity,
+                product: { connect: { id: item.product.id } },
+              })),
+            },
+          },
+          include: {
+            DeliveryItem: {
+              include: {
+                product: true,
+              },
+            },
+          },
         });
-
-        if (item.product.sackPrice) {
-          await tx.sackPrice.update({
-            where: { id: item.product.sackPrice.id },
-            data: {
-              stock: { increment: item.product.sackPrice.quantity },
-            },
-          });
-        }
-
-        if (item.product.perKiloPrice && currentProduct) {
-          await this.transferService.transferDelivery(cashierId, {
-            name: `${currentProduct.name} ${item.quantity}KG`,
-            quantity: 0,
-          });
-        }
-      }
-
-      return tx.delivery.create({
-        data: {
-          driverName,
-          deliveryTimeStart,
-          cashier: { connect: { id: cashierId } },
-          DeliveryItem: {
-            create: deliveryItem.map((item) => ({
-              quantity: item.quantity,
-              product: { connect: { id: item.product.id } },
-            })),
-          },
-        },
-        include: {
-          DeliveryItem: {
-            include: {
-              product: true,
-            },
-          },
-        },
-      });
-    });
+      },
+      {
+        timeout: 20000, // 20 seconds in milliseconds
+      },
+    );
   }
 
   async editDelivery(deliveryId: string, editDeliveryDto: CreateDeliveryDto) {
     const { driverName, deliveryTimeStart, deliveryItem } = editDeliveryDto;
 
-    return this.prisma.$transaction(async (tx) => {
-      // Get current delivery items to decrement stock
-      const currentDelivery = await tx.delivery.findUnique({
-        where: { id: deliveryId },
-        include: {
-          DeliveryItem: {
-            include: {
-              product: true,
+    return this.prisma.$transaction(
+      async (tx) => {
+        // Get current delivery items to decrement stock
+        const currentDelivery = await tx.delivery.findUnique({
+          where: { id: deliveryId },
+          include: {
+            DeliveryItem: {
+              include: {
+                product: true,
+              },
             },
           },
-        },
-      });
-
-      if (!currentDelivery) {
-        throw new Error(`Delivery with id ${deliveryId} not found`);
-      }
-
-      // 1. Decrement the stock based on the original delivery items
-      for (const item of currentDelivery.DeliveryItem) {
-        // Get the sack price for the product
-        const sackPrice = await tx.sackPrice.findFirst({
-          where: { productId: item.product.id },
         });
 
-        if (sackPrice) {
-          await tx.sackPrice.update({
-            where: { id: sackPrice.id },
-            data: {
-              stock: { decrement: item.quantity },
-            },
-          });
+        if (!currentDelivery) {
+          throw new Error(`Delivery with id ${deliveryId} not found`);
         }
 
-        // TODO: Handle perKiloPrice decrements separately
-      }
+        // 1. Decrement the stock based on the original delivery items
+        for (const item of currentDelivery.DeliveryItem) {
+          // Get the sack price for the product
+          const sackPrice = await tx.sackPrice.findFirst({
+            where: { productId: item.product.id },
+          });
 
-      // 2. Delete all existing delivery items
-      await tx.deliveryItem.deleteMany({
-        where: { deliveryId },
-      });
+          if (sackPrice) {
+            await tx.sackPrice.update({
+              where: { id: sackPrice.id },
+              data: {
+                stock: { decrement: item.quantity },
+              },
+            });
+          }
 
-      // 3. Update delivery basic info
-      await tx.delivery.update({
-        where: { id: deliveryId },
-        data: {
-          driverName,
-          deliveryTimeStart,
-        },
-      });
+          // TODO: Handle perKiloPrice decrements separately
+        }
 
-      // 4. Create new delivery items and increment stock
-      for (const item of deliveryItem) {
-        // Create new delivery item
-        await tx.deliveryItem.create({
+        // 2. Delete all existing delivery items
+        await tx.deliveryItem.deleteMany({
+          where: { deliveryId },
+        });
+
+        // 3. Update delivery basic info
+        await tx.delivery.update({
+          where: { id: deliveryId },
           data: {
-            quantity: item.quantity,
-            product: { connect: { id: item.product.id } },
-            delivery: { connect: { id: deliveryId } },
+            driverName,
+            deliveryTimeStart,
           },
         });
 
-        // Increment stock with new quantities
-        if (item.product.sackPrice) {
-          await tx.sackPrice.update({
-            where: { id: item.product.sackPrice.id },
+        // 4. Create new delivery items and increment stock
+        for (const item of deliveryItem) {
+          // Create new delivery item
+          await tx.deliveryItem.create({
             data: {
-              stock: { increment: item.product.sackPrice.quantity },
+              quantity: item.quantity,
+              product: { connect: { id: item.product.id } },
+              delivery: { connect: { id: deliveryId } },
             },
           });
+
+          // Increment stock with new quantities
+          if (item.product.sackPrice) {
+            await tx.sackPrice.update({
+              where: { id: item.product.sackPrice.id },
+              data: {
+                stock: { increment: item.product.sackPrice.quantity },
+              },
+            });
+          }
+
+          // TODO: Handle perKiloPrice updates separately
         }
 
-        // TODO: Handle perKiloPrice updates separately
-      }
-
-      // Return updated delivery
-      return tx.delivery.findUnique({
-        where: { id: deliveryId },
-        include: {
-          DeliveryItem: {
-            include: {
-              product: true,
+        // Return updated delivery
+        return tx.delivery.findUnique({
+          where: { id: deliveryId },
+          include: {
+            DeliveryItem: {
+              include: {
+                product: true,
+              },
             },
           },
-        },
-      });
-    });
+        });
+      },
+      {
+        timeout: 20000, // 20 seconds in milliseconds
+      },
+    );
   }
 
   async deleteDelivery(deliveryId: string) {

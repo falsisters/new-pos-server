@@ -10,177 +10,187 @@ export class SaleService {
   async createSale(cashierId: string, products: CreateSaleDto) {
     const { totalAmount, paymentMethod, saleItem } = products;
 
-    return this.prisma.$transaction(async (tx) => {
-      // 1. Update stock for each item
-      for (const item of saleItem) {
-        if (item.perKiloPrice) {
-          // Update per kilo stock
-          await tx.perKiloPrice.update({
-            where: { id: item.perKiloPrice.id },
-            data: {
-              stock: { decrement: item.perKiloPrice.quantity },
-            },
-          });
+    return this.prisma.$transaction(
+      async (tx) => {
+        // 1. Update stock for each item
+        for (const item of saleItem) {
+          if (item.perKiloPrice) {
+            // Update per kilo stock
+            await tx.perKiloPrice.update({
+              where: { id: item.perKiloPrice.id },
+              data: {
+                stock: { decrement: item.perKiloPrice.quantity },
+              },
+            });
+          }
+
+          if (item.sackPrice) {
+            // Update sack price stock
+            await tx.sackPrice.update({
+              where: { id: item.sackPrice.id },
+              data: {
+                stock: { decrement: item.sackPrice.quantity },
+              },
+            });
+          }
         }
 
-        if (item.sackPrice) {
-          // Update sack price stock
-          await tx.sackPrice.update({
-            where: { id: item.sackPrice.id },
-            data: {
-              stock: { decrement: item.sackPrice.quantity },
+        // 2. Create the sale with items
+        return tx.sale.create({
+          data: {
+            totalAmount,
+            paymentMethod,
+            cashier: {
+              connect: { id: cashierId },
             },
-          });
-        }
-      }
+            SaleItem: {
+              create: saleItem.map((item) => {
+                // Calculate the actual quantity based on the selected price option
+                const quantity = item.perKiloPrice
+                  ? item.perKiloPrice.quantity
+                  : item.sackPrice?.quantity || 0;
 
-      // 2. Create the sale with items
-      return tx.sale.create({
-        data: {
-          totalAmount,
-          paymentMethod,
-          cashier: {
-            connect: { id: cashierId },
+                return {
+                  quantity,
+                  isGantang: item.isGantang,
+                  isSpecialPrice: item.isSpecialPrice,
+                  product: {
+                    connect: { id: item.id },
+                  },
+                };
+              }),
+            },
           },
-          SaleItem: {
-            create: saleItem.map((item) => {
-              // Calculate the actual quantity based on the selected price option
-              const quantity = item.perKiloPrice
-                ? item.perKiloPrice.quantity
-                : item.sackPrice?.quantity || 0;
-
-              return {
-                quantity,
-                isGantang: item.isGantang,
-                isSpecialPrice: item.isSpecialPrice,
+          include: {
+            SaleItem: {
+              include: {
                 product: {
-                  connect: { id: item.id },
-                },
-              };
-            }),
-          },
-        },
-        include: {
-          SaleItem: {
-            include: {
-              product: {
-                include: {
-                  perKiloPrice: true,
-                  SackPrice: {
-                    include: {
-                      specialPrice: true,
+                  include: {
+                    perKiloPrice: true,
+                    SackPrice: {
+                      include: {
+                        specialPrice: true,
+                      },
                     },
                   },
                 },
               },
             },
           },
-        },
-      });
-    });
+        });
+      },
+      {
+        timeout: 20000, // 20 seconds in milliseconds
+      },
+    );
   }
 
   async editSale(id: string, products: EditSaleDto) {
     const { totalAmount, paymentMethod, saleItem } = products;
 
-    return this.prisma.$transaction(async (tx) => {
-      // Get the existing sale first
-      const existingSale = await tx.sale.findUnique({
-        where: { id },
-        include: {
-          SaleItem: {
-            include: {
-              product: {
-                include: {
-                  perKiloPrice: true,
-                  SackPrice: {
-                    include: {
-                      specialPrice: true,
+    return this.prisma.$transaction(
+      async (tx) => {
+        // Get the existing sale first
+        const existingSale = await tx.sale.findUnique({
+          where: { id },
+          include: {
+            SaleItem: {
+              include: {
+                product: {
+                  include: {
+                    perKiloPrice: true,
+                    SackPrice: {
+                      include: {
+                        specialPrice: true,
+                      },
                     },
                   },
                 },
               },
             },
           },
-        },
-      });
-      // Increment the stock for each item in the existing saleitems and delete saleitems
-      for (const item of existingSale.SaleItem) {
-        if (item.product.perKiloPrice) {
-          // Update per kilo stock
-          await tx.perKiloPrice.update({
-            where: { id: item.product.perKiloPrice.id },
-            data: {
-              stock: { increment: item.quantity },
-            },
-          });
-        }
-
-        if (item.product.SackPrice && item.product.SackPrice.length > 0) {
-          // Update sack price stock
-          await tx.sackPrice.update({
-            where: { id: item.product.SackPrice[0].id },
-            data: {
-              stock: { increment: item.quantity },
-            },
-          });
-        }
-
-        // Delete the sale item
-        await tx.saleItem.delete({
-          where: { id: item.id },
         });
-      }
-      // Decrement with new stock and create the new sale items
-      for (const item of saleItem) {
-        const quantity = item.perKiloPrice
-          ? item.perKiloPrice.quantity
-          : item.sackPrice?.quantity || 0;
+        // Increment the stock for each item in the existing saleitems and delete saleitems
+        for (const item of existingSale.SaleItem) {
+          if (item.product.perKiloPrice) {
+            // Update per kilo stock
+            await tx.perKiloPrice.update({
+              where: { id: item.product.perKiloPrice.id },
+              data: {
+                stock: { increment: item.quantity },
+              },
+            });
+          }
 
-        if (item.perKiloPrice) {
-          // Update per kilo stock
-          await tx.perKiloPrice.update({
-            where: { id: item.perKiloPrice.id },
+          if (item.product.SackPrice && item.product.SackPrice.length > 0) {
+            // Update sack price stock
+            await tx.sackPrice.update({
+              where: { id: item.product.SackPrice[0].id },
+              data: {
+                stock: { increment: item.quantity },
+              },
+            });
+          }
+
+          // Delete the sale item
+          await tx.saleItem.delete({
+            where: { id: item.id },
+          });
+        }
+        // Decrement with new stock and create the new sale items
+        for (const item of saleItem) {
+          const quantity = item.perKiloPrice
+            ? item.perKiloPrice.quantity
+            : item.sackPrice?.quantity || 0;
+
+          if (item.perKiloPrice) {
+            // Update per kilo stock
+            await tx.perKiloPrice.update({
+              where: { id: item.perKiloPrice.id },
+              data: {
+                stock: { decrement: item.perKiloPrice.quantity },
+              },
+            });
+          }
+
+          if (item.sackPrice) {
+            // Update sack price stock
+            await tx.sackPrice.update({
+              where: { id: item.sackPrice.id },
+              data: {
+                stock: { decrement: item.sackPrice.quantity },
+              },
+            });
+          }
+
+          // Create the new sale item
+          await tx.saleItem.create({
             data: {
-              stock: { decrement: item.perKiloPrice.quantity },
+              quantity: quantity,
+              isGantang: item.isGantang,
+              isSpecialPrice: item.isSpecialPrice,
+              product: {
+                connect: { id: item.id },
+              },
+              sale: {
+                connect: { id },
+              },
+            },
+          });
+
+          await tx.sale.update({
+            where: { id },
+            data: {
+              totalAmount,
+              paymentMethod,
             },
           });
         }
-
-        if (item.sackPrice) {
-          // Update sack price stock
-          await tx.sackPrice.update({
-            where: { id: item.sackPrice.id },
-            data: {
-              stock: { decrement: item.sackPrice.quantity },
-            },
-          });
-        }
-
-        // Create the new sale item
-        await tx.saleItem.create({
-          data: {
-            quantity: quantity,
-            isGantang: item.isGantang,
-            isSpecialPrice: item.isSpecialPrice,
-            product: {
-              connect: { id: item.id },
-            },
-            sale: {
-              connect: { id },
-            },
-          },
-        });
-
-        await tx.sale.update({
-          where: { id },
-          data: {
-            totalAmount,
-            paymentMethod,
-          },
-        });
-      }
-    });
+      },
+      {
+        timeout: 20000, // 20 seconds in milliseconds
+      },
+    );
   }
 
   async deleteSale(id: string) {
