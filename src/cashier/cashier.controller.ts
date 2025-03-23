@@ -7,6 +7,7 @@ import {
   Post,
   Request,
   UseGuards,
+  Delete,
 } from '@nestjs/common';
 import { CashierService } from './cashier.service';
 import { LocalCashierAuthGuard } from './guards/local.guard';
@@ -17,7 +18,7 @@ import { EditCashierDto } from './dto/edit.dto';
 
 @Controller('cashier')
 export class CashierController {
-  constructor(private cashierService: CashierService) {}
+  constructor(private cashierService: CashierService) { }
 
   @UseGuards(LocalCashierAuthGuard)
   @Post('login')
@@ -61,5 +62,10 @@ export class CashierController {
     @Body() editCashierDto: EditCashierDto,
   ) {
     return this.cashierService.editCashier(id, editCashierDto);
+  }
+  @UseGuards(JwtAuthGuard)
+  @Delete(':id')
+  async deleteCashier(@Param('id') id: string) {
+    return this.cashierService.deleteCashier(id);
   }
 }

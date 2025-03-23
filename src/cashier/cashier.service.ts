@@ -94,4 +94,9 @@ export class CashierService {
       },
     });
   }
+  async deleteCashier(id: string) {
+    return this.prisma.cashier.delete({
+      where: { id },
+    });
+  }
 }
