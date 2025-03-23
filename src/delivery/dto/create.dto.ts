@@ -23,14 +23,6 @@ class ProductDto {
   perKiloPrice: PerKiloPriceDto;
 }
 
-class DeliveryItemDto {
-  @IsNotEmpty()
-  quantity: number;
-
-  @IsNotEmpty()
-  product: ProductDto;
-}
-
 export class CreateDeliveryDto {
   @IsNotEmpty()
   driverName: string;
@@ -39,5 +31,5 @@ export class CreateDeliveryDto {
   deliveryTimeStart: Date;
 
   @IsNotEmpty()
-  deliveryItem: DeliveryItemDto[];
+  deliveryItem: ProductDto[];
 }

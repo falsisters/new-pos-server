@@ -20,21 +20,21 @@ export class DeliveryService {
       async (tx) => {
         for (const item of deliveryItem) {
           const currentProduct = await tx.product.findUnique({
-            where: { id: item.product.id },
+            where: { id: item.id },
           });
 
-          if (item.product.sackPrice) {
+          if (item.sackPrice) {
             await tx.sackPrice.update({
-              where: { id: item.product.sackPrice.id },
+              where: { id: item.sackPrice.id },
               data: {
-                stock: { increment: item.product.sackPrice.quantity },
+                stock: { increment: item.sackPrice.quantity },
               },
             });
           }
 
-          if (item.product.perKiloPrice && currentProduct) {
+          if (item.perKiloPrice && currentProduct) {
             await this.transferService.transferDelivery(cashierId, {
-              name: `${currentProduct.name} ${item.quantity}KG`,
+              name: `${currentProduct.name} ${item.perKiloPrice.quantity}KG`,
               quantity: 0,
             });
           }
@@ -47,8 +47,10 @@ export class DeliveryService {
             cashier: { connect: { id: cashierId } },
             DeliveryItem: {
               create: deliveryItem.map((item) => ({
-                quantity: item.quantity,
-                product: { connect: { id: item.product.id } },
+                quantity: item.sackPrice
+                  ? item.sackPrice.quantity
+                  : item.perKiloPrice.quantity,
+                product: { connect: { id: item.id } },
               })),
             },
           },
@@ -126,18 +128,20 @@ export class DeliveryService {
           // Create new delivery item
           await tx.deliveryItem.create({
             data: {
-              quantity: item.quantity,
-              product: { connect: { id: item.product.id } },
+              quantity: item.sackPrice
+                ? item.sackPrice.quantity
+                : item.perKiloPrice.quantity,
+              product: { connect: { id: item.id } },
               delivery: { connect: { id: deliveryId } },
             },
           });
 
           // Increment stock with new quantities
-          if (item.product.sackPrice) {
+          if (item.sackPrice) {
             await tx.sackPrice.update({
-              where: { id: item.product.sackPrice.id },
+              where: { id: item.sackPrice.id },
               data: {
-                stock: { increment: item.product.sackPrice.quantity },
+                stock: { increment: item.sackPrice.quantity },
               },
             });
           }

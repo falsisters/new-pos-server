@@ -23,14 +23,6 @@ class ProductDto {
   perKiloPrice: PerKiloPriceDto;
 }
 
-class DeliveryItemDto {
-  @IsOptional()
-  quantity: number;
-
-  @IsOptional()
-  product: ProductDto;
-}
-
 export class EditDeliveryDto {
   @IsOptional()
   driverName: string;
@@ -39,5 +31,5 @@ export class EditDeliveryDto {
   deliveryTimeStart: Date;
 
   @IsOptional()
-  deliveryItem: DeliveryItemDto[];
+  deliveryItem: ProductDto[];
 }
