@@ -72,23 +72,27 @@ export class ProductService {
               price: price.price,
               type: price.type,
               stock: price.stock,
-              specialPrice: {
-                update: {
-                  where: {
-                    id: price.specialPrice.id,
-                  },
-                  data: {
-                    price: price.specialPrice.price,
-                    minimumQty: price.specialPrice.minimumQty,
-                  },
-                },
-              },
+              specialPrice: price.specialPrice
+                ? {
+                    update: {
+                      where: {
+                        id: price.specialPrice.id,
+                      },
+                      data: {
+                        price: price.specialPrice.price,
+                        minimumQty: price.specialPrice.minimumQty,
+                      },
+                    },
+                  }
+                : undefined,
             },
           })),
         },
-        perKiloPrice: {
-          update: perKiloPrice,
-        },
+        perKiloPrice: perKiloPrice
+          ? {
+              update: perKiloPrice,
+            }
+          : undefined,
       },
       include: {
         perKiloPrice: true,
