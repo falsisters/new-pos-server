@@ -37,6 +37,12 @@ export class ProductController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Get(':id')
+  async getProductById(@Param('id') id: string) {
+    return this.productService.getProductById(id);
+  }
+
+  @UseGuards(JwtAuthGuard)
   @UseInterceptors(FileInterceptor('picture'))
   @Post('create')
   async createProduct(
