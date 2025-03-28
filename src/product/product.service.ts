@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { CreateProductDto } from './dto/create.dto';
 import { UploadService } from 'src/upload/upload.service';
-import { EditProductDto } from './dto/edit.dto';
+import { ProductFormData } from './types/productFormData.type';
+import { EditProductFormData } from './types/editProductFormData.type';
 
 @Injectable()
 export class ProductService {
@@ -11,10 +11,21 @@ export class ProductService {
     private uploadService: UploadService,
   ) {}
 
-  async createProduct(userId: string, createProductDto: CreateProductDto) {
-    const { picture, name, sackPrice, perKiloPrice } = createProductDto;
+  async createProduct(userId: string, formData: ProductFormData) {
+    // Extract file from form data
+    const picture = formData.picture;
 
-    const url = await this.uploadService.uploadSingleFile(picture, 'products/');
+    // Parse JSON strings from form data
+    const name = formData.name;
+    const sackPrice = JSON.parse(formData.sackPrice);
+    const perKiloPrice = formData.perKiloPrice
+      ? JSON.parse(formData.perKiloPrice)
+      : null;
+
+    // Upload the picture if provided
+    const url = picture
+      ? await this.uploadService.uploadSingleFile(picture, 'products/')
+      : null;
 
     return this.prisma.product.create({
       data: {
@@ -26,17 +37,21 @@ export class ProductService {
             price: price.price,
             type: price.type,
             stock: price.stock,
-            specialPrice: {
-              create: {
-                price: price.specialPrice.price,
-                minimumQty: price.specialPrice.minimumQty,
-              },
-            },
+            specialPrice: price.specialPrice
+              ? {
+                  create: {
+                    price: price.specialPrice.price,
+                    minimumQty: price.specialPrice.minimumQty,
+                  },
+                }
+              : undefined,
           })),
         },
-        perKiloPrice: {
-          create: perKiloPrice,
-        },
+        perKiloPrice: perKiloPrice
+          ? {
+              create: perKiloPrice,
+            }
+          : undefined,
       },
       include: {
         perKiloPrice: true,
@@ -49,9 +64,18 @@ export class ProductService {
     });
   }
 
-  async editProduct(id: string, editProductDto: EditProductDto) {
-    const { picture, name, sackPrice, perKiloPrice } = editProductDto;
+  async editProduct(id: string, formData: EditProductFormData) {
+    // Extract file from form data
+    const picture = formData.picture;
 
+    // Parse JSON strings from form data
+    const name = formData.name;
+    const sackPrice = JSON.parse(formData.sackPrice);
+    const perKiloPrice = formData.perKiloPrice
+      ? JSON.parse(formData.perKiloPrice)
+      : null;
+
+    // Upload the picture if provided
     const url = picture
       ? await this.uploadService.uploadSingleFile(picture, 'products/')
       : null;
@@ -62,7 +86,7 @@ export class ProductService {
       },
       data: {
         name,
-        picture: url,
+        ...(url && { picture: url }),
         SackPrice: {
           update: sackPrice.map((price) => ({
             where: {
