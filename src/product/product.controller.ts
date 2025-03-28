@@ -13,8 +13,6 @@ import {
 } from '@nestjs/common';
 import { ProductService } from './product.service';
 import { JwtAuthGuard } from 'src/auth/guards/jwt.guard';
-import { CreateProductDto } from './dto/create.dto';
-import { EditProductDto } from './dto/edit.dto';
 import { JwtCashierAuthGuard } from 'src/cashier/guards/jwt.guard';
 import { FileInterceptor } from '@nestjs/platform-express';
 
@@ -47,20 +45,28 @@ export class ProductController {
   @Post('create')
   async createProduct(
     @Request() req,
-    @Body() createProductDto: CreateProductDto,
+    @Body() formData: any,
     @UploadedFile() picture: Express.Multer.File,
   ) {
     const userId = req.user.id;
     return this.productService.createProduct(userId, {
-      ...createProductDto,
+      ...formData,
       picture,
     });
   }
 
   @UseGuards(JwtAuthGuard)
+  @UseInterceptors(FileInterceptor('picture'))
   @Patch(':id')
-  async updateProduct(@Param('id') id: string, editProductDto: EditProductDto) {
-    return this.productService.editProduct(id, editProductDto);
+  async updateProduct(
+    @Param('id') id: string,
+    @Body() formData: any,
+    @UploadedFile() picture: Express.Multer.File,
+  ) {
+    return this.productService.editProduct(id, {
+      ...formData,
+      picture,
+    });
   }
 
   @UseGuards(JwtAuthGuard)
