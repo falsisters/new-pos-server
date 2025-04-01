@@ -17,10 +17,10 @@ class ProductDto {
   id: string;
 
   @IsOptional()
-  sackPrice: SackPriceDto;
+  sackPrice?: SackPriceDto;
 
   @IsOptional()
-  perKiloPrice: PerKiloPriceDto;
+  perKiloPrice?: PerKiloPriceDto;
 }
 
 export class TransferProductDto {

@@ -93,7 +93,7 @@ export class TransferService {
 
         let kahonItem: KahonItem;
 
-        const currentProduct = await tx.kahonItem.findUnique({
+        const currentProduct = await tx.product.findUnique({
           where: {
             id: product.id,
           },
@@ -145,13 +145,13 @@ export class TransferService {
 
         let transfer: Transfer;
 
-        const currentProduct = await tx.kahonItem.findUnique({
+        const currentProduct = await tx.product.findUnique({
           where: {
             id: product.id,
           },
         });
 
-        if (product.sackPrice) {
+        if (currentProduct && product.sackPrice) {
           transfer = await tx.transfer.create({
             data: {
               name: `${currentProduct.name} ${this.parseSackType(product.sackPrice.type)}`,
@@ -162,7 +162,7 @@ export class TransferService {
           });
         }
 
-        if (product.perKiloPrice) {
+        if (currentProduct && product.perKiloPrice) {
           transfer = await tx.transfer.create({
             data: {
               name: `${currentProduct.name} ${product.perKiloPrice.quantity}KG`,
