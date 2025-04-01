@@ -70,7 +70,7 @@ export class ProductService {
 
     // Parse JSON strings from form data
     const name = formData.name;
-    const sackPrice = JSON.parse(formData.sackPrice);
+    const sackPrice = formData.sackPrice ? JSON.parse(formData.sackPrice) : [];
     const perKiloPrice = formData.perKiloPrice
       ? JSON.parse(formData.perKiloPrice)
       : null;
@@ -88,29 +88,41 @@ export class ProductService {
         name,
         ...(url && { picture: url }),
         SackPrice: {
-          update: sackPrice.map((price) => ({
-            where: {
-              id: price.id,
-            },
-            data: {
-              price: price.price,
-              type: price.type,
-              stock: price.stock,
-              specialPrice: price.specialPrice
-                ? {
-                    update: {
-                      where: {
-                        id: price.specialPrice.id,
+          update: sackPrice.map(
+            (price: {
+              id: string;
+              price: number;
+              type?: string;
+              stock?: number;
+              specialPrice?: {
+                id: string;
+                price: number;
+                minimumQty: number;
+              };
+            }) => ({
+              where: {
+                id: price.id,
+              },
+              data: {
+                price: price.price,
+                type: price.type,
+                stock: price.stock,
+                specialPrice: price.specialPrice
+                  ? {
+                      update: {
+                        where: {
+                          id: price.specialPrice.id,
+                        },
+                        data: {
+                          price: price.specialPrice.price,
+                          minimumQty: price.specialPrice.minimumQty,
+                        },
                       },
-                      data: {
-                        price: price.specialPrice.price,
-                        minimumQty: price.specialPrice.minimumQty,
-                      },
-                    },
-                  }
-                : undefined,
-            },
-          })),
+                    }
+                  : undefined,
+              },
+            }),
+          ),
         },
         perKiloPrice: perKiloPrice
           ? {

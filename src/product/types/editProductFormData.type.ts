@@ -1,6 +1,6 @@
 export interface EditProductFormData {
-  name: string;
+  name?: string;
   picture?: Express.Multer.File;
-  sackPrice: string; // Will be parsed as JSON
+  sackPrice?: string; // Will be parsed as JSON
   perKiloPrice?: string; // Will be parsed as JSON
 }
