@@ -2,6 +2,7 @@ import { Controller, Post, UseGuards } from '@nestjs/common';
 import { JwtCashierAuthGuard } from 'src/cashier/guards/jwt.guard';
 import { TransferProductDto } from './dto/transferProduct.dto';
 import { TransferService } from './transfer.service';
+import { TransferDeliveryDto } from './dto/transferDelivery.dto';
 
 @Controller('transfer')
 export class TransferController {
@@ -14,5 +15,17 @@ export class TransferController {
     transferProductDto: TransferProductDto,
   ) {
     return this.transferService.transferProduct(cashierId, transferProductDto);
+  }
+
+  @UseGuards(JwtCashierAuthGuard)
+  @Post('delivery')
+  async transferDelivery(
+    cashierId: string,
+    transferDeliveryDto: TransferDeliveryDto,
+  ) {
+    return this.transferService.transferDelivery(
+      cashierId,
+      transferDeliveryDto,
+    );
   }
 }

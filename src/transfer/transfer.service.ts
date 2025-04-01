@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { TransferDeliveryDto } from './dto/transferDelivery.dto';
-import { Kahon, KahonItem, SackType } from '@prisma/client';
+import { Kahon, KahonItem, SackType, Transfer } from '@prisma/client';
 import { TransferProductDto } from './dto/transferProduct.dto';
 
 @Injectable()
@@ -54,72 +54,127 @@ export class TransferService {
     transferProductDto: TransferProductDto,
   ) {
     const { product } = transferProductDto;
-    let selectedKahon: Kahon;
-    const currentKahon = await this.prisma.kahon.findUnique({
-      where: { cashierId: cashierId },
-    });
 
-    if (!currentKahon) {
-      selectedKahon = await this.prisma.kahon.create({
-        data: {
-          name: 'Kahon',
-          cashierId,
-        },
-      });
-    } else {
-      selectedKahon = currentKahon;
-    }
-
-    return this.prisma.$transaction(async (tx) => {
-      if (product.sackPrice) {
-        await tx.sackPrice.update({
-          where: { id: product.sackPrice.id },
-          data: {
-            stock: { decrement: product.sackPrice.quantity },
-          },
-        });
-      }
-
-      if (product.perKiloPrice) {
-        await tx.perKiloPrice.update({
-          where: { id: product.perKiloPrice.id },
-          data: {
-            stock: { decrement: product.perKiloPrice.quantity },
-          },
-        });
-      }
-
-      let kahonItem: KahonItem;
-
-      const currentProduct = await tx.kahonItem.findUnique({
-        where: {
-          id: product.id,
-        },
+    if (transferProductDto.transferType === 'KAHON') {
+      let selectedKahon: Kahon;
+      const currentKahon = await this.prisma.kahon.findUnique({
+        where: { cashierId: cashierId },
       });
 
-      if (currentProduct) {
+      if (!currentKahon) {
+        selectedKahon = await this.prisma.kahon.create({
+          data: {
+            name: 'Kahon',
+            cashierId,
+          },
+        });
+      } else {
+        selectedKahon = currentKahon;
+      }
+
+      return this.prisma.$transaction(async (tx) => {
         if (product.sackPrice) {
-          kahonItem = await tx.kahonItem.create({
+          await tx.sackPrice.update({
+            where: { id: product.sackPrice.id },
             data: {
-              kahonId: selectedKahon.id,
-              quantity: product.sackPrice.quantity,
-              name: `${currentProduct.name} ${this.parseSackType(product.sackPrice.type)}`,
+              stock: { decrement: product.sackPrice.quantity },
             },
           });
         }
 
         if (product.perKiloPrice) {
-          kahonItem = await tx.kahonItem.create({
+          await tx.perKiloPrice.update({
+            where: { id: product.perKiloPrice.id },
             data: {
-              kahonId: selectedKahon.id,
-              quantity: 0,
-              name: `${currentProduct.name} ${product.perKiloPrice.quantity}KG`,
+              stock: { decrement: product.perKiloPrice.quantity },
             },
           });
         }
-      }
 
-      return kahonItem;
-    });
+        let kahonItem: KahonItem;
+
+        const currentProduct = await tx.kahonItem.findUnique({
+          where: {
+            id: product.id,
+          },
+        });
+
+        if (currentProduct) {
+          if (product.sackPrice) {
+            kahonItem = await tx.kahonItem.create({
+              data: {
+                kahonId: selectedKahon.id,
+                quantity: product.sackPrice.quantity,
+                name: `${currentProduct.name} ${this.parseSackType(product.sackPrice.type)}`,
+              },
+            });
+          }
+
+          if (product.perKiloPrice) {
+            kahonItem = await tx.kahonItem.create({
+              data: {
+                kahonId: selectedKahon.id,
+                quantity: 0,
+                name: `${currentProduct.name} ${product.perKiloPrice.quantity}KG`,
+              },
+            });
+          }
+        }
+
+        return kahonItem;
+      });
+    } else {
+      return this.prisma.$transaction(async (tx) => {
+        if (product.sackPrice) {
+          await tx.sackPrice.update({
+            where: { id: product.sackPrice.id },
+            data: {
+              stock: { decrement: product.sackPrice.quantity },
+            },
+          });
+        }
+
+        if (product.perKiloPrice) {
+          await tx.perKiloPrice.update({
+            where: { id: product.perKiloPrice.id },
+            data: {
+              stock: { decrement: product.perKiloPrice.quantity },
+            },
+          });
+        }
+
+        let transfer: Transfer;
+
+        const currentProduct = await tx.kahonItem.findUnique({
+          where: {
+            id: product.id,
+          },
+        });
+
+        if (product.sackPrice) {
+          transfer = await tx.transfer.create({
+            data: {
+              name: `${currentProduct.name} ${this.parseSackType(product.sackPrice.type)}`,
+              quantity: product.sackPrice.quantity,
+              type: transferProductDto.transferType,
+              cashier: { connect: { id: cashierId } },
+            },
+          });
+        }
+
+        if (product.perKiloPrice) {
+          transfer = await tx.transfer.create({
+            data: {
+              name: `${currentProduct.name} ${product.perKiloPrice.quantity}KG`,
+              quantity: 0,
+              type: transferProductDto.transferType,
+              cashier: { connect: { id: cashierId } },
+            },
+          });
+        }
+
+        return transfer;
+      });
+    }
   }
 }

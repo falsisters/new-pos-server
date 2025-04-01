@@ -1,4 +1,4 @@
-import { SackType } from '@prisma/client';
+import { SackType, TransferType } from '@prisma/client';
 import { IsNotEmpty, IsOptional } from 'class-validator';
 
 class PerKiloPriceDto {
@@ -26,4 +26,7 @@ class ProductDto {
 export class TransferProductDto {
   @IsNotEmpty()
   product: ProductDto;
+
+  @IsNotEmpty()
+  transferType: TransferType;
 }

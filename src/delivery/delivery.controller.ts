@@ -45,10 +45,12 @@ export class DeliveryController {
   @UseGuards(JwtAuthGuard)
   @Put(':id')
   async editDelivery(
+    @Request() req,
     @Param('id') id: string,
     @Body() editDeliveryDto: EditDeliveryDto,
   ) {
-    return this.deliveryService.editDelivery(id, editDeliveryDto);
+    const cashierId = req.user.id;
+    return this.deliveryService.editDelivery(cashierId, id, editDeliveryDto);
   }
 
   @UseGuards(JwtAuthGuard)

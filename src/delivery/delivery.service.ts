@@ -69,7 +69,11 @@ export class DeliveryService {
     );
   }
 
-  async editDelivery(deliveryId: string, editDeliveryDto: CreateDeliveryDto) {
+  async editDelivery(
+    cashierId: string,
+    deliveryId: string,
+    editDeliveryDto: CreateDeliveryDto,
+  ) {
     const { driverName, deliveryTimeStart, deliveryItem } = editDeliveryDto;
 
     return this.prisma.$transaction(
@@ -106,7 +110,16 @@ export class DeliveryService {
             });
           }
 
-          // TODO: Handle perKiloPrice decrements separately
+          const perKiloPrice = await tx.perKiloPrice.findFirst({
+            where: { productId: item.product.id },
+          });
+
+          if (perKiloPrice) {
+            await this.transferService.transferDelivery(cashierId, {
+              name: `${item.product.name} ${item.quantity}KG`,
+              quantity: item.quantity,
+            });
+          }
         }
 
         // 2. Delete all existing delivery items
