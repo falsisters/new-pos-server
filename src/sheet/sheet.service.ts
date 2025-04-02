@@ -169,7 +169,12 @@ export class SheetService {
   }
 
   async addCells(
-    cells: { rowId: string; columnIndex: number; value: string }[],
+    cells: {
+      rowId: string;
+      columnIndex: number;
+      value: string;
+      formula?: string;
+    }[],
   ) {
     const addCellsPromises = cells.map((cell) => {
       return this.prisma.cell.create({
@@ -177,6 +182,8 @@ export class SheetService {
           rowId: cell.rowId,
           columnIndex: cell.columnIndex,
           value: cell.value,
+          formula: cell.formula,
+          isCalculated: !!cell.formula,
         },
       });
     });
