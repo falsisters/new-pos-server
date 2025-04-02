@@ -83,7 +83,7 @@ export class TransferService {
     cashierId: string,
     transferDeliveryDto: TransferDeliveryDto,
   ) {
-    const { name, quantity } = transferDeliveryDto;
+    const { name } = transferDeliveryDto;
     let selectedKahon: Kahon & { Sheets: any[] };
     const currentKahon = await this.prisma.kahon.findUnique({
       where: { cashierId: cashierId },
@@ -114,7 +114,7 @@ export class TransferService {
       // Create KahonItem
       const kahonItem = await tx.kahonItem.create({
         data: {
-          name: `${name} ${quantity}KG`,
+          name: `${name}`,
           quantity: 0,
           kahon: { connect: { id: selectedKahon.id } },
         },
