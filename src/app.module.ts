@@ -14,6 +14,7 @@ import { DeliveryModule } from './delivery/delivery.module';
 import { TransferModule } from './transfer/transfer.module';
 import { KahonModule } from './kahon/kahon.module';
 import { InventoryModule } from './inventory/inventory.module';
+import { SheetModule } from './sheet/sheet.module';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { InventoryModule } from './inventory/inventory.module';
     TransferModule,
     KahonModule,
     InventoryModule,
+    SheetModule,
   ],
   controllers: [AppController],
   providers: [AppService],

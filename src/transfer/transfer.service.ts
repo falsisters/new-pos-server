@@ -84,28 +84,91 @@ export class TransferService {
     transferDeliveryDto: TransferDeliveryDto,
   ) {
     const { name, quantity } = transferDeliveryDto;
-    let selectedKahon: Kahon;
+    let selectedKahon: Kahon & { Sheets: any[] };
     const currentKahon = await this.prisma.kahon.findUnique({
       where: { cashierId: cashierId },
+      include: { Sheets: true }, // Include sheets to check if any exist
     });
 
     if (!currentKahon) {
+      // Create Kahon with a default Sheet
       selectedKahon = await this.prisma.kahon.create({
         data: {
           name: 'Kahon',
           cashierId,
+          Sheets: {
+            create: {
+              name: 'Default Sheet',
+              columns: 10,
+            },
+          },
         },
+        include: { Sheets: true },
       });
     } else {
       selectedKahon = currentKahon;
     }
 
-    return this.prisma.kahonItem.create({
-      data: {
-        name: `${name} ${quantity}KG`,
-        quantity: 0,
-        kahon: { connect: { id: selectedKahon.id } },
-      },
+    // Use transaction to ensure atomicity
+    return this.prisma.$transaction(async (tx) => {
+      // Create KahonItem
+      const kahonItem = await tx.kahonItem.create({
+        data: {
+          name: `${name} ${quantity}KG`,
+          quantity: 0,
+          kahon: { connect: { id: selectedKahon.id } },
+        },
+      });
+
+      // Get active sheet or create one if none exists
+      const sheet =
+        selectedKahon.Sheets.length > 0
+          ? selectedKahon.Sheets[0]
+          : await tx.sheet.create({
+              data: {
+                name: 'Default Sheet',
+                columns: 10,
+                kahon: { connect: { id: selectedKahon.id } },
+              },
+            });
+
+      // Find max row index to determine where to add the new row
+      const lastRow = await tx.row.findFirst({
+        where: { sheetId: sheet.id },
+        orderBy: { rowIndex: 'desc' },
+      });
+
+      const newRowIndex = lastRow ? lastRow.rowIndex + 1 : 0;
+
+      // Create a row for this item
+      const row = await tx.row.create({
+        data: {
+          rowIndex: newRowIndex,
+          isItemRow: true,
+          itemId: kahonItem.id,
+          sheet: { connect: { id: sheet.id } },
+        },
+      });
+
+      // Create the first two cells (quantity and name)
+      await tx.cell.createMany({
+        data: [
+          {
+            rowId: row.id,
+            columnIndex: 0,
+            value: String(kahonItem.quantity),
+            kahonItemId: kahonItem.id,
+          },
+          {
+            rowId: row.id,
+            columnIndex: 1,
+            value: kahonItem.name,
+            kahonItemId: kahonItem.id,
+          },
+        ],
+      });
+
+      return kahonItem;
     });
   }
 
@@ -116,9 +179,10 @@ export class TransferService {
     const { product } = transferProductDto;
 
     if (transferProductDto.transferType === 'KAHON') {
-      let selectedKahon: Kahon;
+      let selectedKahon: Kahon & { Sheets: any[] };
       const currentKahon = await this.prisma.kahon.findUnique({
         where: { cashierId: cashierId },
+        include: { Sheets: true }, // Include sheets to check if any exist
       });
 
       if (!currentKahon) {
@@ -126,13 +190,21 @@ export class TransferService {
           data: {
             name: 'Kahon',
             cashierId,
+            Sheets: {
+              create: {
+                name: 'Default Sheet',
+                columns: 10,
+              },
+            },
           },
+          include: { Sheets: true },
         });
       } else {
         selectedKahon = currentKahon;
       }
 
       return this.prisma.$transaction(async (tx) => {
+        // Update stock logic
         if (product.sackPrice) {
           await tx.sackPrice.update({
             where: { id: product.sackPrice.id },
@@ -152,15 +224,33 @@ export class TransferService {
         }
 
         let kahonItem: KahonItem;
-
         const currentProduct = await tx.product.findUnique({
-          where: {
-            id: product.id,
-          },
+          where: { id: product.id },
         });
+
+        // Get active sheet or create one if none exists
+        const sheet =
+          selectedKahon.Sheets.length > 0
+            ? selectedKahon.Sheets[0]
+            : await tx.sheet.create({
+                data: {
+                  name: 'Default Sheet',
+                  columns: 10,
+                  kahon: { connect: { id: selectedKahon.id } },
+                },
+              });
+
+        // Find max row index
+        const lastRow = await tx.row.findFirst({
+          where: { sheetId: sheet.id },
+          orderBy: { rowIndex: 'desc' },
+        });
+
+        const newRowIndex = lastRow ? lastRow.rowIndex + 1 : 0;
 
         if (currentProduct) {
           if (product.sackPrice) {
+            // Create KahonItem for sack
             kahonItem = await tx.kahonItem.create({
               data: {
                 kahonId: selectedKahon.id,
@@ -168,9 +258,38 @@ export class TransferService {
                 name: `${currentProduct.name} ${this.parseSackType(product.sackPrice.type)}`,
               },
             });
+
+            // Create row and cells for this item
+            const row = await tx.row.create({
+              data: {
+                rowIndex: newRowIndex,
+                isItemRow: true,
+                itemId: kahonItem.id,
+                sheet: { connect: { id: sheet.id } },
+              },
+            });
+
+            // Create the first two cells (quantity and name)
+            await tx.cell.createMany({
+              data: [
+                {
+                  rowId: row.id,
+                  columnIndex: 0,
+                  value: String(kahonItem.quantity),
+                  kahonItemId: kahonItem.id,
+                },
+                {
+                  rowId: row.id,
+                  columnIndex: 1,
+                  value: kahonItem.name,
+                  kahonItemId: kahonItem.id,
+                },
+              ],
+            });
           }
 
           if (product.perKiloPrice) {
+            // Create KahonItem for per kilo
             kahonItem = await tx.kahonItem.create({
               data: {
                 kahonId: selectedKahon.id,
@@ -178,13 +297,43 @@ export class TransferService {
                 name: `${currentProduct.name} ${product.perKiloPrice.quantity}KG`,
               },
             });
+
+            // Create row and cells for this item
+            const row = await tx.row.create({
+              data: {
+                rowIndex: newRowIndex,
+                isItemRow: true,
+                itemId: kahonItem.id,
+                sheet: { connect: { id: sheet.id } },
+              },
+            });
+
+            // Create the first two cells (quantity and name)
+            await tx.cell.createMany({
+              data: [
+                {
+                  rowId: row.id,
+                  columnIndex: 0,
+                  value: String(kahonItem.quantity),
+                  kahonItemId: kahonItem.id,
+                },
+                {
+                  rowId: row.id,
+                  columnIndex: 1,
+                  value: kahonItem.name,
+                  kahonItemId: kahonItem.id,
+                },
+              ],
+            });
           }
         }
 
         return kahonItem;
       });
     } else {
+      // Non-KAHON transfer logic remains unchanged
       return this.prisma.$transaction(async (tx) => {
+        // Existing non-KAHON transfer logic
         if (product.sackPrice) {
           await tx.sackPrice.update({
             where: { id: product.sackPrice.id },
@@ -204,11 +353,8 @@ export class TransferService {
         }
 
         let transfer: Transfer;
-
         const currentProduct = await tx.product.findUnique({
-          where: {
-            id: product.id,
-          },
+          where: { id: product.id },
         });
 
         if (currentProduct && product.sackPrice) {

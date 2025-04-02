@@ -215,16 +215,18 @@ model Kahon {
   createdAt  DateTime    @default(now())
   updatedAt  DateTime    @updatedAt
   KahonItems KahonItem[]
+  Sheets     Sheet[]
 }
 
 model Inventory {
-  id             String          @id @default(cuid())
+  id             String           @id @default(cuid())
   name           String
-  cashier        Cashier         @relation(fields: [cashierId], references: [id], onDelete: Cascade)
-  cashierId      String          @unique
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
+  cashier        Cashier          @relation(fields: [cashierId], references: [id], onDelete: Cascade)
+  cashierId      String           @unique
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
   InventoryItems InventoryItem[]
+  InventorySheet InventorySheet[]
 }
 
 model KahonItem {
@@ -235,6 +237,7 @@ model KahonItem {
   kahonId   String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  Cells     Cell[]
 }
 
 model InventoryItem {
@@ -245,4 +248,76 @@ model InventoryItem {
   inventoryId String
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+}
+
+model InventorySheet {
+  id          String         @id @default(cuid())
+  name        String
+  inventory   Inventory      @relation(fields: [inventoryId], references: [id], onDelete: Cascade)
+  inventoryId String
+  columns     Int            @default(10) // Number of columns in this sheet
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  Rows        InventoryRow[]
+}
+
+model InventoryRow {
+  id               String          @id @default(cuid())
+  rowIndex         Int // Position in the sheet
+  inventorySheet   InventorySheet  @relation(fields: [inventorySheetId], references: [id], onDelete: Cascade)
+  inventorySheetId String
+  isItemRow        Boolean         @default(true) // Regular row or total/calculation row
+  itemId           String? // Can be null for total/calculation rows
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  Cells            InventoryCell[]
+}
+
+model InventoryCell {
+  id             String       @id @default(cuid())
+  columnIndex    Int // Column position
+  inventoryRow   InventoryRow @relation(fields: [inventoryRowId], references: [id], onDelete: Cascade)
+  inventoryRowId String
+  value          String? // The displayed/calculated value
+  formula        String? // Formula for calculated cells (e.g., "=C2*D2")
+  isCalculated   Boolean      @default(false)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+}
+
+model Sheet {
+  id        String   @id @default(cuid())
+  name      String
+  kahon     Kahon    @relation(fields: [kahonId], references: [id], onDelete: Cascade)
+  kahonId   String
+  columns   Int      @default(10) // Number of columns in this sheet
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  Rows      Row[]
+}
+
+model Row {
+  id        String   @id @default(cuid())
+  rowIndex  Int // Position in the sheet
+  sheet     Sheet    @relation(fields: [sheetId], references: [id], onDelete: Cascade)
+  sheetId   String
+  isItemRow Boolean  @default(true) // Regular row or total/calculation row
+  itemId    String? // Can be null for total/calculation rows
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  Cells     Cell[]
+}
+
+model Cell {
+  id           String     @id @default(cuid())
+  columnIndex  Int // Column position
+  row          Row        @relation(fields: [rowId], references: [id], onDelete: Cascade)
+  rowId        String
+  kahonItem    KahonItem? @relation(fields: [kahonItemId], references: [id], onDelete: SetNull)
+  kahonItemId  String? // Can be null for calculation cells
+  value        String? // The displayed/calculated value
+  formula      String? // Formula for calculated cells (e.g., "=C2*D2")
+  isCalculated Boolean    @default(false)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
 }
