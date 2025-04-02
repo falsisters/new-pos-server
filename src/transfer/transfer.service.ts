@@ -3,6 +3,7 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { TransferDeliveryDto } from './dto/transferDelivery.dto';
 import { Kahon, KahonItem, SackType, Transfer } from '@prisma/client';
 import { TransferProductDto } from './dto/transferProduct.dto';
+import { EditTransferDto } from './dto/editTransfer.dto';
 
 @Injectable()
 export class TransferService {
@@ -17,6 +18,65 @@ export class TransferService {
       case 'FIVE_KG':
         return '5KG';
     }
+  }
+
+  async getAllTransfers(userId: string) {
+    const cashiers = await this.prisma.cashier.findMany({
+      where: {
+        userId,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    const cashierIds = cashiers.map((cashier) => cashier.id);
+
+    return this.prisma.transfer.findMany({
+      where: {
+        cashierId: {
+          in: cashierIds,
+        },
+      },
+      include: {
+        cashier: {
+          select: {
+            name: true,
+          },
+        },
+      },
+    });
+  }
+
+  async deleteTransfer(id: string) {
+    return this.prisma.transfer.delete({
+      where: { id },
+    });
+  }
+
+  async editTransfer(id: string, editTransferDto: EditTransferDto) {
+    const { quantity, name, type } = editTransferDto;
+    return this.prisma.transfer.update({
+      where: { id },
+      data: {
+        quantity,
+        name,
+        type,
+      },
+    });
+  }
+
+  async getTransfer(id: string) {
+    return this.prisma.transfer.findUnique({
+      where: { id },
+      include: {
+        cashier: {
+          select: {
+            name: true,
+          },
+        },
+      },
+    });
   }
 
   async transferDelivery(
