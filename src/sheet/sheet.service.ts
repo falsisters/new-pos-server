@@ -31,14 +31,25 @@ export class SheetService {
     });
   }
 
-  async getSheetsByDateRange(kahonId: string, startDate: Date, endDate: Date) {
+  async getSheetsByDateRange(
+    cashierId: string,
+    startDate?: Date,
+    endDate?: Date,
+  ) {
     // First get filtered KahonItems
+    const end = endDate || new Date();
+    const start = startDate || new Date(end.getTime() - 24 * 60 * 60 * 1000);
+
+    const kahon = await this.prisma.kahon.findUnique({
+      where: { cashierId },
+    });
+
     const items = await this.prisma.kahonItem.findMany({
       where: {
-        kahonId,
+        kahonId: kahon.id,
         createdAt: {
-          gte: startDate,
-          lte: endDate,
+          gte: start,
+          lte: end,
         },
       },
       select: { id: true },
@@ -47,8 +58,8 @@ export class SheetService {
     const itemIds = items.map((item) => item.id);
 
     // Then get rows that reference these items
-    return await this.prisma.sheet.findMany({
-      where: { kahonId },
+    return await this.prisma.sheet.findFirst({
+      where: { kahonId: kahon.id },
       include: {
         Rows: {
           where: {
@@ -105,7 +116,7 @@ export class SheetService {
   async addCalculationRow(
     sheetId: string,
     rowIndex: number,
-    description: string,
+    description: string = '',
   ) {
     // Create a calculation row (totals, etc.)
     const row = await this.prisma.row.create({
