@@ -12,6 +12,8 @@ import { UploadModule } from './upload/upload.module';
 import { SaleModule } from './sale/sale.module';
 import { DeliveryModule } from './delivery/delivery.module';
 import { TransferModule } from './transfer/transfer.module';
+import { KahonModule } from './kahon/kahon.module';
+import { InventoryModule } from './inventory/inventory.module';
 
 @Module({
   imports: [
@@ -28,6 +30,8 @@ import { TransferModule } from './transfer/transfer.module';
     SaleModule,
     DeliveryModule,
     TransferModule,
+    KahonModule,
+    InventoryModule,
   ],
   controllers: [AppController],
   providers: [AppService],
