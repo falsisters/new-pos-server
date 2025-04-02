@@ -34,7 +34,7 @@ export class DeliveryService {
 
           if (item.perKiloPrice && currentProduct) {
             await this.transferService.transferDelivery(cashierId, {
-              name: `${currentProduct.name} ${item.perKiloPrice.quantity}KG`,
+              name: `${currentProduct.name}`,
               quantity: 0,
             });
           }
