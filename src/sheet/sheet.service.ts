@@ -168,6 +168,22 @@ export class SheetService {
     });
   }
 
+  async addCells(
+    cells: { rowId: string; columnIndex: number; value: string }[],
+  ) {
+    const addCellsPromises = cells.map((cell) => {
+      return this.prisma.cell.create({
+        data: {
+          rowId: cell.rowId,
+          columnIndex: cell.columnIndex,
+          value: cell.value,
+        },
+      });
+    });
+
+    return Promise.all(addCellsPromises);
+  }
+
   async addCell(
     rowId: string,
     columnIndex: number,

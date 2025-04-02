@@ -15,6 +15,7 @@ import { AddItemRowDto } from './dto/addItemRow.dto';
 import { AddCalculationRowDto } from './dto/addCalculationRow.dto';
 import { AddCellDto } from './dto/addCell.dto';
 import { EditCellsDto } from './dto/editCells.dto';
+import { AddCellsDto } from './dto/addCells.dto';
 
 @Controller('sheet')
 export class SheetController {
@@ -79,6 +80,13 @@ export class SheetController {
   @Delete('cell/:id')
   async deleteCell(@Param('id') id: string) {
     return this.sheetService.deleteCell(id);
+  }
+
+  @UseGuards(JwtCashierAuthGuard)
+  @Post('cells')
+  async addCells(@Body() addCellsDto: AddCellsDto) {
+    const { cells } = addCellsDto;
+    return this.sheetService.addCells(cells);
   }
 
   @UseGuards(JwtCashierAuthGuard)
