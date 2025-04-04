@@ -1,5 +1,5 @@
 export class AddItemRowDto {
   sheetId: string;
-  inventoryId: string;
+  inventoryItemId: string;
   rowIndex: number;
 }

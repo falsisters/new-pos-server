@@ -47,7 +47,7 @@ export class InventoryService {
     });
 
     if (!inventory) {
-      const inventory = this.prisma.inventory.create({
+      const newInventory = await this.prisma.inventory.create({
         data: {
           cashierId,
           name: 'Default Inventory',
@@ -58,9 +58,12 @@ export class InventoryService {
             },
           },
         },
+        include: {
+          InventorySheet: true,
+        },
       });
 
-      return inventory.InventorySheet[0];
+      return newInventory.InventorySheet[0];
     }
 
     if (inventory.InventorySheet.length === 0) {
@@ -105,37 +108,35 @@ export class InventoryService {
   }
 
   async getInventorySheetsByDateRange(
-    inventoryId: string,
-    startDate: Date,
-    endDate: Date,
+    cashierId: string,
+    startDate?: Date,
+    endDate?: Date,
   ) {
-    // First get filtered InventoryItems
-    const items = await this.prisma.inventoryItem.findMany({
-      where: {
-        inventoryId,
-        createdAt: {
-          gte: startDate,
-          lte: endDate,
-        },
-      },
-      select: { id: true },
+    // Set date range
+    const end = endDate || new Date();
+    const start = startDate || new Date(end.getTime() - 24 * 60 * 60 * 1000);
+
+    // Find the inventory for this cashier
+    const inventory = await this.prisma.inventory.findUnique({
+      where: { cashierId },
     });
 
-    const itemIds = items.map((item) => item.id);
-
-    // Then get rows that reference these items
+    // Return sheets with rows filtered by date range
     return await this.prisma.inventorySheet.findFirst({
-      where: { inventoryId },
+      where: { inventoryId: inventory.id },
       include: {
         Rows: {
           where: {
-            OR: [
-              { itemId: { in: itemIds } }, // Get rows for filtered items
-              { isItemRow: false }, // Also include calculation rows
-            ],
+            createdAt: {
+              gte: start,
+              lte: end,
+            },
           },
+          orderBy: { rowIndex: 'asc' },
           include: {
-            Cells: true,
+            Cells: {
+              orderBy: { columnIndex: 'asc' },
+            },
           },
         },
       },
@@ -180,7 +181,7 @@ export class InventoryService {
   async addCalculationRow(
     sheetId: string,
     rowIndex: number,
-    description: string,
+    description: string = '',
   ) {
     // Create a calculation row (totals, etc.)
     const row = await this.prisma.inventoryRow.create({
@@ -209,6 +210,7 @@ export class InventoryService {
       where: { inventoryRowId: rowId },
     });
 
+    // Then delete the row itself
     return await this.prisma.inventoryRow.delete({
       where: { id: rowId },
     });
@@ -225,6 +227,35 @@ export class InventoryService {
     });
   }
 
+  async deleteCell(cellId: string) {
+    return await this.prisma.inventoryCell.delete({
+      where: { id: cellId },
+    });
+  }
+
+  async addCells(
+    cells: {
+      rowId: string;
+      columnIndex: number;
+      value: string;
+      formula?: string;
+    }[],
+  ) {
+    const addCellsPromises = cells.map((cell) => {
+      return this.prisma.inventoryCell.create({
+        data: {
+          inventoryRowId: cell.rowId,
+          columnIndex: cell.columnIndex,
+          value: cell.value,
+          formula: cell.formula,
+          isCalculated: !!cell.formula,
+        },
+      });
+    });
+
+    return Promise.all(addCellsPromises);
+  }
+
   async addCell(
     rowId: string,
     columnIndex: number,
@@ -239,12 +270,6 @@ export class InventoryService {
         formula,
         isCalculated: !!formula,
       },
-    });
-  }
-
-  async deleteCell(cellId: string) {
-    return await this.prisma.inventoryCell.delete({
-      where: { id: cellId },
     });
   }
 

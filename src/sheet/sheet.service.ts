@@ -36,40 +36,31 @@ export class SheetService {
     startDate?: Date,
     endDate?: Date,
   ) {
-    // First get filtered KahonItems
+    // Set date range
     const end = endDate || new Date();
     const start = startDate || new Date(end.getTime() - 24 * 60 * 60 * 1000);
 
+    // Find the kahon for this cashier
     const kahon = await this.prisma.kahon.findUnique({
       where: { cashierId },
     });
 
-    const items = await this.prisma.kahonItem.findMany({
-      where: {
-        kahonId: kahon.id,
-        createdAt: {
-          gte: start,
-          lte: end,
-        },
-      },
-      select: { id: true },
-    });
-
-    const itemIds = items.map((item) => item.id);
-
-    // Then get rows that reference these items
+    // Return sheets with rows filtered by date range
     return await this.prisma.sheet.findFirst({
       where: { kahonId: kahon.id },
       include: {
         Rows: {
           where: {
-            OR: [
-              { itemId: { in: itemIds } }, // Get rows for filtered items
-              { isItemRow: false }, // Also include calculation rows
-            ],
+            createdAt: {
+              gte: start,
+              lte: end,
+            },
           },
+          orderBy: { rowIndex: 'asc' },
           include: {
-            Cells: true,
+            Cells: {
+              orderBy: { columnIndex: 'asc' },
+            },
           },
         },
       },
