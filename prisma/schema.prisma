@@ -225,7 +225,6 @@ model Inventory {
   cashierId      String           @unique
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
-  InventoryItems InventoryItem[]
   InventorySheet InventorySheet[]
 }
 
@@ -238,16 +237,6 @@ model KahonItem {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   Cells     Cell[]
-}
-
-model InventoryItem {
-  id          String    @id @default(cuid())
-  name        String
-  quantity    Float
-  inventory   Inventory @relation(fields: [inventoryId], references: [id], onDelete: Cascade)
-  inventoryId String
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
 }
 
 model InventorySheet {

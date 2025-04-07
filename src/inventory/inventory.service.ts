@@ -18,7 +18,7 @@ export class InventoryService {
           InventorySheet: {
             create: {
               name: 'Default Inventory Sheet',
-              columns: 10,
+              columns: 15,
             },
           },
         },
@@ -54,7 +54,7 @@ export class InventoryService {
           InventorySheet: {
             create: {
               name: 'Default Sheet',
-              columns: 10,
+              columns: 15,
             },
           },
         },
@@ -154,23 +154,16 @@ export class InventoryService {
       },
     });
 
-    // Get the InventoryItem to prefill the first two cells
-    const item = await this.prisma.inventoryItem.findUnique({
-      where: { id: inventoryItemId },
-    });
-
     // Create the first two cells (quantity and name)
     await this.prisma.inventoryCell.createMany({
       data: [
         {
           inventoryRowId: row.id,
           columnIndex: 0,
-          value: String(item.quantity),
         },
         {
           inventoryRowId: row.id,
           columnIndex: 1,
-          value: item.name,
         },
       ],
     });

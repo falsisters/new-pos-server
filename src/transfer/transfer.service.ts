@@ -99,7 +99,7 @@ export class TransferService {
           Sheets: {
             create: {
               name: 'Default Sheet',
-              columns: 10,
+              columns: 5,
             },
           },
         },
@@ -127,7 +127,7 @@ export class TransferService {
           : await tx.sheet.create({
               data: {
                 name: 'Default Sheet',
-                columns: 10,
+                columns: 5,
                 kahon: { connect: { id: selectedKahon.id } },
               },
             });
@@ -193,7 +193,7 @@ export class TransferService {
             Sheets: {
               create: {
                 name: 'Default Sheet',
-                columns: 10,
+                columns: 5,
               },
             },
           },
@@ -235,7 +235,7 @@ export class TransferService {
             : await tx.sheet.create({
                 data: {
                   name: 'Default Sheet',
-                  columns: 10,
+                  columns: 5,
                   kahon: { connect: { id: selectedKahon.id } },
                 },
               });
