@@ -150,22 +150,37 @@ export class TransferService {
         },
       });
 
-      // Create the first two cells (quantity and name)
-      await tx.cell.createMany({
-        data: [
-          {
+      // Create cells for all columns in the sheet
+      const cellsData = Array.from({ length: sheet.columns }, (_, i) => {
+        if (i === 0) {
+          // First column is quantity
+          return {
             rowId: row.id,
-            columnIndex: 0,
+            columnIndex: i,
             value: String(kahonItem.quantity),
             kahonItemId: kahonItem.id,
-          },
-          {
+          };
+        } else if (i === 1) {
+          // Second column is name
+          return {
             rowId: row.id,
-            columnIndex: 1,
+            columnIndex: i,
             value: kahonItem.name,
             kahonItemId: kahonItem.id,
-          },
-        ],
+          };
+        } else {
+          // Rest of columns are empty
+          return {
+            rowId: row.id,
+            columnIndex: i,
+            value: '',
+            kahonItemId: kahonItem.id,
+          };
+        }
+      });
+
+      await tx.cell.createMany({
+        data: cellsData,
       });
 
       return kahonItem;
@@ -259,7 +274,7 @@ export class TransferService {
               },
             });
 
-            // Create row and cells for this item
+            // Create row for this item
             const row = await tx.row.create({
               data: {
                 rowIndex: newRowIndex,
@@ -269,22 +284,37 @@ export class TransferService {
               },
             });
 
-            // Create the first two cells (quantity and name)
-            await tx.cell.createMany({
-              data: [
-                {
+            // Create cells for all columns in the sheet
+            const cellsData = Array.from({ length: sheet.columns }, (_, i) => {
+              if (i === 0) {
+                // First column is quantity
+                return {
                   rowId: row.id,
-                  columnIndex: 0,
+                  columnIndex: i,
                   value: String(kahonItem.quantity),
                   kahonItemId: kahonItem.id,
-                },
-                {
+                };
+              } else if (i === 1) {
+                // Second column is name
+                return {
                   rowId: row.id,
-                  columnIndex: 1,
+                  columnIndex: i,
                   value: kahonItem.name,
                   kahonItemId: kahonItem.id,
-                },
-              ],
+                };
+              } else {
+                // Rest of columns are empty
+                return {
+                  rowId: row.id,
+                  columnIndex: i,
+                  value: '',
+                  kahonItemId: kahonItem.id,
+                };
+              }
+            });
+
+            await tx.cell.createMany({
+              data: cellsData,
             });
           }
 
@@ -298,7 +328,7 @@ export class TransferService {
               },
             });
 
-            // Create row and cells for this item
+            // Create row for this item
             const row = await tx.row.create({
               data: {
                 rowIndex: newRowIndex,
@@ -308,22 +338,37 @@ export class TransferService {
               },
             });
 
-            // Create the first two cells (quantity and name)
-            await tx.cell.createMany({
-              data: [
-                {
+            // Create cells for all columns in the sheet
+            const cellsData = Array.from({ length: sheet.columns }, (_, i) => {
+              if (i === 0) {
+                // First column is quantity
+                return {
                   rowId: row.id,
-                  columnIndex: 0,
+                  columnIndex: i,
                   value: String(kahonItem.quantity),
                   kahonItemId: kahonItem.id,
-                },
-                {
+                };
+              } else if (i === 1) {
+                // Second column is name
+                return {
                   rowId: row.id,
-                  columnIndex: 1,
+                  columnIndex: i,
                   value: kahonItem.name,
                   kahonItemId: kahonItem.id,
-                },
-              ],
+                };
+              } else {
+                // Rest of columns are empty
+                return {
+                  rowId: row.id,
+                  columnIndex: i,
+                  value: '',
+                  kahonItemId: kahonItem.id,
+                };
+              }
+            });
+
+            await tx.cell.createMany({
+              data: cellsData,
             });
           }
         }

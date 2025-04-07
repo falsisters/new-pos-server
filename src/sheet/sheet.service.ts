@@ -68,6 +68,12 @@ export class SheetService {
   }
 
   async addItemRow(sheetId: string, kahonItemId: string, rowIndex: number) {
+    // Get the sheet to determine the number of columns
+    const sheet = await this.prisma.sheet.findUnique({
+      where: { id: sheetId },
+      select: { columns: true },
+    });
+
     // Create a row for an item
     const row = await this.prisma.row.create({
       data: {
@@ -83,22 +89,34 @@ export class SheetService {
       where: { id: kahonItemId },
     });
 
-    // Create the first two cells (quantity and name)
-    await this.prisma.cell.createMany({
-      data: [
-        {
+    // Create cells for all columns
+    const cellsData = Array.from({ length: sheet.columns }, (_, i) => {
+      // Special handling for first two columns
+      if (i === 0) {
+        return {
           rowId: row.id,
-          columnIndex: 0,
+          columnIndex: i,
           value: String(item.quantity),
           kahonItemId: item.id,
-        },
-        {
+        };
+      } else if (i === 1) {
+        return {
           rowId: row.id,
-          columnIndex: 1,
+          columnIndex: i,
           value: item.name,
           kahonItemId: item.id,
-        },
-      ],
+        };
+      } else {
+        return {
+          rowId: row.id,
+          columnIndex: i,
+          value: '',
+        };
+      }
+    });
+
+    await this.prisma.cell.createMany({
+      data: cellsData,
     });
 
     return row;
@@ -109,6 +127,12 @@ export class SheetService {
     rowIndex: number,
     description: string = '',
   ) {
+    // Get the sheet to determine the number of columns
+    const sheet = await this.prisma.sheet.findUnique({
+      where: { id: sheetId },
+      select: { columns: true },
+    });
+
     // Create a calculation row (totals, etc.)
     const row = await this.prisma.row.create({
       data: {
@@ -118,13 +142,26 @@ export class SheetService {
       },
     });
 
-    // Add a descriptive cell in the name column
-    await this.prisma.cell.create({
-      data: {
-        rowId: row.id,
-        columnIndex: 1,
-        value: description,
-      },
+    // Create cells for all columns
+    const cellsData = Array.from({ length: sheet.columns }, (_, i) => {
+      if (i === 1) {
+        // Add description in the name column
+        return {
+          rowId: row.id,
+          columnIndex: i,
+          value: description,
+        };
+      } else {
+        return {
+          rowId: row.id,
+          columnIndex: i,
+          value: '',
+        };
+      }
+    });
+
+    await this.prisma.cell.createMany({
+      data: cellsData,
     });
 
     return row;

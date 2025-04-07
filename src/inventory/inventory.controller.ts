@@ -14,7 +14,7 @@ import { JwtCashierAuthGuard } from 'src/cashier/guards/jwt.guard';
 import { AddCellsDto } from 'src/sheet/dto/addCells.dto';
 import { EditCellsDto } from 'src/sheet/dto/editCells.dto';
 import { AddCellDto } from 'src/sheet/dto/addCell.dto';
-import { AddCalculationRowDto } from 'src/sheet/dto/addCalculationRow.dto';
+import { AddCalculationRowDto } from './dto/addCalculationRow.dto';
 import { AddItemRowDto } from './dto/addItemRowDto.dto';
 
 @Controller('inventory')
@@ -52,8 +52,8 @@ export class InventoryController {
   async createCalculationRow(
     @Body() addCalculationRowDto: AddCalculationRowDto,
   ) {
-    const { sheetId, rowIndex } = addCalculationRowDto;
-    return this.inventoryService.addCalculationRow(sheetId, rowIndex);
+    const { inventoryId, rowIndex } = addCalculationRowDto;
+    return this.inventoryService.addCalculationRow(inventoryId, rowIndex);
   }
 
   @UseGuards(JwtCashierAuthGuard)

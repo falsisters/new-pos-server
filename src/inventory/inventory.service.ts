@@ -192,6 +192,16 @@ export class InventoryService {
     rowIndex: number,
     description: string = '',
   ) {
+    // Get the sheet to determine the number of columns
+    const sheet = await this.prisma.inventorySheet.findUnique({
+      where: { id: sheetId },
+      select: { columns: true },
+    });
+
+    if (!sheet) {
+      throw new Error('Inventory sheet not found');
+    }
+
     // Create a calculation row (totals, etc.)
     const row = await this.prisma.inventoryRow.create({
       data: {
@@ -201,13 +211,16 @@ export class InventoryService {
       },
     });
 
-    // Add a descriptive cell in the name column
-    await this.prisma.inventoryCell.create({
-      data: {
-        inventoryRowId: row.id,
-        columnIndex: 1,
-        value: description,
-      },
+    // Create cells for all columns in the sheet
+    const cellsData = Array.from({ length: sheet.columns }, (_, i) => ({
+      inventoryRowId: row.id,
+      columnIndex: i,
+      // If this is column 1 (index 1), set the description, otherwise empty value
+      value: i === 1 ? description : '',
+    }));
+
+    await this.prisma.inventoryCell.createMany({
+      data: cellsData,
     });
 
     return row;
