@@ -117,9 +117,25 @@ export class InventoryService {
     const start = startDate || new Date(end.getTime() - 24 * 60 * 60 * 1000);
 
     // Find the inventory for this cashier
-    const inventory = await this.prisma.inventory.findUnique({
+    let inventory = await this.prisma.inventory.findUnique({
       where: { cashierId },
     });
+
+    if (!inventory) {
+      // Create a new inventory if it doesn't exist
+      inventory = await this.prisma.inventory.create({
+        data: {
+          cashierId,
+          name: 'Default Inventory',
+          InventorySheet: {
+            create: {
+              name: 'Default Inventory Sheet',
+              columns: 15,
+            },
+          },
+        },
+      });
+    }
 
     // Return sheets with rows filtered by date range
     return await this.prisma.inventorySheet.findFirst({
