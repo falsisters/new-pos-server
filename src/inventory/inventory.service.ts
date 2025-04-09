@@ -238,12 +238,18 @@ export class InventoryService {
     });
   }
 
-  async updateCell(cellId: string, value: string, formula?: string) {
+  async updateCell(
+    cellId: string,
+    value: string,
+    formula?: string,
+    color?: string,
+  ) {
     return await this.prisma.inventoryCell.update({
       where: { id: cellId },
       data: {
         value,
         formula,
+        color: color ? color : undefined,
         isCalculated: !!formula,
       },
     });
@@ -260,6 +266,7 @@ export class InventoryService {
       rowId: string;
       columnIndex: number;
       value: string;
+      color?: string;
       formula?: string;
     }[],
   ) {
@@ -269,6 +276,7 @@ export class InventoryService {
           inventoryRowId: cell.rowId,
           columnIndex: cell.columnIndex,
           value: cell.value,
+          color: cell.color ? cell.color : undefined,
           formula: cell.formula,
           isCalculated: !!cell.formula,
         },
@@ -282,6 +290,7 @@ export class InventoryService {
     rowId: string,
     columnIndex: number,
     value: string,
+    color?: string,
     formula?: string,
   ) {
     return await this.prisma.inventoryCell.create({
@@ -289,6 +298,7 @@ export class InventoryService {
         inventoryRowId: rowId,
         columnIndex,
         value,
+        color: color ? color : undefined,
         formula,
         isCalculated: !!formula,
       },
@@ -296,12 +306,15 @@ export class InventoryService {
   }
 
   // For batch updating all cells at once
-  async updateCells(cells: { id: string; value: string; formula?: string }[]) {
+  async updateCells(
+    cells: { id: string; value: string; color?: string; formula?: string }[],
+  ) {
     const updatePromises = cells.map((cell) => {
       return this.prisma.inventoryCell.update({
         where: { id: cell.id },
         data: {
           value: cell.value,
+          color: cell.color ? cell.color : undefined,
           formula: cell.formula,
           isCalculated: !!cell.formula,
         },

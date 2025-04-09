@@ -179,12 +179,18 @@ export class SheetService {
     });
   }
 
-  async updateCell(cellId: string, value: string, formula?: string) {
+  async updateCell(
+    cellId: string,
+    value: string,
+    color?: string,
+    formula?: string,
+  ) {
     return await this.prisma.cell.update({
       where: { id: cellId },
       data: {
         value,
         formula,
+        color: color ? color : undefined,
         isCalculated: !!formula,
       },
     });
@@ -201,6 +207,7 @@ export class SheetService {
       rowId: string;
       columnIndex: number;
       value: string;
+      color?: string;
       formula?: string;
     }[],
   ) {
@@ -210,6 +217,7 @@ export class SheetService {
           rowId: cell.rowId,
           columnIndex: cell.columnIndex,
           value: cell.value,
+          color: cell.color ? cell.color : undefined,
           formula: cell.formula,
           isCalculated: !!cell.formula,
         },
@@ -223,6 +231,7 @@ export class SheetService {
     rowId: string,
     columnIndex: number,
     value: string,
+    color?: string,
     formula?: string,
   ) {
     return await this.prisma.cell.create({
@@ -231,19 +240,23 @@ export class SheetService {
         columnIndex,
         value,
         formula,
+        color: color ? color : undefined,
         isCalculated: !!formula,
       },
     });
   }
 
   // For batch updating all cells at once
-  async updateCells(cells: { id: string; value: string; formula?: string }[]) {
+  async updateCells(
+    cells: { id: string; color?: string; value: string; formula?: string }[],
+  ) {
     const updatePromises = cells.map((cell) => {
       return this.prisma.cell.update({
         where: { id: cell.id },
         data: {
           value: cell.value,
           formula: cell.formula,
+          color: cell.color ? cell.color : undefined,
           isCalculated: !!cell.formula,
         },
       });

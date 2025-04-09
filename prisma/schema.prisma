@@ -270,6 +270,7 @@ model InventoryCell {
   columnIndex    Int // Column position
   inventoryRow   InventoryRow @relation(fields: [inventoryRowId], references: [id], onDelete: Cascade)
   inventoryRowId String
+  color          String?
   value          String? // The displayed/calculated value
   formula        String? // Formula for calculated cells (e.g., "=C2*D2")
   isCalculated   Boolean      @default(false)
@@ -305,6 +306,7 @@ model Cell {
   columnIndex  Int // Column position
   row          Row        @relation(fields: [rowId], references: [id], onDelete: Cascade)
   rowId        String
+  color        String?
   kahonItem    KahonItem? @relation(fields: [kahonItemId], references: [id], onDelete: SetNull)
   kahonItemId  String? // Can be null for calculation cells
   value        String? // The displayed/calculated value

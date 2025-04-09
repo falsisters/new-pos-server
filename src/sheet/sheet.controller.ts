@@ -12,7 +12,10 @@ import {
 import { SheetService } from './sheet.service';
 import { JwtCashierAuthGuard } from 'src/cashier/guards/jwt.guard';
 import { AddItemRowDto } from './dto/addItemRow.dto';
-import { AddCalculationRowDto } from './dto/addCalculationRow.dto';
+import {
+  AddCalculationRowDto,
+  AddCalculationRowsDto,
+} from './dto/addCalculationRow.dto';
 import { AddCellDto } from './dto/addCell.dto';
 import { EditCellsDto } from './dto/editCells.dto';
 import { AddCellsDto } from './dto/addCells.dto';
@@ -54,6 +57,19 @@ export class SheetController {
   ) {
     const { sheetId, rowIndex } = addCalculationRowDto;
     return this.sheetService.addCalculationRow(sheetId, rowIndex);
+  }
+
+  @UseGuards(JwtCashierAuthGuard)
+  @Post('calculation-rows')
+  async createCalculationRows(
+    @Body() addCalculationRowDto: AddCalculationRowsDto,
+  ) {
+    const { sheetId, rowIndexes } = addCalculationRowDto;
+    return Promise.all(
+      rowIndexes.map((rowIndex) =>
+        this.sheetService.addCalculationRow(sheetId, rowIndex),
+      ),
+    );
   }
 
   @UseGuards(JwtCashierAuthGuard)
