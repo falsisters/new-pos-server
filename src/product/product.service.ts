@@ -99,9 +99,9 @@ export class ProductService {
               profit?: number;
               specialPrice?: {
                 id: string;
-                price: number;
-                minimumQty: number;
-                profit: number;
+                price?: number;
+                minimumQty?: number;
+                profit?: number;
               };
             }) => ({
               where: {
