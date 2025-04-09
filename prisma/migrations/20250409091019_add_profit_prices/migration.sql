@@ -1,0 +1,8 @@
+-- AlterTable
+ALTER TABLE "PerKiloPrice" ADD COLUMN     "profit" DOUBLE PRECISION NOT NULL DEFAULT 0;
+
+-- AlterTable
+ALTER TABLE "SackPrice" ADD COLUMN     "profit" DOUBLE PRECISION NOT NULL DEFAULT 0;
+
+-- AlterTable
+ALTER TABLE "SpecialPrice" ADD COLUMN     "profit" DOUBLE PRECISION NOT NULL DEFAULT 0;
