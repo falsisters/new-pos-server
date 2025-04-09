@@ -37,11 +37,13 @@ export class ProductService {
             price: price.price,
             type: price.type,
             stock: price.stock,
+            profit: price.profit,
             specialPrice: price.specialPrice
               ? {
                   create: {
                     price: price.specialPrice.price,
                     minimumQty: price.specialPrice.minimumQty,
+                    profit: price.specialPrice.profit,
                   },
                 }
               : undefined,
@@ -94,10 +96,12 @@ export class ProductService {
               price: number;
               type?: string;
               stock?: number;
+              profit?: number;
               specialPrice?: {
                 id: string;
                 price: number;
                 minimumQty: number;
+                profit: number;
               };
             }) => ({
               where: {
@@ -107,6 +111,7 @@ export class ProductService {
                 price: price.price,
                 type: price.type,
                 stock: price.stock,
+                profit: price.profit,
                 specialPrice: price.specialPrice
                   ? {
                       update: {
@@ -116,6 +121,7 @@ export class ProductService {
                         data: {
                           price: price.specialPrice.price,
                           minimumQty: price.specialPrice.minimumQty,
+                          profit: price.specialPrice.profit,
                         },
                       },
                     }

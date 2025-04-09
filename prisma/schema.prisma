@@ -106,6 +106,7 @@ model SackPrice {
   type         SackType
   product      Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
   productId    String
+  profit       Float
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
   specialPrice SpecialPrice?
@@ -121,6 +122,7 @@ model SpecialPrice {
   id          String    @id @default(cuid())
   price       Float
   minimumQty  Int
+  profit      Float
   sackPrice   SackPrice @relation(fields: [sackPriceId], references: [id], onDelete: Cascade)
   sackPriceId String    @unique
   createdAt   DateTime  @default(now())
@@ -131,6 +133,7 @@ model PerKiloPrice {
   id        String   @id @default(cuid())
   price     Float
   stock     Float
+  profit    Float
   product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
   productId String   @unique
   createdAt DateTime @default(now())
