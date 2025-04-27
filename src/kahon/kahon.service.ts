@@ -6,16 +6,16 @@ import { EditKahonItemsDto } from './dto/editKahonItemsDto';
 export class KahonService {
   constructor(private prisma: PrismaService) {}
 
-  async getKahonByCashier(cashierId: string, startDate?: Date, endDate?: Date) {
+  async getKahonByCashier(userId: string, startDate?: Date, endDate?: Date) {
     const end = endDate || new Date();
     const start = startDate || new Date(end.getTime() - 24 * 60 * 60 * 1000);
 
     return await this.prisma.kahon.findMany({
       where: {
-        cashierId: cashierId,
+        userId: userId,
       },
       include: {
-        cashier: {
+        user: {
           select: {
             name: true,
           },

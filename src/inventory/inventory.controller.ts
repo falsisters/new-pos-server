@@ -27,7 +27,7 @@ export class InventoryController {
   @UseGuards(JwtCashierAuthGuard)
   @Get('date')
   async getSheetByDate(@Request() req) {
-    const cashierId = req.user.id;
+    const userId = req.user.userId;
     const { startDate: startDateStr, endDate: endDateStr } = req.query;
 
     // Handle null/undefined values for startDate and endDate
@@ -37,7 +37,7 @@ export class InventoryController {
     const endDate = endDateStr ? new Date(endDateStr as string) : undefined;
 
     return this.inventoryService.getInventorySheetsByDateRange(
-      cashierId,
+      userId,
       startDate,
       endDate,
     );

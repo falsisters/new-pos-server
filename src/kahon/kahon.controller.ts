@@ -10,8 +10,8 @@ export class KahonController {
   @UseGuards(JwtCashierAuthGuard)
   @Get('cashier')
   async getKahonByCashier(@Request() req) {
-    const cashierId = req.user.id;
-    return this.kahonService.getKahonByCashier(cashierId);
+    const userId = req.user.userId;
+    return this.kahonService.getKahonByCashier(userId);
   }
 
   @UseGuards(JwtAuthGuard)

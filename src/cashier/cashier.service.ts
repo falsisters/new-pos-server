@@ -53,47 +53,13 @@ export class CashierService {
 
   async register(userId: string, registerCashierDto: RegisterCashierDto) {
     const { name, accessKey, permissions } = registerCashierDto;
-
-    return this.prisma.$transaction(async (tx) => {
-      // Create the cashier
-      const cashier = await tx.cashier.create({
-        data: {
-          name,
-          accessKey,
-          permissions,
-          userId,
-        },
-      });
-
-      // Create kahon with default sheet (5 columns)
-      await tx.kahon.create({
-        data: {
-          name: 'Kahon',
-          cashierId: cashier.id,
-          Sheets: {
-            create: {
-              name: 'Default Sheet',
-              columns: 5,
-            },
-          },
-        },
-      });
-
-      // Create inventory with inventory sheet (15 columns)
-      await tx.inventory.create({
-        data: {
-          name: 'Inventory',
-          cashierId: cashier.id,
-          InventorySheet: {
-            create: {
-              name: 'Default Sheet',
-              columns: 15,
-            },
-          },
-        },
-      });
-
-      return cashier;
+    const cashier = await this.prisma.cashier.create({
+      data: {
+        name,
+        accessKey,
+        permissions,
+        userId,
+      },
     });
   }
 

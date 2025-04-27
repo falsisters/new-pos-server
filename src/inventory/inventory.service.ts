@@ -5,19 +5,19 @@ import { PrismaService } from 'src/prisma/prisma.service';
 export class InventoryService {
   constructor(private prisma: PrismaService) {}
 
-  async findInventoryByCashier(cashierId: string) {
-    const inventory = await this.prisma.inventory.findUnique({
-      where: { cashierId },
+  async findInventoryByCashier(userId: string) {
+    const inventory = await this.prisma.inventory.findFirst({
+      where: { userId, name: 'Inventory' },
     });
 
     if (!inventory) {
       return this.prisma.inventory.create({
         data: {
-          cashierId,
-          name: 'Default Inventory',
+          userId,
+          name: 'Inventory',
           InventorySheet: {
             create: {
-              name: 'Default Inventory Sheet',
+              name: 'Inventory Sheet',
               columns: 15,
             },
           },
@@ -27,9 +27,9 @@ export class InventoryService {
     return inventory;
   }
 
-  async findInventorySheetByCashier(cashierId: string) {
-    const inventory = await this.prisma.inventory.findUnique({
-      where: { cashierId },
+  async findInventorySheetByCashier(userId: string) {
+    const inventory = await this.prisma.inventory.findFirst({
+      where: { userId, name: 'Inventory' },
       include: {
         InventorySheet: {
           include: {
@@ -49,8 +49,8 @@ export class InventoryService {
     if (!inventory) {
       const newInventory = await this.prisma.inventory.create({
         data: {
-          cashierId,
-          name: 'Default Inventory',
+          userId,
+          name: 'Inventory',
           InventorySheet: {
             create: {
               name: 'Default Sheet',
@@ -108,7 +108,7 @@ export class InventoryService {
   }
 
   async getInventorySheetsByDateRange(
-    cashierId: string,
+    userId: string,
     startDate?: Date,
     endDate?: Date,
   ) {
@@ -117,19 +117,19 @@ export class InventoryService {
     const start = startDate || new Date(end.getTime() - 24 * 60 * 60 * 1000);
 
     // Find the inventory for this cashier
-    let inventory = await this.prisma.inventory.findUnique({
-      where: { cashierId },
+    let inventory = await this.prisma.inventory.findFirst({
+      where: { userId, name: 'Inventory' },
     });
 
     if (!inventory) {
       // Create a new inventory if it doesn't exist
       inventory = await this.prisma.inventory.create({
         data: {
-          cashierId,
-          name: 'Default Inventory',
+          userId,
+          name: 'Inventory',
           InventorySheet: {
             create: {
-              name: 'Default Inventory Sheet',
+              name: 'Inventory Sheet',
               columns: 15,
             },
           },

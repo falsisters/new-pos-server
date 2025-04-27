@@ -14,15 +14,17 @@ datasource db {
 }
 
 model User {
-  id        String     @id @default(cuid())
-  email     String     @unique
+  id        String      @id @default(cuid())
+  email     String      @unique
   name      String
   password  String
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
   Cashier   Cashier[]
   Employee  Employee[]
   Product   Product[]
+  Inventory Inventory[]
+  Kahon     Kahon[]
 }
 
 model Cashier {
@@ -38,9 +40,11 @@ model Cashier {
   Delivery    Delivery[]
   Sale        Sale[]
   Shift       Shift[]
-  Kahon       Kahon?
-  Inventory   Inventory?
   Transfer    Transfer[]
+  inventoryId String?
+  kahonId     String?
+  Kahon       Kahon?               @relation(fields: [kahonId], references: [id])
+  Inventory   Inventory?           @relation(fields: [inventoryId], references: [id])
 }
 
 enum CashierPermissions {
@@ -213,22 +217,24 @@ enum TransferType {
 model Kahon {
   id         String      @id @default(cuid())
   name       String
-  cashier    Cashier     @relation(fields: [cashierId], references: [id], onDelete: Cascade)
-  cashierId  String      @unique
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId     String
   createdAt  DateTime    @default(now())
   updatedAt  DateTime    @updatedAt
   KahonItems KahonItem[]
   Sheets     Sheet[]
+  Cashier    Cashier[]
 }
 
 model Inventory {
   id             String           @id @default(cuid())
   name           String
-  cashier        Cashier          @relation(fields: [cashierId], references: [id], onDelete: Cascade)
-  cashierId      String           @unique
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId         String
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
   InventorySheet InventorySheet[]
+  Cashier        Cashier[]
 }
 
 model KahonItem {

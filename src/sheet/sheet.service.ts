@@ -31,18 +31,14 @@ export class SheetService {
     });
   }
 
-  async getSheetsByDateRange(
-    cashierId: string,
-    startDate?: Date,
-    endDate?: Date,
-  ) {
+  async getSheetsByDateRange(userId: string, startDate?: Date, endDate?: Date) {
     // Set date range
     const end = endDate || new Date();
     const start = startDate || new Date(end.getTime() - 24 * 60 * 60 * 1000);
 
     // Find the kahon for this cashier
-    const kahon = await this.prisma.kahon.findUnique({
-      where: { cashierId },
+    const kahon = await this.prisma.kahon.findFirst({
+      where: { userId, name: 'Kahon' },
     });
 
     // Return sheets with rows filtered by date range
