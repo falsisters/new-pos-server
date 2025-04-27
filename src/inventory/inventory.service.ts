@@ -18,7 +18,7 @@ export class InventoryService {
           InventorySheet: {
             create: {
               name: 'Inventory Sheet',
-              columns: 15,
+              columns: 20,
             },
           },
         },
@@ -53,8 +53,8 @@ export class InventoryService {
           name: 'Inventory',
           InventorySheet: {
             create: {
-              name: 'Default Sheet',
-              columns: 15,
+              name: 'Inventory Sheet',
+              columns: 20,
             },
           },
         },
@@ -69,12 +69,62 @@ export class InventoryService {
     if (inventory.InventorySheet.length === 0) {
       const inventorySheet = await this.createInventorySheet(
         inventory.id,
-        'Default Sheet',
+        'Expenses Sheet',
       );
       return inventorySheet;
     }
 
     return inventory.InventorySheet[0];
+  }
+
+  async findExpensesSheetByCashier(userId: string) {
+    const expenses = await this.prisma.inventory.findFirst({
+      where: { userId, name: 'Expenses' },
+      include: {
+        InventorySheet: {
+          include: {
+            Rows: {
+              orderBy: { rowIndex: 'asc' },
+              include: {
+                Cells: {
+                  orderBy: { columnIndex: 'asc' },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!expenses) {
+      const newExpenses = await this.prisma.inventory.create({
+        data: {
+          userId,
+          name: 'Expenses',
+          InventorySheet: {
+            create: {
+              name: 'Expenses Sheet',
+              columns: 20,
+            },
+          },
+        },
+        include: {
+          InventorySheet: true,
+        },
+      });
+
+      return newExpenses.InventorySheet[0];
+    }
+
+    if (expenses.InventorySheet.length === 0) {
+      const expensesSheet = await this.createInventorySheet(
+        expenses.id,
+        'Expenses Sheet',
+      );
+      return expensesSheet;
+    }
+
+    return expenses.InventorySheet[0];
   }
 
   async createInventorySheet(
@@ -96,6 +146,54 @@ export class InventoryService {
       where: { id: sheetId },
       include: {
         Rows: {
+          orderBy: { rowIndex: 'asc' },
+          include: {
+            Cells: {
+              orderBy: { columnIndex: 'asc' },
+            },
+          },
+        },
+      },
+    });
+  }
+
+  async getExpensesSheetsByDateRange(
+    userId: string,
+    startDate?: Date,
+    endDate?: Date,
+  ) {
+    const end = endDate || new Date();
+    const start = startDate || new Date(end.getTime() - 24 * 60 * 60 * 1000);
+
+    let inventory = await this.prisma.inventory.findFirst({
+      where: { userId, name: 'Expenses' },
+    });
+
+    if (!inventory) {
+      inventory = await this.prisma.inventory.create({
+        data: {
+          userId,
+          name: 'Expenses',
+          InventorySheet: {
+            create: {
+              name: 'Expenses Sheet',
+              columns: 20,
+            },
+          },
+        },
+      });
+    }
+
+    return await this.prisma.inventorySheet.findFirst({
+      where: { inventoryId: inventory.id },
+      include: {
+        Rows: {
+          where: {
+            createdAt: {
+              gte: start,
+              lte: end,
+            },
+          },
           orderBy: { rowIndex: 'asc' },
           include: {
             Cells: {
@@ -130,7 +228,7 @@ export class InventoryService {
           InventorySheet: {
             create: {
               name: 'Inventory Sheet',
-              columns: 15,
+              columns: 20,
             },
           },
         },
