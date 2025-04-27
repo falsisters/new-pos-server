@@ -45,6 +45,25 @@ export class InventoryController {
 
   @UseGuards(JwtCashierAuthGuard)
   @Get('date')
+  async getExpensesSheetByDate(@Request() req) {
+    const userId = req.user.userId;
+    const { startDate: startDateStr, endDate: endDateStr } = req.query;
+
+    // Handle null/undefined values for startDate and endDate
+    const startDate = startDateStr
+      ? new Date(startDateStr as string)
+      : undefined;
+    const endDate = endDateStr ? new Date(endDateStr as string) : undefined;
+
+    return this.inventoryService.getExpensesSheetsByDateRange(
+      userId,
+      startDate,
+      endDate,
+    );
+  }
+
+  @UseGuards(JwtCashierAuthGuard)
+  @Get('date')
   async getSheetByDate(@Request() req) {
     const userId = req.user.userId;
     const { startDate: startDateStr, endDate: endDateStr } = req.query;
