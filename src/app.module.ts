@@ -15,6 +15,8 @@ import { TransferModule } from './transfer/transfer.module';
 import { KahonModule } from './kahon/kahon.module';
 import { InventoryModule } from './inventory/inventory.module';
 import { SheetModule } from './sheet/sheet.module';
+import { CashModule } from './cash/cash.module';
+import { AttachmentModule } from './attachment/attachment.module';
 
 @Module({
   imports: [
@@ -34,6 +36,8 @@ import { SheetModule } from './sheet/sheet.module';
     KahonModule,
     InventoryModule,
     SheetModule,
+    CashModule,
+    AttachmentModule,
   ],
   controllers: [AppController],
   providers: [AppService],
