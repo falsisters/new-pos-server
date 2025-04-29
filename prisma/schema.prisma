@@ -14,17 +14,19 @@ datasource db {
 }
 
 model User {
-  id        String      @id @default(cuid())
-  email     String      @unique
-  name      String
-  password  String
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
-  Cashier   Cashier[]
-  Employee  Employee[]
-  Product   Product[]
-  Inventory Inventory[]
-  Kahon     Kahon[]
+  id         String       @id @default(cuid())
+  email      String       @unique
+  name       String
+  password   String
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+  Cashier    Cashier[]
+  Employee   Employee[]
+  Product    Product[]
+  Inventory  Inventory[]
+  Kahon      Kahon[]
+  BillCount  BillCount[]
+  Attachment Attachment[]
 }
 
 model Cashier {
@@ -320,4 +322,53 @@ model Cell {
   isCalculated Boolean    @default(false)
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
+}
+
+model Attachment {
+  id        String   @id @default(cuid())
+  name      String
+  url       String
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum AttachmentType {
+  EXPENSE_RECEIPT
+  CHECKS_AND_BANK_TRANSFER
+  INVENTORIES
+  SUPPORTING_DOCUMENTS
+}
+
+model BillCount {
+  id                   String   @id @default(cuid())
+  Bills                Bills[]
+  userId               String
+  expenses             Float
+  showExpenses         Boolean  @default(false)
+  beginningBalance     Float
+  showBeginningBalance Boolean  @default(false)
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+}
+
+model Bills {
+  id          String    @id @default(cuid())
+  amount      Int
+  type        BillType
+  billCountId String
+  billCount   BillCount @relation(fields: [billCountId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+enum BillType {
+  THOUSAND
+  FIVE_HUNDRED
+  HUNDRED
+  FIFTY
+  TWENTY
+  COINS
 }
