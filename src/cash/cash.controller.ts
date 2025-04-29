@@ -12,6 +12,7 @@ import { CashService } from './cash.service';
 import { JwtCashierAuthGuard } from 'src/cashier/guards/jwt.guard';
 import { CreateBillCountDto } from './dto/createBillCount.dto';
 import { UpdateBillCountDto } from './dto/updateBillCount.dto';
+import { GetBillCountByDateDto } from './dto/getBillCountByDate.dto';
 
 @Controller('cash')
 export class CashController {
@@ -19,9 +20,20 @@ export class CashController {
 
   @UseGuards(JwtCashierAuthGuard)
   @Get()
-  async getAllBillCountsByDate(@Request() req) {
+  async getAllBillCounts(@Request() req) {
     const userId = req.user.userId;
-    return this.cashService.getAllBillCountsByDate(userId);
+    return this.cashService.getAllBillCounts(userId);
+  }
+
+  @UseGuards(JwtCashierAuthGuard)
+  @Get('date')
+  async getBillCountByDate(
+    @Body() getBillCountByDateDto: GetBillCountByDateDto,
+    @Request() req,
+  ) {
+    const userId = req.user.userId;
+    const { date } = getBillCountByDateDto;
+    return this.cashService.getBillCountByDate(userId, date);
   }
 
   @UseGuards(JwtCashierAuthGuard)

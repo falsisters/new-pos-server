@@ -7,7 +7,7 @@ import { UpdateBillCountDto } from './dto/updateBillCount.dto';
 export class CashService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async getAllBillCountsByDate(userId: string) {
+  async getAllBillCounts(userId: string) {
     // Get all bill counts
     const billCounts = await this.prisma.billCount.findMany({
       where: { userId },
@@ -39,6 +39,21 @@ export class CashService {
         date,
         counts,
       }));
+  }
+
+  async getBillCountByDate(userId: string, date: Date) {
+    return this.prisma.billCount.findMany({
+      where: {
+        userId,
+        createdAt: {
+          gte: new Date(date.setHours(0, 0, 0, 0)),
+          lte: new Date(date.setHours(23, 59, 59, 999)),
+        },
+      },
+      include: {
+        Bills: true,
+      },
+    });
   }
 
   async getBillCountById(id: string) {
