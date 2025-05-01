@@ -17,6 +17,8 @@ import { InventoryModule } from './inventory/inventory.module';
 import { SheetModule } from './sheet/sheet.module';
 import { CashModule } from './cash/cash.module';
 import { AttachmentModule } from './attachment/attachment.module';
+import { SalesCheckModule } from './sales-check/sales-check.module';
+import { ProfitModule } from './profit/profit.module';
 
 @Module({
   imports: [
@@ -38,6 +40,8 @@ import { AttachmentModule } from './attachment/attachment.module';
     SheetModule,
     CashModule,
     AttachmentModule,
+    SalesCheckModule,
+    ProfitModule,
   ],
   controllers: [AppController],
   providers: [AppService],
