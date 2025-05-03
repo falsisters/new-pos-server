@@ -25,7 +25,7 @@ export class InventoryController {
   constructor(private inventoryService: InventoryService) {}
 
   @UseGuards(JwtCashierAuthGuard)
-  @Get('date')
+  @Get('expenses/date')
   async getExpensesSheetByDate(@Request() req) {
     const userId = req.user.userId;
     const { startDate: startDateStr, endDate: endDateStr } = req.query;
