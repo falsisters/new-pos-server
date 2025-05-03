@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { UploadService } from 'src/upload/upload.service';
 import { CreateAttachmentFormData } from './types/createAttachment.type';
+import { AttachmentType } from '@prisma/client';
 
 @Injectable()
 export class AttachmentService {
@@ -26,6 +27,7 @@ export class AttachmentService {
   async createAttachment(userId: string, formData: CreateAttachmentFormData) {
     const file = formData.file;
     const name = formData.name;
+    const type = formData.type;
     const url = file
       ? await this.uploadService.uploadSingleFile(file, 'attachments/')
       : null;
@@ -35,15 +37,17 @@ export class AttachmentService {
         name,
         url,
         userId,
+        type,
       },
     });
   }
 
-  async editAttachment(id: string, name: string) {
+  async editAttachment(id: string, name?: string, type?: AttachmentType) {
     const attachment = await this.prismaService.attachment.update({
       where: { id },
       data: {
         name,
+        type,
       },
     });
 
