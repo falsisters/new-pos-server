@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { SalesCheckFilterDto } from './dto/sales-check.dto';
+import { TotalSalesFilterDto } from './dto/total-sales.dto';
+import { PaymentMethod } from '@prisma/client';
 
 @Injectable()
 export class SalesCheckService {
@@ -58,8 +60,8 @@ export class SalesCheckService {
       },
     });
 
-    // Process and format the results
-    const formattedSales = sales.flatMap((sale) => {
+    // First, generate all sale items with full details
+    const allSaleItems = sales.flatMap((sale) => {
       return sale.SaleItem.filter((item) => {
         // Filter by product ID if specified
         if (filters.productId && item.product.id !== filters.productId) {
@@ -85,23 +87,29 @@ export class SalesCheckService {
         }
 
         // Filter by sack type if applicable
-        if (filters.priceType === 'SACK' && filters.sackType) {
-          // This requires additional context to properly filter
-          // We'd need to know which sack type was sold, which isn't directly in SaleItem
-          // This would need adjustment based on your data model
-          return true;
+        if (
+          filters.priceType === 'SACK' &&
+          filters.sackType &&
+          !item.isGantang
+        ) {
+          const sackInfo = item.product.SackPrice.find(
+            (sp) => sp.type === filters.sackType,
+          );
+          return !!sackInfo;
         }
 
         return true;
       }).map((item) => {
         let priceType = '';
         let totalAmount = 0;
+        let unitPrice = 0;
 
         if (item.isGantang) {
-          priceType = '[KILO]KG';
+          priceType = 'KG';
           // Calculate total amount for per kilo sales
           if (item.product.perKiloPrice) {
-            totalAmount = item.product.perKiloPrice.price * item.quantity;
+            unitPrice = item.product.perKiloPrice.price;
+            totalAmount = unitPrice * item.quantity;
           }
         } else {
           // Determine sack type based on quantity or relation
@@ -112,19 +120,34 @@ export class SalesCheckService {
           );
 
           if (sackInfo) {
-            priceType = sackInfo.type;
+            switch (sackInfo.type) {
+              case 'FIFTY_KG':
+                priceType = '50KG';
+                break;
+              case 'TWENTY_FIVE_KG':
+                priceType = '25KG';
+                break;
+              case 'FIVE_KG':
+                priceType = '5KG';
+                break;
+              default:
+                priceType = sackInfo.type;
+            }
 
             // Calculate total amount based on special price or regular price
             if (item.isSpecialPrice && sackInfo.specialPrice) {
-              totalAmount = sackInfo.specialPrice.price * item.quantity;
+              unitPrice = sackInfo.specialPrice.price;
+              totalAmount = unitPrice * item.quantity;
             } else {
-              totalAmount = sackInfo.price * item.quantity;
+              unitPrice = sackInfo.price;
+              totalAmount = unitPrice * item.quantity;
             }
           } else {
             priceType = 'UNKNOWN';
           }
         }
 
+        // Create a formatted sale item
         return {
           id: item.id,
           quantity: item.quantity,
@@ -133,7 +156,8 @@ export class SalesCheckService {
             name: item.product.name,
           },
           priceType,
-          totalAmount: Number(totalAmount.toFixed(2)), // Format to 2 decimal places
+          unitPrice: Number(unitPrice.toFixed(2)),
+          totalAmount: Number(totalAmount.toFixed(2)),
           paymentMethod: sale.paymentMethod,
           isSpecialPrice: item.isSpecialPrice,
           saleDate: sale.createdAt,
@@ -141,6 +165,260 @@ export class SalesCheckService {
       });
     });
 
-    return formattedSales;
+    // Now, group the sale items by product name and price type
+    const groupedSales = allSaleItems.reduce((result, item) => {
+      const key = `${item.product.name}-${item.priceType}`;
+
+      if (!result[key]) {
+        result[key] = {
+          productName: item.product.name,
+          priceType: item.priceType,
+          items: [],
+          totalQuantity: 0,
+          totalAmount: 0,
+          paymentTotals: {
+            [PaymentMethod.CASH]: 0,
+            [PaymentMethod.CHECK]: 0,
+            [PaymentMethod.BANK_TRANSFER]: 0,
+          },
+        };
+      }
+
+      result[key].items.push(item);
+      result[key].totalQuantity += item.quantity;
+      result[key].totalAmount += item.totalAmount;
+
+      // Add to payment method totals
+      result[key].paymentTotals[item.paymentMethod] += item.totalAmount;
+
+      return result;
+    }, {});
+
+    // Convert groupedSales object to array and format for display
+    return Object.values(groupedSales).map((group: any) => {
+      return {
+        productName: `${group.productName} ${group.priceType}`,
+        items: group.items.map((item) => ({
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          totalAmount: item.totalAmount,
+          paymentMethod: item.paymentMethod,
+          isSpecialPrice: item.isSpecialPrice,
+          formattedSale: `${item.quantity} ${item.product.name} ${item.priceType} = ${item.totalAmount}${
+            item.paymentMethod !== 'CASH'
+              ? ` (${item.paymentMethod.replace('_', ' ')})`
+              : ''
+          }${item.isSpecialPrice ? ' (special price)' : ''}`,
+        })),
+        totalQuantity: group.totalQuantity,
+        totalAmount: Number(group.totalAmount.toFixed(2)),
+        paymentTotals: {
+          cash: Number(group.paymentTotals.CASH.toFixed(2)),
+          check: Number(group.paymentTotals.CHECK.toFixed(2)),
+          bankTransfer: Number(group.paymentTotals.BANK_TRANSFER.toFixed(2)),
+        },
+      };
+    });
+  }
+
+  async getTotalSales(userId: string, filters: TotalSalesFilterDto) {
+    // Set default date to today if not provided
+    const targetDate = filters.date ? new Date(filters.date) : new Date();
+
+    // Set start and end of the target day
+    const startOfDay = new Date(targetDate);
+    startOfDay.setHours(0, 0, 0, 0);
+
+    const endOfDay = new Date(targetDate);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    // Build the query conditions
+    const whereConditions: any = {
+      AND: [
+        {
+          cashier: {
+            userId,
+          },
+        },
+        {
+          createdAt: {
+            gte: startOfDay,
+            lte: endOfDay,
+          },
+        },
+      ],
+    };
+
+    // Get all sales for the day
+    const sales = await this.prisma.sale.findMany({
+      where: whereConditions,
+      include: {
+        SaleItem: {
+          include: {
+            product: {
+              include: {
+                perKiloPrice: true,
+                SackPrice: {
+                  include: {
+                    specialPrice: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'asc', // Chronological order
+      },
+    });
+
+    // Filter and map sale items
+    const allSaleItems = sales.flatMap((sale) => {
+      return sale.SaleItem.filter((item) => {
+        // Filter by product name if specified
+        if (
+          filters.productName &&
+          !item.product.name
+            .toLowerCase()
+            .includes(filters.productName.toLowerCase())
+        ) {
+          return false;
+        }
+
+        // Filter by price type (SACK or KILO)
+        if (filters.priceType === 'SACK' && item.isGantang) {
+          return false;
+        }
+        if (filters.priceType === 'KILO' && !item.isGantang) {
+          return false;
+        }
+
+        // Filter by sack type if applicable
+        if (
+          filters.priceType === 'SACK' &&
+          filters.sackType &&
+          !item.isGantang
+        ) {
+          const sackInfo = item.product.SackPrice.find(
+            (sp) => sp.type === filters.sackType,
+          );
+          return !!sackInfo;
+        }
+
+        return true;
+      }).map((item) => {
+        let priceType = '';
+        let totalAmount = 0;
+        let unitPrice = 0;
+
+        if (item.isGantang) {
+          priceType = 'KG';
+          // Calculate total amount for per kilo sales
+          if (item.product.perKiloPrice) {
+            unitPrice = item.product.perKiloPrice.price;
+            totalAmount = unitPrice * item.quantity;
+          }
+        } else {
+          // Determine sack type based on relation
+          const sackInfo = item.product.SackPrice.find((sp) =>
+            filters.sackType
+              ? sp.type === filters.sackType
+              : sp.type === 'FIFTY_KG',
+          );
+
+          if (sackInfo) {
+            switch (sackInfo.type) {
+              case 'FIFTY_KG':
+                priceType = '50KG';
+                break;
+              case 'TWENTY_FIVE_KG':
+                priceType = '25KG';
+                break;
+              case 'FIVE_KG':
+                priceType = '5KG';
+                break;
+              default:
+                priceType = sackInfo.type;
+            }
+
+            // Calculate total amount based on special price or regular price
+            if (item.isSpecialPrice && sackInfo.specialPrice) {
+              unitPrice = sackInfo.specialPrice.price;
+              totalAmount = unitPrice * item.quantity;
+            } else {
+              unitPrice = sackInfo.price;
+              totalAmount = unitPrice * item.quantity;
+            }
+          } else {
+            priceType = 'UNKNOWN';
+          }
+        }
+
+        // Create a formatted sale item with time included
+        const saleDateTime = sale.createdAt;
+        const formattedTime = `${saleDateTime.getHours().toString().padStart(2, '0')}:${saleDateTime.getMinutes().toString().padStart(2, '0')}`;
+
+        return {
+          id: item.id,
+          saleId: sale.id,
+          quantity: item.quantity,
+          product: {
+            id: item.product.id,
+            name: item.product.name,
+          },
+          priceType,
+          unitPrice: Number(unitPrice.toFixed(2)),
+          totalAmount: Number(totalAmount.toFixed(2)),
+          paymentMethod: sale.paymentMethod,
+          isSpecialPrice: item.isSpecialPrice,
+          saleDate: sale.createdAt,
+          formattedTime,
+          formattedSale: `${item.quantity} ${item.product.name} ${priceType} = ${Number(totalAmount.toFixed(2))}${
+            sale.paymentMethod !== 'CASH'
+              ? ` (${sale.paymentMethod.replace('_', ' ')})`
+              : ''
+          }${item.isSpecialPrice ? ' (special price)' : ''}`,
+        };
+      });
+    });
+
+    // Calculate totals and categorize by payment method
+    const totalQuantity = allSaleItems.reduce(
+      (sum, item) => sum + item.quantity,
+      0,
+    );
+    const totalAmount = allSaleItems.reduce(
+      (sum, item) => sum + item.totalAmount,
+      0,
+    );
+
+    // Group by payment method
+    const paymentTotals = {
+      [PaymentMethod.CASH]: 0,
+      [PaymentMethod.CHECK]: 0,
+      [PaymentMethod.BANK_TRANSFER]: 0,
+    };
+
+    allSaleItems.forEach((item) => {
+      paymentTotals[item.paymentMethod] += item.totalAmount;
+    });
+
+    const nonCashTotal = paymentTotals.CHECK + paymentTotals.BANK_TRANSFER;
+    const cashTotal = totalAmount - nonCashTotal;
+
+    // Return formatted data for the UI
+    return {
+      items: allSaleItems,
+      summary: {
+        totalQuantity: Number(totalQuantity.toFixed(2)),
+        totalAmount: Number(totalAmount.toFixed(2)),
+        paymentTotals: {
+          cash: Number(cashTotal.toFixed(2)),
+          check: Number(paymentTotals.CHECK.toFixed(2)),
+          bankTransfer: Number(paymentTotals.BANK_TRANSFER.toFixed(2)),
+        },
+      },
+    };
   }
 }

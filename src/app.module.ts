@@ -19,6 +19,7 @@ import { CashModule } from './cash/cash.module';
 import { AttachmentModule } from './attachment/attachment.module';
 import { SalesCheckModule } from './sales-check/sales-check.module';
 import { ProfitModule } from './profit/profit.module';
+import { BillsModule } from './bills/bills.module';
 
 @Module({
   imports: [
@@ -42,6 +43,7 @@ import { ProfitModule } from './profit/profit.module';
     AttachmentModule,
     SalesCheckModule,
     ProfitModule,
+    BillsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
