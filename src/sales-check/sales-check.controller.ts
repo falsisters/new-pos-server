@@ -3,6 +3,7 @@ import { SalesCheckService } from './sales-check.service';
 import { JwtAuthGuard } from 'src/auth/guards/jwt.guard';
 import { SalesCheckFilterDto } from './dto/sales-check.dto';
 import { TotalSalesFilterDto } from './dto/total-sales.dto';
+import { JwtCashierAuthGuard } from 'src/cashier/guards/jwt.guard';
 
 @Controller('sales-check')
 export class SalesCheckController {
@@ -22,6 +23,26 @@ export class SalesCheckController {
   @Get('total')
   async getTotalSales(@Request() req, @Query() filterDto: TotalSalesFilterDto) {
     const userId = req.user.id;
+    return this.salesCheckService.getTotalSales(userId, filterDto);
+  }
+
+  @UseGuards(JwtCashierAuthGuard)
+  @Get('cashier')
+  async getCashierSalesWithFilter(
+    @Request() req,
+    @Query() filterDto: SalesCheckFilterDto,
+  ) {
+    const userId = req.user.userId;
+    return this.salesCheckService.getSalesWithFilter(userId, filterDto);
+  }
+
+  @UseGuards(JwtCashierAuthGuard)
+  @Get('cashier/total')
+  async getCashierTotalSales(
+    @Request() req,
+    @Query() filterDto: TotalSalesFilterDto,
+  ) {
+    const userId = req.user.userId;
     return this.salesCheckService.getTotalSales(userId, filterDto);
   }
 }
