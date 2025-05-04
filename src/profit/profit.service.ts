@@ -138,24 +138,35 @@ export class ProfitService {
           // Find the matching sack price
           let sackPrice;
 
+          // Check if we're filtering by a specific sack type
           if (filters.sackType) {
             // If filtering by a specific sack type, find that specific type
             sackPrice = item.product.SackPrice.find(
               (sp) => sp.type === filters.sackType,
             );
           } else {
-            // Without a specific filter, we need to determine which sack price was used for this sale
-            // First look for all available sack prices
-            sackPrice = item.product.SackPrice[0]; // Default to first option
+            // No filter specified, we need to determine which sack type was actually used in this sale
+            const availableSackPrices = item.product.SackPrice;
 
-            // Try to select the most appropriate sack price based on special pricing if applicable
-            for (const sp of item.product.SackPrice) {
-              if (
-                (item.isSpecialPrice && sp.specialPrice) ||
-                !item.isSpecialPrice
-              ) {
-                sackPrice = sp;
-                break;
+            // If there's only one sack type available, use that
+            if (availableSackPrices.length === 1) {
+              sackPrice = availableSackPrices[0];
+            } else {
+              // Multiple sack types available, try to determine the correct one
+              for (const sp of availableSackPrices) {
+                if (
+                  (item.isSpecialPrice && sp.specialPrice) ||
+                  (!item.isSpecialPrice &&
+                    availableSackPrices.indexOf(sp) === 0)
+                ) {
+                  sackPrice = sp;
+                  break;
+                }
+              }
+
+              // If still not found, default to the first one
+              if (!sackPrice && availableSackPrices.length > 0) {
+                sackPrice = availableSackPrices[0];
               }
             }
           }

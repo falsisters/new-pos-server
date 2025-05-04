@@ -113,28 +113,43 @@ export class SalesCheckService {
             totalAmount = unitPrice * item.quantity;
           }
         } else {
-          // For sack sales, find the matching sack price for this sale item
+          // We need to determine exactly which sack type was used for this sale item
+          // Without a connection in the schema between SaleItem and the specific SackPrice used,
+          // we need to make a best guess based on available data
+
+          // Find the actual sack price that was used for this sale
           let sackInfo;
 
+          // Check if we're filtering by a specific sack type and use that if specified
           if (filters.sackType) {
-            // If filtering by a specific sack type, use that
             sackInfo = item.product.SackPrice.find(
               (sp) => sp.type === filters.sackType,
             );
           } else {
-            // Find the relevant sack price for this sale
-            // This assumes the sale item is linked to the appropriate sack type
-            // We need to identify which sack type was actually used in this sale
-            sackInfo = item.product.SackPrice[0]; // Default to first sack price if no specific match
+            // If no specific filter, we need to determine which sack type this sale used
+            // We'll examine all available sack types for this product
+            const sackPrices = item.product.SackPrice;
 
-            // Try to infer which sack type was used based on price or other criteria if needed
-            for (const sp of item.product.SackPrice) {
-              if (
-                (item.isSpecialPrice && sp.specialPrice) ||
-                !item.isSpecialPrice
-              ) {
-                sackInfo = sp;
-                break;
+            // If there's only one sack type available, use that
+            if (sackPrices.length === 1) {
+              sackInfo = sackPrices[0];
+            } else {
+              // Multiple sack types available, try to determine the correct one
+              // Since we don't have a direct relationship to know which was actually used in the sale,
+              // we'll look at each sack type and check if it matches the special pricing status
+              for (const sp of sackPrices) {
+                if (
+                  (item.isSpecialPrice && sp.specialPrice) ||
+                  (!item.isSpecialPrice && sackPrices.indexOf(sp) === 0)
+                ) {
+                  sackInfo = sp;
+                  break;
+                }
+              }
+
+              // If still not found, default to the first one
+              if (!sackInfo && sackPrices.length > 0) {
+                sackInfo = sackPrices[0];
               }
             }
           }
@@ -342,26 +357,36 @@ export class SalesCheckService {
             totalAmount = unitPrice * item.quantity;
           }
         } else {
-          // For sack sales, find the matching sack price for this sale item
+          // We need to determine exactly which sack type was used for this sale item
           let sackInfo;
 
+          // Check if we're filtering by a specific sack type and use that if specified
           if (filters.sackType) {
-            // If filtering by a specific sack type, use that
             sackInfo = item.product.SackPrice.find(
               (sp) => sp.type === filters.sackType,
             );
           } else {
-            // Find the relevant sack price for this sale
-            sackInfo = item.product.SackPrice[0]; // Default to first sack price if no specific match
+            // If no specific filter, we need to determine which sack type this sale used
+            const sackPrices = item.product.SackPrice;
 
-            // Try to infer which sack type was used based on price or other criteria if needed
-            for (const sp of item.product.SackPrice) {
-              if (
-                (item.isSpecialPrice && sp.specialPrice) ||
-                !item.isSpecialPrice
-              ) {
-                sackInfo = sp;
-                break;
+            // If there's only one sack type available, use that
+            if (sackPrices.length === 1) {
+              sackInfo = sackPrices[0];
+            } else {
+              // Multiple sack types available, try to determine the correct one
+              for (const sp of sackPrices) {
+                if (
+                  (item.isSpecialPrice && sp.specialPrice) ||
+                  (!item.isSpecialPrice && sackPrices.indexOf(sp) === 0)
+                ) {
+                  sackInfo = sp;
+                  break;
+                }
+              }
+
+              // If still not found, default to the first one
+              if (!sackInfo && sackPrices.length > 0) {
+                sackInfo = sackPrices[0];
               }
             }
           }
