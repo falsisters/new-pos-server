@@ -88,24 +88,41 @@ export class BillsService {
       },
     });
 
-    // If bills array is provided, delete existing bills and create new ones
+    // If bills array is provided, update existing bills or create new ones
     if (updateDto.bills && updateDto.bills.length > 0) {
-      // Delete existing bills
-      await this.prisma.bills.deleteMany({
+      // Get existing bills
+      const existingBills = await this.prisma.bills.findMany({
         where: { billCountId },
       });
 
-      // Create new bills
+      // Map existing bills by type for easy lookup
+      const billsByType = existingBills.reduce((acc, bill) => {
+        acc[bill.type] = bill;
+        return acc;
+      }, {});
+
+      // Update existing bills or create new ones
       await Promise.all(
-        updateDto.bills.map((bill) =>
-          this.prisma.bills.create({
-            data: {
-              amount: bill.amount,
-              type: bill.type,
-              billCountId,
-            },
-          }),
-        ),
+        updateDto.bills.map(async (bill) => {
+          const existingBill = billsByType[bill.type];
+
+          if (existingBill) {
+            // Update existing bill
+            return this.prisma.bills.update({
+              where: { id: existingBill.id },
+              data: { amount: bill.amount },
+            });
+          } else {
+            // Create new bill if type doesn't exist
+            return this.prisma.bills.create({
+              data: {
+                amount: bill.amount,
+                type: bill.type,
+                billCountId,
+              },
+            });
+          }
+        }),
       );
     }
 
