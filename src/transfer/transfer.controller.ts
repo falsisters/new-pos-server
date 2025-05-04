@@ -42,13 +42,8 @@ export class TransferController {
     @Request() req,
     @Body() transferDeliveryDto: TransferDeliveryDto,
   ) {
-    const cashierId = req.user.id;
     const userId = req.user.userId;
-    return this.transferService.transferDelivery(
-      userId,
-      cashierId,
-      transferDeliveryDto,
-    );
+    return this.transferService.transferDelivery(userId, transferDeliveryDto);
   }
 
   @UseGuards(JwtAuthGuard)

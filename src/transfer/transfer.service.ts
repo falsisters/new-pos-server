@@ -81,7 +81,6 @@ export class TransferService {
 
   async transferDelivery(
     userId: string,
-    cashierId: string,
     transferDeliveryDto: TransferDeliveryDto,
   ) {
     const { name } = transferDeliveryDto;
