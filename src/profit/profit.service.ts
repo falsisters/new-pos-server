@@ -138,35 +138,26 @@ export class ProfitService {
           // Find the matching sack price
           let sackPrice;
 
-          // Check if we're filtering by a specific sack type
+          // When filtering by sack type, ALWAYS use that specific sack type
+          // This is critical - we must respect the filter to prevent displaying incorrect data
           if (filters.sackType) {
-            // If filtering by a specific sack type, find that specific type
             sackPrice = item.product.SackPrice.find(
               (sp) => sp.type === filters.sackType,
             );
           } else {
-            // No filter specified, we need to determine which sack type was actually used in this sale
+            // Without a filter, try to determine the most likely sack type used
             const availableSackPrices = item.product.SackPrice;
 
-            // If there's only one sack type available, use that
-            if (availableSackPrices.length === 1) {
+            // Default to the first available sack type (typically FIFTY_KG)
+            if (availableSackPrices.length > 0) {
               sackPrice = availableSackPrices[0];
-            } else {
-              // Multiple sack types available, try to determine the correct one
-              for (const sp of availableSackPrices) {
-                if (
-                  (item.isSpecialPrice && sp.specialPrice) ||
-                  (!item.isSpecialPrice &&
-                    availableSackPrices.indexOf(sp) === 0)
-                ) {
-                  sackPrice = sp;
-                  break;
-                }
-              }
 
-              // If still not found, default to the first one
-              if (!sackPrice && availableSackPrices.length > 0) {
-                sackPrice = availableSackPrices[0];
+              // Try to find a better match based on special pricing
+              if (item.isSpecialPrice) {
+                const specialPriceSack = availableSackPrices.find(
+                  (sp) => sp.specialPrice,
+                );
+                if (specialPriceSack) sackPrice = specialPriceSack;
               }
             }
           }
