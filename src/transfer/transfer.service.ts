@@ -80,25 +80,26 @@ export class TransferService {
   }
 
   async transferDelivery(
+    userId: string,
     cashierId: string,
     transferDeliveryDto: TransferDeliveryDto,
   ) {
     const { name } = transferDeliveryDto;
     let selectedKahon: Kahon & { Sheets: any[] };
-    const currentKahon = await this.prisma.kahon.findUnique({
-      where: { cashierId: cashierId },
+    const currentKahon = await this.prisma.kahon.findFirst({
+      where: { userId, name: 'Kahon' },
       include: { Sheets: true }, // Include sheets to check if any exist
     });
 
     if (!currentKahon) {
-      // Create Kahon with a default Sheet
+      // Create Kahon with a Kahon Sheet
       selectedKahon = await this.prisma.kahon.create({
         data: {
           name: 'Kahon',
-          cashierId,
+          userId,
           Sheets: {
             create: {
-              name: 'Default Sheet',
+              name: 'Kahon Sheet',
               columns: 5,
             },
           },
@@ -126,7 +127,7 @@ export class TransferService {
           ? selectedKahon.Sheets[0]
           : await tx.sheet.create({
               data: {
-                name: 'Default Sheet',
+                name: 'Kahon Sheet',
                 columns: 5,
                 kahon: { connect: { id: selectedKahon.id } },
               },
@@ -188,6 +189,7 @@ export class TransferService {
   }
 
   async transferProduct(
+    userId: string,
     cashierId: string,
     transferProductDto: TransferProductDto,
   ) {
@@ -195,8 +197,8 @@ export class TransferService {
 
     if (transferProductDto.transferType === 'KAHON') {
       let selectedKahon: Kahon & { Sheets: any[] };
-      const currentKahon = await this.prisma.kahon.findUnique({
-        where: { cashierId: cashierId },
+      const currentKahon = await this.prisma.kahon.findFirst({
+        where: { userId, name: 'Kahon' },
         include: { Sheets: true }, // Include sheets to check if any exist
       });
 
@@ -204,10 +206,10 @@ export class TransferService {
         selectedKahon = await this.prisma.kahon.create({
           data: {
             name: 'Kahon',
-            cashierId,
+            userId,
             Sheets: {
               create: {
-                name: 'Default Sheet',
+                name: 'Kahon Sheet',
                 columns: 5,
               },
             },
@@ -249,7 +251,7 @@ export class TransferService {
             ? selectedKahon.Sheets[0]
             : await tx.sheet.create({
                 data: {
-                  name: 'Default Sheet',
+                  name: 'Kahon Sheet',
                   columns: 5,
                   kahon: { connect: { id: selectedKahon.id } },
                 },

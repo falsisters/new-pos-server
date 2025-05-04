@@ -27,8 +27,13 @@ export class TransferController {
     @Body() transferProductDto: TransferProductDto,
   ) {
     const cashierId = req.user.id;
+    const userId = req.user.userId;
     console.log('transferProductDto', transferProductDto);
-    return this.transferService.transferProduct(cashierId, transferProductDto);
+    return this.transferService.transferProduct(
+      userId,
+      cashierId,
+      transferProductDto,
+    );
   }
 
   @UseGuards(JwtCashierAuthGuard)
@@ -38,7 +43,9 @@ export class TransferController {
     @Body() transferDeliveryDto: TransferDeliveryDto,
   ) {
     const cashierId = req.user.id;
+    const userId = req.user.userId;
     return this.transferService.transferDelivery(
+      userId,
       cashierId,
       transferDeliveryDto,
     );
