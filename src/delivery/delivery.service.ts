@@ -13,6 +13,7 @@ export class DeliveryService {
   async createDelivery(
     cashierId: string,
     createDeliveryDto: CreateDeliveryDto,
+    userId: string,
   ) {
     const { driverName, deliveryTimeStart, deliveryItem } = createDeliveryDto;
 
@@ -33,7 +34,7 @@ export class DeliveryService {
           }
 
           if (item.perKiloPrice && currentProduct) {
-            await this.transferService.transferDelivery(cashierId, {
+            await this.transferService.transferDelivery(userId, {
               name: `${currentProduct.name} ${item.perKiloPrice.quantity}KG`,
               quantity: 0,
             });
