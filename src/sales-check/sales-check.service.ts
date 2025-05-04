@@ -92,10 +92,11 @@ export class SalesCheckService {
           filters.sackType &&
           !item.isGantang
         ) {
-          const sackInfo = item.product.SackPrice.find(
+          // Check if the product has the requested sack type
+          const hasSackType = item.product.SackPrice.some(
             (sp) => sp.type === filters.sackType,
           );
-          return !!sackInfo;
+          return hasSackType;
         }
 
         return true;
@@ -112,14 +113,34 @@ export class SalesCheckService {
             totalAmount = unitPrice * item.quantity;
           }
         } else {
-          // Determine sack type based on quantity or relation
-          const sackInfo = item.product.SackPrice.find((sp) =>
-            filters.sackType
-              ? sp.type === filters.sackType
-              : sp.type === 'FIFTY_KG',
-          );
+          // For sack sales, find the matching sack price for this sale item
+          let sackInfo;
+
+          if (filters.sackType) {
+            // If filtering by a specific sack type, use that
+            sackInfo = item.product.SackPrice.find(
+              (sp) => sp.type === filters.sackType,
+            );
+          } else {
+            // Find the relevant sack price for this sale
+            // This assumes the sale item is linked to the appropriate sack type
+            // We need to identify which sack type was actually used in this sale
+            sackInfo = item.product.SackPrice[0]; // Default to first sack price if no specific match
+
+            // Try to infer which sack type was used based on price or other criteria if needed
+            for (const sp of item.product.SackPrice) {
+              if (
+                (item.isSpecialPrice && sp.specialPrice) ||
+                !item.isSpecialPrice
+              ) {
+                sackInfo = sp;
+                break;
+              }
+            }
+          }
 
           if (sackInfo) {
+            // Set price type based on the actual sack type
             switch (sackInfo.type) {
               case 'FIFTY_KG':
                 priceType = '50KG';
@@ -300,10 +321,11 @@ export class SalesCheckService {
           filters.sackType &&
           !item.isGantang
         ) {
-          const sackInfo = item.product.SackPrice.find(
+          // Check if the product has the requested sack type
+          const hasSackType = item.product.SackPrice.some(
             (sp) => sp.type === filters.sackType,
           );
-          return !!sackInfo;
+          return hasSackType;
         }
 
         return true;
@@ -320,14 +342,32 @@ export class SalesCheckService {
             totalAmount = unitPrice * item.quantity;
           }
         } else {
-          // Determine sack type based on relation
-          const sackInfo = item.product.SackPrice.find((sp) =>
-            filters.sackType
-              ? sp.type === filters.sackType
-              : sp.type === 'FIFTY_KG',
-          );
+          // For sack sales, find the matching sack price for this sale item
+          let sackInfo;
+
+          if (filters.sackType) {
+            // If filtering by a specific sack type, use that
+            sackInfo = item.product.SackPrice.find(
+              (sp) => sp.type === filters.sackType,
+            );
+          } else {
+            // Find the relevant sack price for this sale
+            sackInfo = item.product.SackPrice[0]; // Default to first sack price if no specific match
+
+            // Try to infer which sack type was used based on price or other criteria if needed
+            for (const sp of item.product.SackPrice) {
+              if (
+                (item.isSpecialPrice && sp.specialPrice) ||
+                !item.isSpecialPrice
+              ) {
+                sackInfo = sp;
+                break;
+              }
+            }
+          }
 
           if (sackInfo) {
+            // Set price type based on the actual sack type
             switch (sackInfo.type) {
               case 'FIFTY_KG':
                 priceType = '50KG';

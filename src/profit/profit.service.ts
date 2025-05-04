@@ -113,11 +113,16 @@ export class ProfitService {
         }
 
         // Filter by sack type if applicable
-        if (filters.priceType === 'SACK' && filters.sackType) {
-          const matchingSackPrice = item.product.SackPrice.find(
+        if (
+          filters.priceType === 'SACK' &&
+          filters.sackType &&
+          !item.isGantang
+        ) {
+          // Check if the product has the requested sack type
+          const hasSackType = item.product.SackPrice.some(
             (sp) => sp.type === filters.sackType,
           );
-          return !!matchingSackPrice;
+          return hasSackType;
         }
 
         return true;
@@ -131,12 +136,29 @@ export class ProfitService {
         // For Sacks or Asin, we only care about sack prices (no PerKiloPrice)
         if (!item.isGantang) {
           // Find the matching sack price
-          const defaultSackType = filters.sackType || SackType.FIFTY_KG;
-          const sackPrice = item.product.SackPrice.find((sp) =>
-            filters.sackType
-              ? sp.type === filters.sackType
-              : sp.type === defaultSackType,
-          );
+          let sackPrice;
+
+          if (filters.sackType) {
+            // If filtering by a specific sack type, find that specific type
+            sackPrice = item.product.SackPrice.find(
+              (sp) => sp.type === filters.sackType,
+            );
+          } else {
+            // Without a specific filter, we need to determine which sack price was used for this sale
+            // First look for all available sack prices
+            sackPrice = item.product.SackPrice[0]; // Default to first option
+
+            // Try to select the most appropriate sack price based on special pricing if applicable
+            for (const sp of item.product.SackPrice) {
+              if (
+                (item.isSpecialPrice && sp.specialPrice) ||
+                !item.isSpecialPrice
+              ) {
+                sackPrice = sp;
+                break;
+              }
+            }
+          }
 
           if (sackPrice) {
             // If it's a special price sale and has specialPrice set
