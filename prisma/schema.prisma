@@ -103,19 +103,23 @@ model Product {
   perKiloPrice PerKiloPrice?
   DeliveryItem DeliveryItem[]
   SaleItem     SaleItem[]
+  OrderItem    OrderItem[]
 }
 
 model SackPrice {
-  id           String        @id @default(cuid())
+  id           String         @id @default(cuid())
   price        Float
   stock        Int
   type         SackType
-  product      Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
+  product      Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
   productId    String
-  profit       Float         @default(0)
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+  profit       Float          @default(0)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
   specialPrice SpecialPrice?
+  OrderItem    OrderItem[]
+  DeliveryItem DeliveryItem[]
+  SaleItem     SaleItem[]
 }
 
 enum SackType {
@@ -136,14 +140,17 @@ model SpecialPrice {
 }
 
 model PerKiloPrice {
-  id        String   @id @default(cuid())
-  price     Float
-  stock     Float
-  profit    Float    @default(0)
-  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  productId String   @unique
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id           String         @id @default(cuid())
+  price        Float
+  stock        Float
+  profit       Float          @default(0)
+  product      Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
+  productId    String         @unique
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  OrderItem    OrderItem[]
+  DeliveryItem DeliveryItem[]
+  SaleItem     SaleItem[]
 }
 
 model Sale {
@@ -155,6 +162,7 @@ model Sale {
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
   SaleItem      SaleItem[]
+  Order         Order[]
 }
 
 enum PaymentMethod {
@@ -164,16 +172,21 @@ enum PaymentMethod {
 }
 
 model SaleItem {
-  id             String   @id @default(cuid())
+  id             String        @id @default(cuid())
   quantity       Float
-  product        Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  product        Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
   productId      String
-  sale           Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  SackPrice      SackPrice?    @relation(fields: [sackPriceId], references: [id], onDelete: Cascade)
+  sackPriceId    String?
+  sackType       SackType?
+  perKiloPrice   PerKiloPrice? @relation(fields: [perKiloPriceId], references: [id], onDelete: Cascade)
+  perKiloPriceId String?
+  sale           Sale          @relation(fields: [saleId], references: [id], onDelete: Cascade)
   saleId         String
-  isGantang      Boolean  @default(false)
-  isSpecialPrice Boolean  @default(false)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  isGantang      Boolean       @default(false)
+  isSpecialPrice Boolean       @default(false)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
 }
 
 model Delivery {
@@ -188,14 +201,19 @@ model Delivery {
 }
 
 model DeliveryItem {
-  id         String   @id @default(cuid())
-  quantity   Float
-  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  productId  String
-  delivery   Delivery @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
-  deliveryId String
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id             String        @id @default(cuid())
+  quantity       Float
+  product        Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
+  productId      String
+  SackPrice      SackPrice?    @relation(fields: [sackPriceId], references: [id], onDelete: Cascade)
+  sackPriceId    String?
+  sackType       SackType?
+  perKiloPrice   PerKiloPrice? @relation(fields: [perKiloPriceId], references: [id], onDelete: Cascade)
+  perKiloPriceId String?
+  delivery       Delivery      @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+  deliveryId     String
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
 }
 
 model Transfer {
@@ -372,4 +390,50 @@ enum BillType {
   FIFTY
   TWENTY
   COINS
+}
+
+model Customer {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  password  String
+  address   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  Order     Order[]
+}
+
+model Order {
+  id         String      @id @default(cuid())
+  totalPrice Float
+  customer   Customer    @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  customerId String
+  status     OrderStatus
+  saleId     String?
+  sale       Sale?       @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  OrderItem  OrderItem[]
+}
+
+model OrderItem {
+  id             String        @id @default(cuid())
+  quantity       Float
+  product        Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
+  productId      String
+  SackPrice      SackPrice?    @relation(fields: [sackPriceId], references: [id], onDelete: Cascade)
+  sackPriceId    String?
+  sackType       SackType?
+  perKiloPrice   PerKiloPrice? @relation(fields: [perKiloPriceId], references: [id], onDelete: Cascade)
+  perKiloPriceId String?
+  order          Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderId        String
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+}
+
+enum OrderStatus {
+  PENDING
+  COMPLETED
+  CANCELLED
 }
