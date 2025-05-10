@@ -25,7 +25,6 @@ export class CustomerController {
     return this.customerService.login(req.user);
   }
 
-  @UseGuards(JwtCustomerAuthGuard)
   @Post('register')
   async register(@Body() registerCustomerDto: RegisterCustomerDto) {
     return this.customerService.register(registerCustomerDto);
