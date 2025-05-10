@@ -24,6 +24,13 @@ export class OrderController {
     return this.orderService.getUserOrders(userId);
   }
 
+  @UseGuards(JwtCashierAuthGuard)
+  @Get('cashier/:id')
+  async getOrderByIdByCashier(@Request() req, @Param('id') id: string) {
+    const userId = req.user.userId;
+    return this.orderService.getUserOrderById(userId, id);
+  }
+
   @UseGuards(JwtCustomerAuthGuard)
   @Get('all')
   async getAllOrders(@Request() req) {

@@ -325,4 +325,32 @@ export class OrderService {
       },
     });
   }
+
+  async getUserOrderById(userId: string, orderId: string) {
+    return this.prisma.order.findMany({
+      where: {
+        userId,
+        id: orderId,
+      },
+      include: {
+        customer: {
+          select: {
+            id: true,
+            name: true,
+            phone: true,
+            address: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        },
+        OrderItem: {
+          include: {
+            product: true,
+            SackPrice: true,
+            perKiloPrice: true,
+          },
+        },
+      },
+    });
+  }
 }
