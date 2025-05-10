@@ -14,6 +14,8 @@ export class OrderService {
         customer: true,
         OrderItem: {
           include: {
+            SackPrice: true,
+            perKiloPrice: true,
             product: true,
           },
         },
@@ -30,6 +32,8 @@ export class OrderService {
         customer: true,
         OrderItem: {
           include: {
+            SackPrice: true,
+            perKiloPrice: true,
             product: true,
           },
         },
