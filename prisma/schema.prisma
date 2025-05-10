@@ -27,6 +27,7 @@ model User {
   Kahon      Kahon[]
   BillCount  BillCount[]
   Attachment Attachment[]
+  Order      Order[]
 }
 
 model Cashier {
@@ -408,6 +409,8 @@ model Customer {
 model Order {
   id         String      @id @default(cuid())
   totalPrice Float
+  userId     String
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   customer   Customer    @relation(fields: [customerId], references: [id], onDelete: Cascade)
   customerId String
   status     OrderStatus @default(PENDING)

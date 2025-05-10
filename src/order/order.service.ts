@@ -44,6 +44,17 @@ export class OrderService {
       // Calculate total price by fetching prices for each item
       let totalPrice = 0;
 
+      const firstOrderItemProductId = orderItem[0].productId;
+      const firstOrderItemProduct = await tx.product.findUnique({
+        where: { id: firstOrderItemProductId },
+      });
+
+      if (!firstOrderItemProduct) {
+        throw new Error(`Product with ID ${firstOrderItemProductId} not found`);
+      }
+
+      const userId = firstOrderItemProduct.userId;
+
       // Process each order item to calculate the total price
       for (const item of orderItem) {
         if (item.sackPriceId) {
@@ -70,6 +81,9 @@ export class OrderService {
       // Create the order with the calculated total price
       const order = await tx.order.create({
         data: {
+          user: {
+            connect: { id: userId },
+          },
           totalPrice,
           customer: {
             connect: { id: customerId },
@@ -206,6 +220,22 @@ export class OrderService {
         status: 'COMPLETED',
         sale: {
           connect: { id: saleId },
+        },
+      },
+    });
+  }
+
+  async getUserOrders(userId: string) {
+    return this.prisma.order.findMany({
+      where: {
+        userId,
+      },
+      include: {
+        customer: true,
+        OrderItem: {
+          include: {
+            product: true,
+          },
         },
       },
     });

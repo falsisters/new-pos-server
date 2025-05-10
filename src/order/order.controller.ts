@@ -11,10 +11,18 @@ import {
 import { OrderService } from './order.service';
 import { JwtCustomerAuthGuard } from 'src/customer/guards/jwt.guard';
 import { CreateOrderDto } from './dto/createOrder.dto';
+import { JwtCashierAuthGuard } from 'src/cashier/guards/jwt.guard';
 
 @Controller('order')
 export class OrderController {
   constructor(private orderService: OrderService) {}
+
+  @UseGuards(JwtCashierAuthGuard)
+  @Get('cashier')
+  async getAllOrdersByCashier(@Request() req) {
+    const userId = req.user.userId;
+    return this.orderService.getUserOrders(userId);
+  }
 
   @UseGuards(JwtCustomerAuthGuard)
   @Get('all')
