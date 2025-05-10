@@ -318,6 +318,8 @@ export class OrderService {
         OrderItem: {
           include: {
             product: true,
+            SackPrice: true,
+            perKiloPrice: true,
           },
         },
       },
