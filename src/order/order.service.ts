@@ -94,8 +94,12 @@ export class OrderService {
               product: {
                 connect: { id: item.productId },
               },
-              sackPriceId: item.sackPriceId,
-              perKiloPriceId: item.perKiloPriceId,
+              SackPrice: {
+                connect: { id: item.sackPriceId },
+              },
+              perKiloPrice: {
+                connect: { id: item.perKiloPriceId },
+              },
               isSpecialPrice: item.isSpecialPrice,
             })),
           },
@@ -173,8 +177,12 @@ export class OrderService {
                 product: {
                   connect: { id: item.productId },
                 },
-                sackPriceId: item.sackPriceId,
-                perKiloPriceId: item.perKiloPriceId,
+                SackPrice: {
+                  connect: { id: item.sackPriceId },
+                },
+                perKiloPrice: {
+                  connect: { id: item.perKiloPriceId },
+                },
                 isSpecialPrice: item.isSpecialPrice,
               })),
             },
