@@ -11,6 +11,35 @@ export class ProductService {
     private uploadService: UploadService,
   ) {}
 
+  async getAllPublicProducts() {
+    return this.prisma.product.findMany({
+      include: {
+        SackPrice: {
+          include: {
+            specialPrice: true,
+          },
+        },
+        perKiloPrice: true,
+      },
+    });
+  }
+
+  async getPublicProductById(id: string) {
+    return this.prisma.product.findUnique({
+      where: {
+        id,
+      },
+      include: {
+        SackPrice: {
+          include: {
+            specialPrice: true,
+          },
+        },
+        perKiloPrice: true,
+      },
+    });
+  }
+
   async createProduct(userId: string, formData: ProductFormData) {
     // Extract file from form data
     const picture = formData.picture;

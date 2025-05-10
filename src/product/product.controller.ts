@@ -15,6 +15,7 @@ import { ProductService } from './product.service';
 import { JwtAuthGuard } from 'src/auth/guards/jwt.guard';
 import { JwtCashierAuthGuard } from 'src/cashier/guards/jwt.guard';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { JwtCustomerAuthGuard } from 'src/customer/guards/jwt.guard';
 
 @Controller('product')
 export class ProductController {
@@ -25,6 +26,18 @@ export class ProductController {
   async getAllProductsByCashier(@Request() req) {
     const userId = req.user.userId;
     return this.productService.getAllProducts(userId);
+  }
+
+  @UseGuards(JwtCustomerAuthGuard)
+  @Get('customer')
+  async getAllProductsByCustomer(@Request() req) {
+    return this.productService.getAllPublicProducts();
+  }
+
+  @UseGuards(JwtCustomerAuthGuard)
+  @Get('customer/:id')
+  async getPublicProductById(@Param('id') id: string) {
+    return this.productService.getPublicProductById(id);
   }
 
   @UseGuards(JwtAuthGuard)
