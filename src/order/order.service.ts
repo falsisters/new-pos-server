@@ -11,7 +11,16 @@ export class OrderService {
     return this.prisma.order.findUnique({
       where: { id },
       include: {
-        customer: true,
+        customer: {
+          select: {
+            id: true,
+            name: true,
+            phone: true,
+            address: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        },
         OrderItem: {
           include: {
             SackPrice: true,
@@ -29,7 +38,16 @@ export class OrderService {
         customerId,
       },
       include: {
-        customer: true,
+        customer: {
+          select: {
+            id: true,
+            name: true,
+            phone: true,
+            address: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        },
         OrderItem: {
           include: {
             SackPrice: true,
@@ -121,7 +139,16 @@ export class OrderService {
           },
         },
         include: {
-          customer: true,
+          customer: {
+            select: {
+              id: true,
+              name: true,
+              phone: true,
+              address: true,
+              createdAt: true,
+              updatedAt: true,
+            },
+          },
           OrderItem: {
             include: {
               product: true,
@@ -216,7 +243,16 @@ export class OrderService {
             },
           },
           include: {
-            customer: true,
+            customer: {
+              select: {
+                id: true,
+                name: true,
+                phone: true,
+                address: true,
+                createdAt: true,
+                updatedAt: true,
+              },
+            },
             OrderItem: {
               include: {
                 product: true,
@@ -269,7 +305,16 @@ export class OrderService {
         userId,
       },
       include: {
-        customer: true,
+        customer: {
+          select: {
+            id: true,
+            name: true,
+            phone: true,
+            address: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        },
         OrderItem: {
           include: {
             product: true,
