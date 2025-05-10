@@ -3,6 +3,7 @@ class OrderItemDto {
   productId: string;
   sackPriceId?: string;
   perKiloPriceId?: string;
+  isSpecialPrice?: boolean;
 }
 
 export class CreateOrderDto {

@@ -431,6 +431,7 @@ model OrderItem {
   sackType       SackType?
   perKiloPrice   PerKiloPrice? @relation(fields: [perKiloPriceId], references: [id], onDelete: Cascade)
   perKiloPriceId String?
+  isSpecialPrice Boolean       @default(false)
   order          Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
   orderId        String
   createdAt      DateTime      @default(now())
