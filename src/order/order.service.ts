@@ -89,19 +89,31 @@ export class OrderService {
             connect: { id: customerId },
           },
           OrderItem: {
-            create: orderItem.map((item) => ({
-              quantity: item.quantity,
-              product: {
-                connect: { id: item.productId },
-              },
-              SackPrice: {
-                connect: { id: item.sackPriceId },
-              },
-              perKiloPrice: {
-                connect: { id: item.perKiloPriceId },
-              },
-              isSpecialPrice: item.isSpecialPrice,
-            })),
+            create: orderItem.map((item) => {
+              const orderItemData: any = {
+                quantity: item.quantity,
+                product: {
+                  connect: { id: item.productId },
+                },
+                isSpecialPrice: item.isSpecialPrice || false,
+              };
+
+              // Only add SackPrice connection if sackPriceId is provided
+              if (item.sackPriceId) {
+                orderItemData.SackPrice = {
+                  connect: { id: item.sackPriceId },
+                };
+              }
+
+              // Only add perKiloPrice connection if perKiloPriceId is provided
+              if (item.perKiloPriceId) {
+                orderItemData.perKiloPrice = {
+                  connect: { id: item.perKiloPriceId },
+                };
+              }
+
+              return orderItemData;
+            }),
           },
         },
         include: {
@@ -172,19 +184,31 @@ export class OrderService {
           data: {
             totalPrice,
             OrderItem: {
-              create: orderItem.map((item) => ({
-                quantity: item.quantity,
-                product: {
-                  connect: { id: item.productId },
-                },
-                SackPrice: {
-                  connect: { id: item.sackPriceId },
-                },
-                perKiloPrice: {
-                  connect: { id: item.perKiloPriceId },
-                },
-                isSpecialPrice: item.isSpecialPrice,
-              })),
+              create: orderItem.map((item) => {
+                const orderItemData: any = {
+                  quantity: item.quantity,
+                  product: {
+                    connect: { id: item.productId },
+                  },
+                  isSpecialPrice: item.isSpecialPrice || false,
+                };
+
+                // Only add SackPrice connection if sackPriceId is provided
+                if (item.sackPriceId) {
+                  orderItemData.SackPrice = {
+                    connect: { id: item.sackPriceId },
+                  };
+                }
+
+                // Only add perKiloPrice connection if perKiloPriceId is provided
+                if (item.perKiloPriceId) {
+                  orderItemData.perKiloPrice = {
+                    connect: { id: item.perKiloPriceId },
+                  };
+                }
+
+                return orderItemData;
+              }),
             },
           },
           include: {
