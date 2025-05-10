@@ -28,7 +28,9 @@ export class CustomerService {
       throw new Error('Invalid customer credentials');
     }
 
-    if (customer.password !== password) {
+    const isPasswordValid = await bcrypt.compare(password, customer.password);
+
+    if (!isPasswordValid) {
       throw new Error('Invalid customer credentials');
     }
 
