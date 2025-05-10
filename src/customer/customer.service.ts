@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { RegisterCustomerDto } from './dto/register.dto';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class CustomerService {
@@ -52,12 +53,14 @@ export class CustomerService {
 
   async register(registerCustomerDto: RegisterCustomerDto) {
     const { name, email, phone, password, address } = registerCustomerDto;
+    const hashedPassword = await bcrypt.hash(password, 10);
+
     const customer = await this.prisma.customer.create({
       data: {
         name,
         email,
         phone,
-        password,
+        password: hashedPassword,
         address,
       },
     });
@@ -88,6 +91,12 @@ export class CustomerService {
     id: string,
     editCustomerDto: Partial<RegisterCustomerDto>,
   ) {
+    const { password } = editCustomerDto;
+    if (password) {
+      const hashedPassword = await bcrypt.hash(password, 10);
+      editCustomerDto.password = hashedPassword;
+    }
+
     return this.prisma.customer.update({
       where: {
         id,
