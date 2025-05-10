@@ -62,7 +62,7 @@ export class OrderController {
     return this.orderService.editOrder(id, updateOrderDto);
   }
 
-  @UseGuards(JwtCustomerAuthGuard)
+  @UseGuards(JwtCashierAuthGuard)
   @Patch('cancel/:id')
   async cancelOrder(@Request() req, @Param('id') id: string) {
     return this.orderService.cancelOrder(id);

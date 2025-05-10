@@ -303,6 +303,7 @@ export class OrderService {
     return this.prisma.order.findMany({
       where: {
         userId,
+        status: 'PENDING',
       },
       include: {
         customer: {
