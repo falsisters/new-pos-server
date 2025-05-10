@@ -181,9 +181,12 @@ export class OrderService {
     });
   }
 
-  async deleteOrder(id: string) {
-    return this.prisma.order.delete({
+  async cancelOrder(id: string) {
+    return this.prisma.order.update({
       where: { id },
+      data: {
+        status: 'CANCELLED',
+      },
     });
   }
 

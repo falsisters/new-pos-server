@@ -6,8 +6,6 @@ import { AuthModule } from 'src/auth/auth.module';
 import { PrismaModule } from 'src/prisma/prisma.module';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
-import { SaleModule } from 'src/sale/sale.module';
-import { SaleService } from 'src/sale/sale.service';
 
 @Module({
   imports: [CustomerModule, AuthModule, PrismaModule],
