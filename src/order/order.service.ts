@@ -327,10 +327,10 @@ export class OrderService {
   }
 
   async getUserOrderById(userId: string, orderId: string) {
-    return this.prisma.order.findMany({
+    return this.prisma.order.findUnique({
       where: {
-        userId,
         id: orderId,
+        userId,
       },
       include: {
         customer: {
