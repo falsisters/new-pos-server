@@ -47,18 +47,33 @@ export class DeliveryService {
             deliveryTimeStart,
             cashier: { connect: { id: cashierId } },
             DeliveryItem: {
-              create: deliveryItem.map((item) => ({
-                quantity: item.sackPrice
-                  ? item.sackPrice.quantity
-                  : item.perKiloPrice.quantity,
-                product: { connect: { id: item.id } },
-              })),
+              create: deliveryItem.map((item) => {
+                const deliveryItemData: any = {
+                  quantity: item.sackPrice
+                    ? item.sackPrice.quantity
+                    : item.perKiloPrice.quantity,
+                  product: { connect: { id: item.id } },
+                };
+                if (item.sackPrice && item.sackPrice.id) {
+                  deliveryItemData.SackPrice = {
+                    connect: { id: item.sackPrice.id },
+                  };
+                }
+                if (item.perKiloPrice && item.perKiloPrice.id) {
+                  deliveryItemData.PerKiloPrice = {
+                    connect: { id: item.perKiloPrice.id },
+                  };
+                }
+                return deliveryItemData;
+              }),
             },
           },
           include: {
             DeliveryItem: {
               include: {
                 product: true,
+                SackPrice: true,
+                perKiloPrice: true,
               },
             },
           },
@@ -139,15 +154,26 @@ export class DeliveryService {
 
         // 4. Create new delivery items and increment stock
         for (const item of deliveryItem) {
+          const newItemData: any = {
+            quantity: item.sackPrice
+              ? item.sackPrice.quantity
+              : item.perKiloPrice.quantity,
+            product: { connect: { id: item.id } },
+            delivery: { connect: { id: deliveryId } },
+          };
+
+          if (item.sackPrice && item.sackPrice.id) {
+            newItemData.SackPrice = { connect: { id: item.sackPrice.id } };
+          }
+          if (item.perKiloPrice && item.perKiloPrice.id) {
+            newItemData.PerKiloPrice = {
+              connect: { id: item.perKiloPrice.id },
+            };
+          }
+
           // Create new delivery item
           await tx.deliveryItem.create({
-            data: {
-              quantity: item.sackPrice
-                ? item.sackPrice.quantity
-                : item.perKiloPrice.quantity,
-              product: { connect: { id: item.id } },
-              delivery: { connect: { id: deliveryId } },
-            },
+            data: newItemData,
           });
 
           // Increment stock with new quantities
@@ -170,6 +196,8 @@ export class DeliveryService {
             DeliveryItem: {
               include: {
                 product: true,
+                SackPrice: true,
+                perKiloPrice: true,
               },
             },
           },
@@ -194,6 +222,8 @@ export class DeliveryService {
         DeliveryItem: {
           include: {
             product: true,
+            SackPrice: true,
+            perKiloPrice: true,
           },
         },
       },
@@ -211,6 +241,8 @@ export class DeliveryService {
         DeliveryItem: {
           include: {
             product: true,
+            SackPrice: true,
+            perKiloPrice: true,
           },
         },
       },
