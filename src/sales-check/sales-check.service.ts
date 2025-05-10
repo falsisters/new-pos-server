@@ -42,16 +42,13 @@ export class SalesCheckService {
       include: {
         SaleItem: {
           include: {
-            product: {
+            product: { select: { id: true, name: true } },
+            SackPrice: {
               include: {
-                perKiloPrice: true,
-                SackPrice: {
-                  include: {
-                    specialPrice: true,
-                  },
-                },
+                specialPrice: true,
               },
             },
+            perKiloPrice: true,
           },
         },
       },
@@ -64,13 +61,14 @@ export class SalesCheckService {
     const allSaleItems = sales.flatMap((sale) => {
       return sale.SaleItem.filter((item) => {
         // Filter by product ID if specified
-        if (filters.productId && item.product.id !== filters.productId) {
+        if (filters.productId && item.productId !== filters.productId) {
           return false;
         }
 
         // Filter by product name search if specified
         if (
           filters.productSearch &&
+          item.product &&
           !item.product.name
             .toLowerCase()
             .includes(filters.productSearch.toLowerCase())
@@ -79,10 +77,10 @@ export class SalesCheckService {
         }
 
         // Filter by price type (SACK or KILO)
-        if (filters.priceType === 'SACK' && item.isGantang) {
+        if (filters.priceType === 'SACK' && !item.sackPriceId) {
           return false;
         }
-        if (filters.priceType === 'KILO' && !item.isGantang) {
+        if (filters.priceType === 'KILO' && !item.perKiloPriceId) {
           return false;
         }
 
@@ -90,13 +88,11 @@ export class SalesCheckService {
         if (
           filters.priceType === 'SACK' &&
           filters.sackType &&
-          !item.isGantang
+          item.sackPriceId
         ) {
-          // Check if the product has the requested sack type
-          const hasSackType = item.product.SackPrice.some(
-            (sp) => sp.type === filters.sackType,
-          );
-          return hasSackType;
+          if (item.sackType !== filters.sackType) {
+            return false;
+          }
         }
 
         return true;
@@ -105,68 +101,33 @@ export class SalesCheckService {
         let totalAmount = 0;
         let unitPrice = 0;
 
-        if (item.isGantang) {
+        if (item.perKiloPriceId && item.perKiloPrice) {
           priceType = 'KG';
-          // Calculate total amount for per kilo sales
-          if (item.product.perKiloPrice) {
-            unitPrice = item.product.perKiloPrice.price;
-            totalAmount = unitPrice * item.quantity;
+          unitPrice = item.perKiloPrice.price;
+          totalAmount = unitPrice * item.quantity;
+        } else if (item.sackPriceId && item.SackPrice) {
+          switch (item.sackType) {
+            case 'FIFTY_KG':
+              priceType = '50KG';
+              break;
+            case 'TWENTY_FIVE_KG':
+              priceType = '25KG';
+              break;
+            case 'FIVE_KG':
+              priceType = '5KG';
+              break;
+            default:
+              priceType = item.sackType || 'SACK';
           }
+
+          if (item.isSpecialPrice && item.SackPrice.specialPrice) {
+            unitPrice = item.SackPrice.specialPrice.price;
+          } else {
+            unitPrice = item.SackPrice.price;
+          }
+          totalAmount = unitPrice * item.quantity;
         } else {
-          // For sack sales, we need to determine the correct sack type
-          let sackInfo;
-
-          // When filtering by sack type, ALWAYS use that specific sack type
-          // This is critical - we must respect the filter to prevent displaying incorrect data
-          if (filters.sackType) {
-            sackInfo = item.product.SackPrice.find(
-              (sp) => sp.type === filters.sackType,
-            );
-          } else {
-            // Without a filter, try to determine the most likely sack type used
-            const sackPrices = item.product.SackPrice;
-
-            // Default to the first available sack type (typically FIFTY_KG)
-            if (sackPrices.length > 0) {
-              sackInfo = sackPrices[0];
-
-              // Try to find a better match based on special pricing
-              if (item.isSpecialPrice) {
-                const specialPriceSack = sackPrices.find(
-                  (sp) => sp.specialPrice,
-                );
-                if (specialPriceSack) sackInfo = specialPriceSack;
-              }
-            }
-          }
-
-          if (sackInfo) {
-            // Set price type based on the actual sack type
-            switch (sackInfo.type) {
-              case 'FIFTY_KG':
-                priceType = '50KG';
-                break;
-              case 'TWENTY_FIVE_KG':
-                priceType = '25KG';
-                break;
-              case 'FIVE_KG':
-                priceType = '5KG';
-                break;
-              default:
-                priceType = sackInfo.type;
-            }
-
-            // Calculate total amount based on special price or regular price
-            if (item.isSpecialPrice && sackInfo.specialPrice) {
-              unitPrice = sackInfo.specialPrice.price;
-              totalAmount = unitPrice * item.quantity;
-            } else {
-              unitPrice = sackInfo.price;
-              totalAmount = unitPrice * item.quantity;
-            }
-          } else {
-            priceType = 'UNKNOWN';
-          }
+          priceType = 'UNKNOWN';
         }
 
         // Create a formatted sale item
@@ -174,8 +135,8 @@ export class SalesCheckService {
           id: item.id,
           quantity: item.quantity,
           product: {
-            id: item.product.id,
-            name: item.product.name,
+            id: item.product?.id || item.productId,
+            name: item.product?.name || 'Unknown Product',
           },
           priceType,
           unitPrice: Number(unitPrice.toFixed(2)),
@@ -277,21 +238,18 @@ export class SalesCheckService {
       include: {
         SaleItem: {
           include: {
-            product: {
+            product: { select: { id: true, name: true } },
+            SackPrice: {
               include: {
-                perKiloPrice: true,
-                SackPrice: {
-                  include: {
-                    specialPrice: true,
-                  },
-                },
+                specialPrice: true,
               },
             },
+            perKiloPrice: true,
           },
         },
       },
       orderBy: {
-        createdAt: 'asc', // Chronological order
+        createdAt: 'asc',
       },
     });
 
@@ -301,6 +259,7 @@ export class SalesCheckService {
         // Filter by product name if specified
         if (
           filters.productName &&
+          item.product &&
           !item.product.name
             .toLowerCase()
             .includes(filters.productName.toLowerCase())
@@ -309,10 +268,10 @@ export class SalesCheckService {
         }
 
         // Filter by price type (SACK or KILO)
-        if (filters.priceType === 'SACK' && item.isGantang) {
+        if (filters.priceType === 'SACK' && !item.sackPriceId) {
           return false;
         }
-        if (filters.priceType === 'KILO' && !item.isGantang) {
+        if (filters.priceType === 'KILO' && !item.perKiloPriceId) {
           return false;
         }
 
@@ -320,13 +279,11 @@ export class SalesCheckService {
         if (
           filters.priceType === 'SACK' &&
           filters.sackType &&
-          !item.isGantang
+          item.sackPriceId
         ) {
-          // Check if the product has the requested sack type
-          const hasSackType = item.product.SackPrice.some(
-            (sp) => sp.type === filters.sackType,
-          );
-          return hasSackType;
+          if (item.sackType !== filters.sackType) {
+            return false;
+          }
         }
 
         return true;
@@ -335,68 +292,33 @@ export class SalesCheckService {
         let totalAmount = 0;
         let unitPrice = 0;
 
-        if (item.isGantang) {
+        if (item.perKiloPriceId && item.perKiloPrice) {
           priceType = 'KG';
-          // Calculate total amount for per kilo sales
-          if (item.product.perKiloPrice) {
-            unitPrice = item.product.perKiloPrice.price;
-            totalAmount = unitPrice * item.quantity;
+          unitPrice = item.perKiloPrice.price;
+          totalAmount = unitPrice * item.quantity;
+        } else if (item.sackPriceId && item.SackPrice) {
+          switch (item.sackType) {
+            case 'FIFTY_KG':
+              priceType = '50KG';
+              break;
+            case 'TWENTY_FIVE_KG':
+              priceType = '25KG';
+              break;
+            case 'FIVE_KG':
+              priceType = '5KG';
+              break;
+            default:
+              priceType = item.sackType || 'SACK';
           }
+
+          if (item.isSpecialPrice && item.SackPrice.specialPrice) {
+            unitPrice = item.SackPrice.specialPrice.price;
+          } else {
+            unitPrice = item.SackPrice.price;
+          }
+          totalAmount = unitPrice * item.quantity;
         } else {
-          // For sack sales, we need to determine the correct sack type
-          let sackInfo;
-
-          // When filtering by sack type, ALWAYS use that specific sack type
-          // This is critical - we must respect the filter to prevent displaying incorrect data
-          if (filters.sackType) {
-            sackInfo = item.product.SackPrice.find(
-              (sp) => sp.type === filters.sackType,
-            );
-          } else {
-            // Without a filter, try to determine the most likely sack type used
-            const sackPrices = item.product.SackPrice;
-
-            // Default to the first available sack type (typically FIFTY_KG)
-            if (sackPrices.length > 0) {
-              sackInfo = sackPrices[0];
-
-              // Try to find a better match based on special pricing
-              if (item.isSpecialPrice) {
-                const specialPriceSack = sackPrices.find(
-                  (sp) => sp.specialPrice,
-                );
-                if (specialPriceSack) sackInfo = specialPriceSack;
-              }
-            }
-          }
-
-          if (sackInfo) {
-            // Set price type based on the actual sack type
-            switch (sackInfo.type) {
-              case 'FIFTY_KG':
-                priceType = '50KG';
-                break;
-              case 'TWENTY_FIVE_KG':
-                priceType = '25KG';
-                break;
-              case 'FIVE_KG':
-                priceType = '5KG';
-                break;
-              default:
-                priceType = sackInfo.type;
-            }
-
-            // Calculate total amount based on special price or regular price
-            if (item.isSpecialPrice && sackInfo.specialPrice) {
-              unitPrice = sackInfo.specialPrice.price;
-              totalAmount = unitPrice * item.quantity;
-            } else {
-              unitPrice = sackInfo.price;
-              totalAmount = unitPrice * item.quantity;
-            }
-          } else {
-            priceType = 'UNKNOWN';
-          }
+          priceType = 'UNKNOWN';
         }
 
         // Create a formatted sale item with time included
@@ -408,8 +330,8 @@ export class SalesCheckService {
           saleId: sale.id,
           quantity: item.quantity,
           product: {
-            id: item.product.id,
-            name: item.product.name,
+            id: item.product?.id || item.productId,
+            name: item.product?.name || 'Unknown Product',
           },
           priceType,
           unitPrice: Number(unitPrice.toFixed(2)),
@@ -418,7 +340,7 @@ export class SalesCheckService {
           isSpecialPrice: item.isSpecialPrice,
           saleDate: sale.createdAt,
           formattedTime,
-          formattedSale: `${item.quantity} ${item.product.name} ${priceType} = ${Number(totalAmount.toFixed(2))}${
+          formattedSale: `${item.quantity} ${item.product?.name || 'Unknown Product'} ${priceType} = ${Number(totalAmount.toFixed(2))}${
             sale.paymentMethod !== 'CASH'
               ? ` (${sale.paymentMethod.replace('_', ' ')})`
               : ''

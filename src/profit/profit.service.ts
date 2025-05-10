@@ -62,14 +62,10 @@ export class ProfitService {
       include: {
         SaleItem: {
           include: {
-            product: {
+            product: { select: { id: true, name: true } }, // Select only needed product fields
+            SackPrice: {
               include: {
-                perKiloPrice: true,
-                SackPrice: {
-                  include: {
-                    specialPrice: true,
-                  },
-                },
+                specialPrice: true, // For profit calculation
               },
             },
           },
@@ -83,26 +79,12 @@ export class ProfitService {
     // Process and calculate profits for each sale item
     const profitItems = sales.flatMap((sale) => {
       return sale.SaleItem.filter((item) => {
-        // Special filter for Asin products
-        if (filters.priceType === 'ASIN') {
-          return item.product.name.toLowerCase().includes('asin');
-        }
+        if (!item.product) return false; // Essential for name-based filters
 
-        // Filter for Sacks (not Asin and has SackPrice)
-        if (filters.priceType === 'SACK') {
-          return (
-            !item.product.name.toLowerCase().includes('asin') &&
-            !item.isGantang &&
-            item.product.SackPrice.length > 0
-          );
-        }
-
-        // Filter by product ID if specified
-        if (filters.productId && item.product.id !== filters.productId) {
+        // Apply general filters first
+        if (filters.productId && item.productId !== filters.productId) {
           return false;
         }
-
-        // Filter by product name search if specified
         if (
           filters.productSearch &&
           !item.product.name
@@ -112,97 +94,78 @@ export class ProfitService {
           return false;
         }
 
-        // Filter by sack type if applicable
-        if (
-          filters.priceType === 'SACK' &&
-          filters.sackType &&
-          !item.isGantang
-        ) {
-          // Check if the product has the requested sack type
-          const hasSackType = item.product.SackPrice.some(
-            (sp) => sp.type === filters.sackType,
-          );
-          return hasSackType;
+        // Handle priceType specific filters
+        if (filters.priceType === 'ASIN') {
+          if (!item.product.name.toLowerCase().includes('asin')) return false;
+        } else if (filters.priceType === 'SACK') {
+          if (item.product.name.toLowerCase().includes('asin')) return false; // Must not be ASIN
+          if (!item.sackPriceId) return false; // Must be a sack sale
+          if (filters.sackType && item.sackType !== filters.sackType) {
+            return false;
+          }
+        } else if (filters.priceType) {
+          if (
+            filters.sackType &&
+            (!item.sackPriceId || item.sackType !== filters.sackType)
+          ) {
+            return false;
+          }
+        } else {
+          if (
+            filters.sackType &&
+            (!item.sackPriceId || item.sackType !== filters.sackType)
+          ) {
+            return false;
+          }
         }
 
         return true;
       }).map((item) => {
-        // Calculate profit based on item type
         let totalProfit = 0;
         let profitPerUnit = 0;
-        let priceType = '';
+        let priceType: SackType | null = null; // This will store the SackType enum
         let formattedPriceType = '';
 
-        // For Sacks or Asin, we only care about sack prices (no PerKiloPrice)
-        if (!item.isGantang) {
-          // Find the matching sack price
-          let sackPrice;
+        // Calculate profit only for sack sales with available SackPrice information
+        if (item.sackPriceId && item.SackPrice && item.sackType) {
+          const sackPriceInfo = item.SackPrice;
+          priceType = item.sackType; // Store the enum value
 
-          // When filtering by sack type, ALWAYS use that specific sack type
-          // This is critical - we must respect the filter to prevent displaying incorrect data
-          if (filters.sackType) {
-            sackPrice = item.product.SackPrice.find(
-              (sp) => sp.type === filters.sackType,
-            );
+          if (item.isSpecialPrice && sackPriceInfo.specialPrice) {
+            profitPerUnit = sackPriceInfo.specialPrice.profit;
           } else {
-            // Without a filter, try to determine the most likely sack type used
-            const availableSackPrices = item.product.SackPrice;
-
-            // Default to the first available sack type (typically FIFTY_KG)
-            if (availableSackPrices.length > 0) {
-              sackPrice = availableSackPrices[0];
-
-              // Try to find a better match based on special pricing
-              if (item.isSpecialPrice) {
-                const specialPriceSack = availableSackPrices.find(
-                  (sp) => sp.specialPrice,
-                );
-                if (specialPriceSack) sackPrice = specialPriceSack;
-              }
-            }
+            profitPerUnit = sackPriceInfo.profit;
           }
+          totalProfit = profitPerUnit * item.quantity;
 
-          if (sackPrice) {
-            // If it's a special price sale and has specialPrice set
-            if (item.isSpecialPrice && sackPrice.specialPrice) {
-              profitPerUnit = sackPrice.specialPrice.profit;
-              totalProfit = profitPerUnit * item.quantity;
-            } else {
-              profitPerUnit = sackPrice.profit;
-              totalProfit = profitPerUnit * item.quantity;
-            }
-            priceType = sackPrice.type;
-
-            // Format the price type for display
-            switch (sackPrice.type) {
-              case 'FIFTY_KG':
-                formattedPriceType = '50KG';
-                break;
-              case 'TWENTY_FIVE_KG':
-                formattedPriceType = '25KG';
-                break;
-              case 'FIVE_KG':
-                formattedPriceType = '5KG';
-                break;
-              default:
-                formattedPriceType = sackPrice.type;
-            }
+          switch (item.sackType) {
+            case 'FIFTY_KG':
+              formattedPriceType = '50KG';
+              break;
+            case 'TWENTY_FIVE_KG':
+              formattedPriceType = '25KG';
+              break;
+            case 'FIVE_KG':
+              formattedPriceType = '5KG';
+              break;
+            default:
+              formattedPriceType = item.sackType; // Fallback to the enum string if not matched
           }
         }
 
         return {
           id: item.id,
-          productId: item.product.id,
-          productName: item.product.name,
+          productId: item.productId,
+          productName: item.product?.name || 'Unknown Product',
           quantity: item.quantity,
           profitPerUnit,
           totalProfit,
-          priceType,
+          priceType: priceType || '', // Ensure it's a string or the enum, handle null if no sackType
           formattedPriceType,
           paymentMethod: sale.paymentMethod,
           isSpecialPrice: item.isSpecialPrice,
           saleDate: sale.createdAt,
-          isAsin: item.product.name.toLowerCase().includes('asin'),
+          isAsin: item.product?.name.toLowerCase().includes('asin') || false,
         };
       });
     });
@@ -281,7 +244,7 @@ export class ProfitService {
         totalProfit: asinTotal,
       },
       overallTotal,
-      rawItems: profitItems, // Include raw data for debugging or additional processing
+      rawItems: profitItems,
     };
   }
 }
