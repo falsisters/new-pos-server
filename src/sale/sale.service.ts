@@ -113,10 +113,7 @@ export class SaleService {
 
         // 3. If an order ID was provided, update the order status to COMPLETED
         if (orderId) {
-          await tx.order.update({
-            where: { id: orderId },
-            data: { status: 'COMPLETED' },
-          });
+          this.order.completeOrder(orderId, sale.id);
         }
 
         return sale;
