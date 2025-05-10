@@ -162,7 +162,7 @@ model Sale {
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
   SaleItem      SaleItem[]
-  Order         Order[]
+  Order         Order?
 }
 
 enum PaymentMethod {
@@ -409,8 +409,8 @@ model Order {
   totalPrice Float
   customer   Customer    @relation(fields: [customerId], references: [id], onDelete: Cascade)
   customerId String
-  status     OrderStatus
-  saleId     String?
+  status     OrderStatus @default(PENDING)
+  saleId     String?     @unique
   sale       Sale?       @relation(fields: [saleId], references: [id], onDelete: Cascade)
   createdAt  DateTime    @default(now())
   updatedAt  DateTime    @updatedAt

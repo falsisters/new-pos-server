@@ -33,6 +33,9 @@ export class EditSaleDto {
   @IsOptional()
   totalAmount: number;
 
+  @IsOptional()
+  orderId: string;
+
   @IsString()
   @IsOptional()
   paymentMethod: PaymentMethod;

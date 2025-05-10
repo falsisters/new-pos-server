@@ -2,13 +2,17 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateSaleDto } from './dto/create.dto';
 import { EditSaleDto } from './dto/edit.dto';
+import { OrderService } from 'src/order/order.service';
 
 @Injectable()
 export class SaleService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private order: OrderService,
+  ) {}
 
   async createSale(cashierId: string, products: CreateSaleDto) {
-    const { totalAmount, paymentMethod, saleItem } = products;
+    const { totalAmount, paymentMethod, saleItem, orderId } = products;
 
     return this.prisma.$transaction(
       async (tx) => {
@@ -36,21 +40,27 @@ export class SaleService {
         }
 
         // 2. Create the sale with items
-        return tx.sale.create({
+        const sale = await tx.sale.create({
           data: {
             totalAmount,
             paymentMethod,
             cashier: {
               connect: { id: cashierId },
             },
+            // Connect to order if orderId is provided
+            ...(orderId && {
+              Order: {
+                connect: { id: orderId },
+              },
+            }),
             SaleItem: {
               create: saleItem.map((item) => {
-                // Calculate the actual quantity based on the selected price option
                 const quantity = item.perKiloPrice
                   ? item.perKiloPrice.quantity
                   : item.sackPrice?.quantity || 0;
 
-                return {
+                // Base item data
+                const saleItemData = {
                   quantity,
                   isGantang: item.isGantang,
                   isSpecialPrice: item.isSpecialPrice,
@@ -58,6 +68,28 @@ export class SaleService {
                     connect: { id: item.id },
                   },
                 };
+
+                // Add connections based on price type
+                if (item.perKiloPrice) {
+                  return {
+                    ...saleItemData,
+                    perKiloPrice: {
+                      connect: { id: item.perKiloPrice.id },
+                    },
+                  };
+                }
+
+                if (item.sackPrice) {
+                  return {
+                    ...saleItemData,
+                    SackPrice: {
+                      connect: { id: item.sackPrice.id },
+                    },
+                    sackType: item.sackPrice.type,
+                  };
+                }
+
+                return saleItemData;
               }),
             },
           },
@@ -78,6 +110,16 @@ export class SaleService {
             },
           },
         });
+
+        // 3. If an order ID was provided, update the order status to COMPLETED
+        if (orderId) {
+          await tx.order.update({
+            where: { id: orderId },
+            data: { status: 'COMPLETED' },
+          });
+        }
+
+        return sale;
       },
       {
         timeout: 20000, // 20 seconds in milliseconds
@@ -86,7 +128,7 @@ export class SaleService {
   }
 
   async editSale(id: string, products: EditSaleDto) {
-    const { totalAmount, paymentMethod, saleItem } = products;
+    const { totalAmount, paymentMethod, saleItem, orderId } = products;
 
     return this.prisma.$transaction(
       async (tx) => {
@@ -108,8 +150,18 @@ export class SaleService {
                 },
               },
             },
+            Order: true,
           },
         });
+
+        // If there was a previous order connection and we're changing it, update the previous order
+        if (existingSale.Order && existingSale.Order.id !== orderId) {
+          await tx.order.update({
+            where: { id: existingSale.Order.id },
+            data: { status: 'PENDING', saleId: null },
+          });
+        }
+
         // Increment the stock for each item in the existing saleitems and delete saleitems
         for (const item of existingSale.SaleItem) {
           if (item.product.perKiloPrice) {
@@ -137,6 +189,7 @@ export class SaleService {
             where: { id: item.id },
           });
         }
+
         // Decrement with new stock and create the new sale items
         for (const item of saleItem) {
           const quantity = item.perKiloPrice
@@ -163,29 +216,86 @@ export class SaleService {
             });
           }
 
-          // Create the new sale item
-          await tx.saleItem.create({
-            data: {
-              quantity: quantity,
-              isGantang: item.isGantang,
-              isSpecialPrice: item.isSpecialPrice,
-              product: {
-                connect: { id: item.id },
-              },
-              sale: {
-                connect: { id },
-              },
+          // Create the new sale item with proper connections
+          const saleItemData = {
+            quantity: quantity,
+            isGantang: item.isGantang,
+            isSpecialPrice: item.isSpecialPrice,
+            product: {
+              connect: { id: item.id },
             },
-          });
+            sale: {
+              connect: { id },
+            },
+          };
 
-          await tx.sale.update({
-            where: { id },
-            data: {
-              totalAmount,
-              paymentMethod,
-            },
-          });
+          // Add specific price connections
+          if (item.perKiloPrice) {
+            await tx.saleItem.create({
+              data: {
+                ...saleItemData,
+                perKiloPrice: {
+                  connect: { id: item.perKiloPrice.id },
+                },
+              },
+            });
+          } else if (item.sackPrice) {
+            await tx.saleItem.create({
+              data: {
+                ...saleItemData,
+                SackPrice: {
+                  connect: { id: item.sackPrice.id },
+                },
+                sackType: item.sackPrice.type,
+              },
+            });
+          } else {
+            await tx.saleItem.create({
+              data: saleItemData,
+            });
+          }
         }
+
+        // Update the sale with new data and connect/disconnect order if needed
+        const updateData: any = {
+          totalAmount,
+          paymentMethod,
+        };
+
+        // Handle order connection/disconnection
+        if (orderId) {
+          // Connect to the new order and update its status
+          updateData.Order = { connect: { id: orderId } };
+          await tx.order.update({
+            where: { id: orderId },
+            data: { status: 'COMPLETED' },
+          });
+        } else if (existingSale.Order) {
+          // Disconnect from any existing order
+          updateData.Order = { disconnect: true };
+        }
+
+        return tx.sale.update({
+          where: { id },
+          data: updateData,
+          include: {
+            SaleItem: {
+              include: {
+                product: {
+                  include: {
+                    perKiloPrice: true,
+                    SackPrice: {
+                      include: {
+                        specialPrice: true,
+                      },
+                    },
+                  },
+                },
+              },
+            },
+            Order: true,
+          },
+        });
       },
       {
         timeout: 20000, // 20 seconds in milliseconds

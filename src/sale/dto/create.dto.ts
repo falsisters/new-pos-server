@@ -35,6 +35,9 @@ export class CreateSaleDto {
   @IsString()
   paymentMethod: PaymentMethod;
 
+  @IsOptional()
+  orderId: string;
+
   @IsNotEmpty()
   saleItem: ProductDto[];
 }
