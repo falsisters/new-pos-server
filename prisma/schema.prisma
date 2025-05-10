@@ -107,19 +107,20 @@ model Product {
 }
 
 model SackPrice {
-  id           String         @id @default(cuid())
-  price        Float
-  stock        Int
-  type         SackType
-  product      Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
-  productId    String
-  profit       Float          @default(0)
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
-  specialPrice SpecialPrice?
-  OrderItem    OrderItem[]
-  DeliveryItem DeliveryItem[]
-  SaleItem     SaleItem[]
+  id             String         @id @default(cuid())
+  price          Float
+  stock          Int
+  type           SackType
+  product        Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
+  productId      String
+  profit         Float          @default(0)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  specialPrice   SpecialPrice?
+  specialPriceId String?
+  OrderItem      OrderItem[]
+  DeliveryItem   DeliveryItem[]
+  SaleItem       SaleItem[]
 }
 
 enum SackType {
