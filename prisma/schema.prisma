@@ -174,21 +174,23 @@ enum PaymentMethod {
 }
 
 model SaleItem {
-  id             String        @id @default(cuid())
-  quantity       Float
-  product        Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
-  productId      String
-  SackPrice      SackPrice?    @relation(fields: [sackPriceId], references: [id], onDelete: Cascade)
-  sackPriceId    String?
-  sackType       SackType?
-  perKiloPrice   PerKiloPrice? @relation(fields: [perKiloPriceId], references: [id], onDelete: Cascade)
-  perKiloPriceId String?
-  sale           Sale          @relation(fields: [saleId], references: [id], onDelete: Cascade)
-  saleId         String
-  isGantang      Boolean       @default(false)
-  isSpecialPrice Boolean       @default(false)
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+  id              String        @id @default(cuid())
+  quantity        Float
+  discountedPrice Float?
+  isDiscounted    Boolean       @default(false)
+  product         Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
+  productId       String
+  SackPrice       SackPrice?    @relation(fields: [sackPriceId], references: [id], onDelete: Cascade)
+  sackPriceId     String?
+  sackType        SackType?
+  perKiloPrice    PerKiloPrice? @relation(fields: [perKiloPriceId], references: [id], onDelete: Cascade)
+  perKiloPriceId  String?
+  sale            Sale          @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  saleId          String
+  isGantang       Boolean       @default(false)
+  isSpecialPrice  Boolean       @default(false)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 }
 
 model Delivery {

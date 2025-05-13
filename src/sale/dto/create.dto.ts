@@ -1,5 +1,11 @@
 import { PaymentMethod, SackType } from '@prisma/client';
-import { IsNotEmpty, IsNumber, IsOptional, IsString } from 'class-validator';
+import {
+  IsBoolean,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+} from 'class-validator';
 
 class PerKiloPriceDto {
   id: string;
@@ -14,6 +20,13 @@ class SackPriceDto {
 
 class ProductDto {
   id: string;
+
+  @IsOptional()
+  discountedPrice: number;
+
+  @IsOptional()
+  @IsBoolean()
+  isDiscounted: boolean;
 
   @IsOptional()
   isGantang: boolean;

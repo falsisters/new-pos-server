@@ -1,4 +1,4 @@
-import { IsEnum, IsOptional, IsString } from 'class-validator';
+import { IsBoolean, IsEnum, IsOptional, IsString } from 'class-validator';
 import { SackType } from '@prisma/client';
 
 export class SalesCheckFilterDto {
@@ -21,4 +21,8 @@ export class SalesCheckFilterDto {
   @IsOptional()
   @IsEnum(SackType)
   sackType?: SackType;
+
+  @IsOptional()
+  @IsBoolean()
+  isDiscounted?: boolean;
 }

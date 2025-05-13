@@ -95,6 +95,13 @@ export class SalesCheckService {
           }
         }
 
+        // Filter by discount status if specified
+        if (filters.isDiscounted !== undefined) {
+          if (item.isDiscounted !== filters.isDiscounted) {
+            return false;
+          }
+        }
+
         return true;
       }).map((item) => {
         let priceType = '';
@@ -130,6 +137,12 @@ export class SalesCheckService {
           priceType = 'UNKNOWN';
         }
 
+        // If this item is discounted, use the discounted price instead
+        if (item.isDiscounted && item.discountedPrice !== null) {
+          totalAmount = item.discountedPrice * item.quantity;
+          unitPrice = item.discountedPrice;
+        }
+
         // Create a formatted sale item
         return {
           id: item.id,
@@ -143,6 +156,8 @@ export class SalesCheckService {
           totalAmount: Number(totalAmount.toFixed(2)),
           paymentMethod: sale.paymentMethod,
           isSpecialPrice: item.isSpecialPrice,
+          isDiscounted: item.isDiscounted,
+          discountedPrice: item.isDiscounted ? item.discountedPrice : null,
           saleDate: sale.createdAt,
         };
       });
@@ -187,11 +202,12 @@ export class SalesCheckService {
           totalAmount: item.totalAmount,
           paymentMethod: item.paymentMethod,
           isSpecialPrice: item.isSpecialPrice,
+          isDiscounted: item.isDiscounted,
           formattedSale: `${item.quantity} ${item.product.name} ${item.priceType} = ${item.totalAmount}${
             item.paymentMethod !== 'CASH'
               ? ` (${item.paymentMethod.replace('_', ' ')})`
               : ''
-          }${item.isSpecialPrice ? ' (special price)' : ''}`,
+          }${item.isSpecialPrice ? ' (special price)' : ''}${item.isDiscounted ? ' (discounted)' : ''}`,
         })),
         totalQuantity: group.totalQuantity,
         totalAmount: Number(group.totalAmount.toFixed(2)),
@@ -286,6 +302,13 @@ export class SalesCheckService {
           }
         }
 
+        // Filter by discount status if specified
+        if (filters.isDiscounted !== undefined) {
+          if (item.isDiscounted !== filters.isDiscounted) {
+            return false;
+          }
+        }
+
         return true;
       }).map((item) => {
         let priceType = '';
@@ -321,6 +344,12 @@ export class SalesCheckService {
           priceType = 'UNKNOWN';
         }
 
+        // If this item is discounted, use the discounted price instead
+        if (item.isDiscounted && item.discountedPrice !== null) {
+          totalAmount = item.discountedPrice * item.quantity;
+          unitPrice = item.discountedPrice;
+        }
+
         // Create a formatted sale item with time included
         const saleDateTime = sale.createdAt;
         const formattedTime = `${saleDateTime.getHours().toString().padStart(2, '0')}:${saleDateTime.getMinutes().toString().padStart(2, '0')}`;
@@ -338,13 +367,15 @@ export class SalesCheckService {
           totalAmount: Number(totalAmount.toFixed(2)),
           paymentMethod: sale.paymentMethod,
           isSpecialPrice: item.isSpecialPrice,
+          isDiscounted: item.isDiscounted,
+          discountedPrice: item.isDiscounted ? item.discountedPrice : null,
           saleDate: sale.createdAt,
           formattedTime,
           formattedSale: `${item.quantity} ${item.product?.name || 'Unknown Product'} ${priceType} = ${Number(totalAmount.toFixed(2))}${
             sale.paymentMethod !== 'CASH'
               ? ` (${sale.paymentMethod.replace('_', ' ')})`
               : ''
-          }${item.isSpecialPrice ? ' (special price)' : ''}`,
+          }${item.isSpecialPrice ? ' (special price)' : ''}${item.isDiscounted ? ' (discounted)' : ''}`,
         };
       });
     });
