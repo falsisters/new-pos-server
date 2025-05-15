@@ -6,6 +6,7 @@ import {
   Param,
   Post,
   Put,
+  Query,
   Request,
   UseGuards,
 } from '@nestjs/common';
@@ -45,12 +46,9 @@ export class ExpensesController {
 
   @UseGuards(JwtCashierAuthGuard)
   @Get('today')
-  async getExpenseByDate(
-    @Request() req,
-    @Body() expenseDate: GetExpenseByDateDto,
-  ) {
+  async getExpenseByDate(@Request() req, @Query('date') date?: string) {
     const userId = req.user.userId;
-    return await this.expensesService.getFirstExpenseByDay(userId, expenseDate);
+    return await this.expensesService.getFirstExpenseByDay(userId, { date });
   }
 
   @UseGuards(JwtCashierAuthGuard)
@@ -84,12 +82,9 @@ export class ExpensesController {
 
   @UseGuards(JwtAuthGuard)
   @Get('user/today')
-  async userGetExpenseByDate(
-    @Request() req,
-    @Body() expenseDate: GetExpenseByDateDto,
-  ) {
+  async userGetExpenseByDate(@Request() req, @Query('date') date?: string) {
     const userId = req.user.id;
-    return await this.expensesService.getFirstExpenseByDay(userId, expenseDate);
+    return await this.expensesService.getFirstExpenseByDay(userId, { date });
   }
 
   @UseGuards(JwtAuthGuard)
