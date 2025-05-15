@@ -408,7 +408,6 @@ export class SaleService {
       orderBy: {
         createdAt: 'desc',
       },
-      take: 5,
       include: {
         SaleItem: {
           include: {
