@@ -423,18 +423,21 @@ export class SaleService {
                   },
                 },
               },
+              perKiloPrice: true,
+              SackPrice: true,
             },
           },
         },
       });
 
-      console.log('Recent sales:', sales);
+      if (!sales) {
+        return [];
+      }
 
-      // Always return the sales array, even if empty
-      return sales || [];
+      return sales;
     } catch (error) {
       console.error('Error fetching recent sales:', error);
-      // Return empty array on error
+      // Return empty array on error instead of potentially returning undefined
       return [];
     }
   }

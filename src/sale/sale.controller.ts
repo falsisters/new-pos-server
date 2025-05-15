@@ -59,7 +59,7 @@ export class SaleController {
   }
 
   @UseGuards(JwtCashierAuthGuard)
-  @Get('recent')
+  @Get('recent/cashier')
   async getRecentSales(@Request() req) {
     const cashierId = req.user.id;
     return this.saleService.getLastFiveSales(cashierId);
