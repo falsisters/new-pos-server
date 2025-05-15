@@ -22,6 +22,7 @@ import { ProfitModule } from './profit/profit.module';
 import { BillsModule } from './bills/bills.module';
 import { OrderModule } from './order/order.module';
 import { CustomerModule } from './customer/customer.module';
+import { ExpensesModule } from './expenses/expenses.module';
 
 @Module({
   imports: [
@@ -48,6 +49,7 @@ import { CustomerModule } from './customer/customer.module';
     BillsModule,
     OrderModule,
     CustomerModule,
+    ExpensesModule,
   ],
   controllers: [AppController],
   providers: [AppService],
