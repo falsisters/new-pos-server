@@ -31,13 +31,16 @@ export class ExpensesController {
   }
 
   @UseGuards(JwtCashierAuthGuard)
-  @Put('update')
+  @Put('update/:id')
   async updateExpense(
     @Request() req,
+    @Param('id') expenseListId: string,
     @Body() createExpenseDto: CreateExpenseDto,
   ) {
-    const userId = req.user.userId;
-    return await this.expensesService.editExpense(userId, createExpenseDto);
+    return await this.expensesService.editExpense(
+      expenseListId,
+      createExpenseDto,
+    );
   }
 
   @UseGuards(JwtCashierAuthGuard)
