@@ -401,30 +401,40 @@ export class SaleService {
   }
 
   async getLastFiveSales(cashierId: string) {
-    return this.prisma.sale.findMany({
-      where: {
-        cashierId,
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-      include: {
-        SaleItem: {
-          include: {
-            product: {
-              include: {
-                perKiloPrice: true,
-                SackPrice: {
-                  include: {
-                    specialPrice: true,
+    try {
+      const sales = await this.prisma.sale.findMany({
+        where: {
+          cashierId,
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+        take: 5, // Limit to 5 most recent sales
+        include: {
+          SaleItem: {
+            include: {
+              product: {
+                include: {
+                  perKiloPrice: true,
+                  SackPrice: {
+                    include: {
+                      specialPrice: true,
+                    },
                   },
                 },
               },
             },
           },
         },
-      },
-    });
+      });
+
+      // Always return the sales array, even if empty
+      return sales || [];
+    } catch (error) {
+      console.error('Error fetching recent sales:', error);
+      // Return empty array on error
+      return [];
+    }
   }
 
   async getAllSales(userId: string) {
