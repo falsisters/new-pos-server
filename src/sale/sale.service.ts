@@ -315,14 +315,100 @@ export class SaleService {
   }
 
   async deleteSale(id: string) {
-    return this.prisma.sale.delete({
-      where: { id },
-    });
+    return this.prisma.$transaction(
+      async (tx) => {
+        // 1. Get the sale with all its items and product details
+        const sale = await tx.sale.findUnique({
+          where: { id },
+          include: {
+            SaleItem: {
+              include: {
+                product: true,
+                perKiloPrice: true,
+                SackPrice: true,
+              },
+            },
+            Order: true,
+          },
+        });
+
+        if (!sale) {
+          throw new Error(`Sale with ID ${id} not found`);
+        }
+
+        // 2. Return items to inventory
+        for (const item of sale.SaleItem) {
+          // Restore perKiloPrice stock
+          if (item.perKiloPriceId) {
+            await tx.perKiloPrice.update({
+              where: { id: item.perKiloPriceId },
+              data: {
+                stock: { increment: item.quantity },
+              },
+            });
+          }
+
+          // Restore SackPrice stock
+          if (item.sackPriceId) {
+            await tx.sackPrice.update({
+              where: { id: item.sackPriceId },
+              data: {
+                stock: { increment: item.quantity },
+              },
+            });
+          }
+        }
+
+        // 3. If there's an associated order, update its status
+        if (sale.Order) {
+          await tx.order.update({
+            where: { id: sale.Order.id },
+            data: { status: 'PENDING', saleId: null },
+          });
+        }
+
+        // 4. Delete the sale (this will cascade delete the SaleItems)
+        return tx.sale.delete({
+          where: { id },
+        });
+      },
+      {
+        timeout: 20000, // 20 seconds in milliseconds
+      },
+    );
   }
 
   async getSale(id: string) {
     return this.prisma.sale.findUnique({
       where: { id },
+      include: {
+        SaleItem: {
+          include: {
+            product: {
+              include: {
+                perKiloPrice: true,
+                SackPrice: {
+                  include: {
+                    specialPrice: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+  }
+
+  async getLastFiveSales(cashierId: string) {
+    return this.prisma.sale.findMany({
+      where: {
+        cashierId,
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+      take: 5,
       include: {
         SaleItem: {
           include: {
