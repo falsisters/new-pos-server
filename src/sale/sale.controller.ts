@@ -42,7 +42,7 @@ export class SaleController {
 
   @UseGuards(JwtAuthGuard)
   @Put(':id')
-  async updateSale(@Param('id') id: string, editSaleDto: EditSaleDto) {
+  async updateSale(@Param('id') id: string, @Body() editSaleDto: EditSaleDto) {
     return this.saleService.editSale(id, editSaleDto);
   }
 
