@@ -428,6 +428,8 @@ export class SaleService {
         },
       });
 
+      console.log('Recent sales:', sales);
+
       // Always return the sales array, even if empty
       return sales || [];
     } catch (error) {
