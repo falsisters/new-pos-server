@@ -53,6 +53,13 @@ export class TransferController {
     return this.transferService.getAllTransfers(userId);
   }
 
+  @UseGuards(JwtCashierAuthGuard)
+  @Get('cashier')
+  async getAllTransfersByCashier(@Request() req) {
+    const userId = req.user.userId;
+    return this.transferService.getAllTransfers(userId);
+  }
+
   @UseGuards(JwtAuthGuard)
   @Delete(':id')
   async deleteTransfer(@Param('id') id: string) {
