@@ -6,6 +6,5 @@ class ExpenseItem {
 }
 
 export class CreateExpenseDto {
-  @IsNotEmpty()
   expenseItems: ExpenseItem[];
 }

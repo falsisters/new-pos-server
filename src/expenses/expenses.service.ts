@@ -8,7 +8,7 @@ export class ExpensesService {
   constructor(private prisma: PrismaService) {}
 
   async createExpense(userId: string, createExpenseDto: CreateExpenseDto) {
-    const { expenseItems } = createExpenseDto;
+    const itemsToProcess = createExpenseDto.expenseItems || [];
 
     // Get today's date boundaries
     const today = new Date();
@@ -35,7 +35,7 @@ export class ExpensesService {
           data: {
             ExpenseItems: {
               deleteMany: {},
-              create: expenseItems.map((item) => ({
+              create: itemsToProcess.map((item) => ({
                 name: item.name,
                 amount: item.amount,
               })),
@@ -51,7 +51,7 @@ export class ExpensesService {
           data: {
             userId,
             ExpenseItems: {
-              create: expenseItems.map((item) => ({
+              create: itemsToProcess.map((item) => ({
                 name: item.name,
                 amount: item.amount,
               })),
@@ -66,7 +66,7 @@ export class ExpensesService {
   }
 
   async editExpense(expenseListId: string, editExpenseDto: CreateExpenseDto) {
-    const { expenseItems } = editExpenseDto;
+    const itemsToProcess = editExpenseDto.expenseItems || [];
 
     return this.prisma.$transaction(async (tx) => {
       const expense = await tx.expenseList.update({
@@ -74,7 +74,7 @@ export class ExpensesService {
         data: {
           ExpenseItems: {
             deleteMany: {},
-            create: expenseItems.map((item) => ({
+            create: itemsToProcess.map((item) => ({
               name: item.name,
               amount: item.amount,
             })),
