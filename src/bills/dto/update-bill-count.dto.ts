@@ -14,6 +14,9 @@ export class UpdateBillCountDto {
   expenses?: number;
 
   @IsOptional()
+  startingAmount?: number;
+
+  @IsOptional()
   @IsBoolean()
   showExpenses?: boolean;
 

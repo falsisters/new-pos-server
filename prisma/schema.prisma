@@ -369,6 +369,7 @@ model BillCount {
   id                   String   @id @default(cuid())
   Bills                Bills[]
   userId               String
+  startingAmount       Float    @default(0)
   expenses             Float
   showExpenses         Boolean  @default(false)
   beginningBalance     Float

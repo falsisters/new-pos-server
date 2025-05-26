@@ -24,6 +24,9 @@ export class CreateBillCountDto {
   date?: string;
 
   @IsOptional()
+  startingAmount?: number;
+
+  @IsOptional()
   @IsNumber()
   expenses?: number;
 

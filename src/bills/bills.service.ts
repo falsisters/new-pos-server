@@ -44,6 +44,7 @@ export class BillsService {
           showExpenses: createDto.showExpenses || false,
           beginningBalance: createDto.beginningBalance || 0,
           showBeginningBalance: createDto.showBeginningBalance || false,
+          startingAmount: createDto.startingAmount || 0,
         },
       });
 
@@ -71,6 +72,10 @@ export class BillsService {
     await this.prisma.billCount.update({
       where: { id: billCountId },
       data: {
+        startingAmount:
+          updateDto.startingAmount !== undefined
+            ? updateDto.startingAmount
+            : undefined,
         expenses:
           updateDto.expenses !== undefined ? updateDto.expenses : undefined,
         showExpenses:
@@ -184,6 +189,7 @@ export class BillsService {
 
     return {
       id: billCount.id,
+      startingAmount: billCount.startingAmount,
       date: billCount.createdAt,
       expenses: billCount.expenses,
       showExpenses: billCount.showExpenses,
