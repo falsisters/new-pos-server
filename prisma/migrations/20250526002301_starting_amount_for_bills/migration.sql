@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "BillCount" ADD COLUMN     "startingAmount" DOUBLE PRECISION NOT NULL DEFAULT 0;
