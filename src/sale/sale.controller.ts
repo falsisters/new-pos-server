@@ -6,6 +6,7 @@ import {
   Param,
   Post,
   Put,
+  Query,
   Request,
   UseGuards,
 } from '@nestjs/common';
@@ -14,6 +15,7 @@ import { JwtCashierAuthGuard } from 'src/cashier/guards/jwt.guard';
 import { CreateSaleDto } from './dto/create.dto';
 import { JwtAuthGuard } from 'src/auth/guards/jwt.guard';
 import { EditSaleDto } from './dto/edit.dto';
+import { RecentSalesFilterDto } from './dto/recent-sales.dto';
 
 @Controller('sale')
 export class SaleController {
@@ -60,8 +62,8 @@ export class SaleController {
 
   @UseGuards(JwtCashierAuthGuard)
   @Get('recent/cashier')
-  async getRecentSales(@Request() req) {
+  async getRecentSales(@Request() req, @Query() filters: RecentSalesFilterDto) {
     const cashierId = req.user.id;
-    return this.saleService.getLastFiveSales(cashierId);
+    return this.saleService.getSalesByDate(cashierId, filters);
   }
 }

@@ -6,6 +6,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Request,
   UseGuards,
 } from '@nestjs/common';
@@ -15,6 +16,7 @@ import { TransferService } from './transfer.service';
 import { TransferDeliveryDto } from './dto/transferDelivery.dto';
 import { JwtAuthGuard } from 'src/auth/guards/jwt.guard';
 import { EditTransferDto } from './dto/editTransfer.dto';
+import { TransferFilterDto } from './dto/transferWithFilter.dto';
 
 @Controller('transfer')
 export class TransferController {
@@ -58,6 +60,16 @@ export class TransferController {
   async getAllTransfersByCashier(@Request() req) {
     const userId = req.user.userId;
     return this.transferService.getAllTransfers(userId);
+  }
+
+  @UseGuards(JwtCashierAuthGuard)
+  @Get('cashier/date')
+  async getAllTransfersByCashierWithDate(
+    @Request() req,
+    @Query() filters: TransferFilterDto,
+  ) {
+    const userId = req.user.userId;
+    return this.transferService.getAllTransfersWithFilter(userId, filters);
   }
 
   @UseGuards(JwtAuthGuard)

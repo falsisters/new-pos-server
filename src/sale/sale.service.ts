@@ -3,6 +3,7 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateSaleDto } from './dto/create.dto';
 import { EditSaleDto } from './dto/edit.dto';
 import { OrderService } from 'src/order/order.service';
+import { RecentSalesFilterDto } from './dto/recent-sales.dto';
 
 @Injectable()
 export class SaleService {
@@ -400,16 +401,35 @@ export class SaleService {
     });
   }
 
-  async getLastFiveSales(cashierId: string) {
+  async getSalesByDate(cashierId: string, filters: RecentSalesFilterDto) {
     try {
+      // Set default date to today if not provided
+      const targetDate = filters.date ? new Date(filters.date) : new Date();
+
+      // Set start and end of the target day
+      const startOfDay = new Date(targetDate);
+      startOfDay.setHours(0, 0, 0, 0);
+
+      const endOfDay = new Date(targetDate);
+      endOfDay.setHours(23, 59, 59, 999);
+
       const sales = await this.prisma.sale.findMany({
         where: {
-          cashierId,
+          AND: [
+            {
+              cashierId,
+            },
+            {
+              createdAt: {
+                gte: startOfDay,
+                lte: endOfDay,
+              },
+            },
+          ],
         },
         orderBy: {
           createdAt: 'desc',
         },
-        take: 5, // Limit to 5 most recent sales
         include: {
           SaleItem: {
             include: {
@@ -436,7 +456,7 @@ export class SaleService {
 
       return sales;
     } catch (error) {
-      console.error('Error fetching recent sales:', error);
+      console.error('Error fetching sales by date:', error);
       // Return empty array on error instead of potentially returning undefined
       return [];
     }

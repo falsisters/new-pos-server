@@ -4,6 +4,7 @@ import { TransferDeliveryDto } from './dto/transferDelivery.dto';
 import { Kahon, KahonItem, SackType, Transfer } from '@prisma/client';
 import { TransferProductDto } from './dto/transferProduct.dto';
 import { EditTransferDto } from './dto/editTransfer.dto';
+import { TransferFilterDto } from './dto/transferWithFilter.dto';
 
 @Injectable()
 export class TransferService {
@@ -428,5 +429,56 @@ export class TransferService {
         return transfer;
       });
     }
+  }
+
+  async getAllTransfersWithFilter(userId: string, filters: TransferFilterDto) {
+    // Set default date to today if not provided
+    const targetDate = filters.date ? new Date(filters.date) : new Date();
+
+    // Set start and end of the target day
+    const startOfDay = new Date(targetDate);
+    startOfDay.setHours(0, 0, 0, 0);
+
+    const endOfDay = new Date(targetDate);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const cashiers = await this.prisma.cashier.findMany({
+      where: {
+        userId,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    const cashierIds = cashiers.map((cashier) => cashier.id);
+
+    return this.prisma.transfer.findMany({
+      where: {
+        AND: [
+          {
+            cashierId: {
+              in: cashierIds,
+            },
+          },
+          {
+            createdAt: {
+              gte: startOfDay,
+              lte: endOfDay,
+            },
+          },
+        ],
+      },
+      include: {
+        cashier: {
+          select: {
+            name: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
   }
 }

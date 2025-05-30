@@ -2,7 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateBillCountDto } from './dto/create-bill-count.dto';
 import { UpdateBillCountDto } from './dto/update-bill-count.dto';
-import { BillType } from '@prisma/client';
+import { BillType, PaymentMethod } from '@prisma/client';
 
 @Injectable()
 export class BillsService {
@@ -132,7 +132,9 @@ export class BillsService {
       );
     }
 
-    return this.formatBillCountResponse(billCount);
+    // Use the billCount creation date for totalCash calculation
+    const targetDate = billCount.createdAt;
+    return this.formatBillCountResponse(billCount, targetDate);
   }
 
   async getBillCountForDate(userId: string, date?: string) {
@@ -163,16 +165,44 @@ export class BillsService {
       return null; // Return null for non-existing bill count
     }
 
-    return this.formatBillCountResponse(billCount);
+    return this.formatBillCountResponse(billCount, targetDate);
+  }
+
+  // Helper method to calculate total cash sales for a given date
+  private async calculateTotalCash(targetDate: Date): Promise<number> {
+    const startOfDay = new Date(targetDate);
+    startOfDay.setHours(0, 0, 0, 0);
+
+    const endOfDay = new Date(targetDate);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const cashSales = await this.prisma.sale.findMany({
+      where: {
+        paymentMethod: PaymentMethod.CASH,
+        createdAt: {
+          gte: startOfDay,
+          lte: endOfDay,
+        },
+      },
+      select: {
+        totalAmount: true,
+      },
+    });
+
+    return cashSales.reduce((sum, sale) => sum + sale.totalAmount, 0);
   }
 
   // Helper method to format bill count response
-  private formatBillCountResponse(billCount: any) {
+  private async formatBillCountResponse(billCount: any, targetDate?: Date) {
     // Calculate total amount from all bills
     const billsTotal = billCount.Bills.reduce(
       (sum, bill) => sum + bill.amount * this.getBillValue(bill.type),
       0,
     );
+
+    // Calculate total cash sales for the target date
+    const dateForCashCalculation = targetDate || billCount.createdAt;
+    const totalCash = await this.calculateTotalCash(dateForCashCalculation);
 
     // Group bills by type for easy display
     const billsByType = {};
@@ -195,6 +225,7 @@ export class BillsService {
       showExpenses: billCount.showExpenses,
       beginningBalance: billCount.beginningBalance,
       showBeginningBalance: billCount.showBeginningBalance,
+      totalCash,
       bills: billCount.Bills.map((bill) => ({
         id: bill.id,
         type: bill.type,
