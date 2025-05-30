@@ -6,22 +6,25 @@ import sharp from 'sharp';
 export class UploadService {
   private readonly s3Client: S3Client;
   private readonly defaultBucket: string;
+  private readonly supabaseProjectUrl: string;
 
   constructor() {
     this.s3Client = new S3Client({
-      region: `${process.env.AWS_REGION}`,
-      endpoint: `${process.env.AWS_ENDPOINT}`,
+      region: `${process.env.SUPABASE_REGION}`, // Usually 'us-east-1' for Supabase
+      endpoint: `${process.env.SUPABASE_S3_ENDPOINT}`, // e.g., https://your-project.supabase.co/storage/v1/s3
       credentials: {
-        accessKeyId: `${process.env.AWS_ACCESS_KEY_ID}`,
-        secretAccessKey: `${process.env.AWS_SECRET_ACCESS_KEY}`,
-      }, // yes
+        accessKeyId: `${process.env.SUPABASE_ACCESS_KEY_ID}`,
+        secretAccessKey: `${process.env.SUPABASE_SECRET_ACCESS_KEY}`,
+      },
+      forcePathStyle: true, // Required for Supabase S3 compatibility
     });
 
-    this.defaultBucket = `${process.env.AWS_BUCKET_NAME}`;
+    this.defaultBucket = `${process.env.SUPABASE_BUCKET_NAME}`;
+    this.supabaseProjectUrl = `${process.env.SUPABASE_PROJECT_URL}`; // e.g., https://your-project.supabase.co
   }
 
   async getPublicUrl(key: string) {
-    return `https://${this.defaultBucket}.s3.amazonaws.com/${key}`;
+    return `${this.supabaseProjectUrl}/storage/v1/object/public/${this.defaultBucket}/${key}`;
   }
 
   async uploadSingleFile(file: Express.Multer.File, path: string) {
