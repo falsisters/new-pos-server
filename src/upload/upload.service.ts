@@ -29,7 +29,11 @@ export class UploadService {
 
   async uploadSingleFile(file: Express.Multer.File, path: string) {
     const fileName = file.originalname.replace(/ /g, '_');
-    const key = `${path}/${Date.now()}-${fileName}`;
+    // Remove leading/trailing slashes and ensure single slash between path and filename
+    const cleanPath = path.replace(/^\/+|\/+$/g, '');
+    const key = cleanPath
+      ? `${cleanPath}/${Date.now()}-${fileName}`
+      : `${Date.now()}-${fileName}`;
 
     try {
       const compressedFile = await sharp(file.buffer)
