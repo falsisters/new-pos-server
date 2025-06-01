@@ -26,7 +26,7 @@ class ProductDto {
 
   @IsOptional()
   @IsBoolean()
-  isDiscounted: boolean;
+  isDiscounted: boolean = false;
 
   @IsOptional()
   isSpecialPrice: boolean;

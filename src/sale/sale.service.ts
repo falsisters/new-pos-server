@@ -65,10 +65,9 @@ export class SaleService {
                   quantity,
                   isGantang: item.isGantang,
                   isSpecialPrice: item.isSpecialPrice,
-                  // Add the new discount fields if present
-                  ...(item.isDiscounted !== undefined && {
-                    isDiscounted: item.isDiscounted,
-                  }),
+                  // Ensure isDiscounted is always a boolean
+                  isDiscounted: item.isDiscounted ?? false,
+                  // Only add discountedPrice if it's defined
                   ...(item.discountedPrice !== undefined && {
                     discountedPrice: item.discountedPrice,
                   }),
@@ -226,10 +225,9 @@ export class SaleService {
             quantity: quantity,
             isGantang: item.isGantang,
             isSpecialPrice: item.isSpecialPrice,
-            // Add the new discount fields if present
-            ...(item.isDiscounted !== undefined && {
-              isDiscounted: item.isDiscounted,
-            }),
+            // Ensure isDiscounted is always a boolean
+            isDiscounted: item.isDiscounted ?? false,
+            // Only add discountedPrice if it's defined
             ...(item.discountedPrice !== undefined && {
               discountedPrice: item.discountedPrice,
             }),
