@@ -23,6 +23,7 @@ import { BillsModule } from './bills/bills.module';
 import { OrderModule } from './order/order.module';
 import { CustomerModule } from './customer/customer.module';
 import { ExpensesModule } from './expenses/expenses.module';
+import { DatabaseModule } from './database/database.module';
 
 @Module({
   imports: [
@@ -50,6 +51,7 @@ import { ExpensesModule } from './expenses/expenses.module';
     OrderModule,
     CustomerModule,
     ExpensesModule,
+    DatabaseModule,
   ],
   controllers: [AppController],
   providers: [AppService],
