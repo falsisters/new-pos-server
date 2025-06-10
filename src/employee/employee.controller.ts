@@ -6,6 +6,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Request,
   UseGuards,
 } from '@nestjs/common';
@@ -14,6 +15,7 @@ import { CreateEmployeeDto } from './dto/create.dto';
 import { JwtAuthGuard } from 'src/auth/guards/jwt.guard';
 import { EditEmployeeDto } from './dto/edit.dto';
 import { JwtCashierAuthGuard } from 'src/cashier/guards/jwt.guard';
+import { EmployeeAttendanceFilterDto } from './dto/employee-attendance.dto';
 
 @Controller('employee')
 export class EmployeeController {
@@ -61,5 +63,25 @@ export class EmployeeController {
   @Get(':id')
   async getEmployeeById(@Param('id') id: string) {
     return this.employeeService.getEmployeeById(id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('attendance')
+  async getEmployeeAttendance(
+    @Request() req,
+    @Query() filterDto: EmployeeAttendanceFilterDto,
+  ) {
+    const userId = req.user.id;
+    return this.employeeService.getEmployeeAttendance(userId, filterDto);
+  }
+
+  @UseGuards(JwtCashierAuthGuard)
+  @Get('cashier/attendance')
+  async getCashierEmployeeAttendance(
+    @Request() req,
+    @Query() filterDto: EmployeeAttendanceFilterDto,
+  ) {
+    const userId = req.user.userId;
+    return this.employeeService.getEmployeeAttendance(userId, filterDto);
   }
 }
