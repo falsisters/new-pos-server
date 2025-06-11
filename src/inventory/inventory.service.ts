@@ -356,9 +356,22 @@ export class InventoryService {
     });
   }
 
-  async deleteCell(cellId: string) {
-    return await this.prisma.inventoryCell.delete({
-      where: { id: cellId },
+  async addCell(
+    rowId: string,
+    columnIndex: number,
+    value: string,
+    formula?: string,
+    color?: string,
+  ) {
+    return await this.prisma.inventoryCell.create({
+      data: {
+        inventoryRowId: rowId,
+        columnIndex,
+        value,
+        formula,
+        color: color ? color : undefined,
+        isCalculated: !!formula,
+      },
     });
   }
 
@@ -367,42 +380,27 @@ export class InventoryService {
       rowId: string;
       columnIndex: number;
       value: string;
-      color?: string;
       formula?: string;
+      color?: string;
     }[],
   ) {
-    const addCellsPromises = cells.map((cell) => {
-      return this.prisma.inventoryCell.create({
-        data: {
-          inventoryRowId: cell.rowId,
-          columnIndex: cell.columnIndex,
-          value: cell.value,
-          color: cell.color ? cell.color : undefined,
-          formula: cell.formula,
-          isCalculated: !!cell.formula,
-        },
-      });
-    });
+    const cellsData = cells.map((cell) => ({
+      inventoryRowId: cell.rowId,
+      columnIndex: cell.columnIndex,
+      value: cell.value,
+      formula: cell.formula,
+      color: cell.color ? cell.color : undefined,
+      isCalculated: !!cell.formula,
+    }));
 
-    return Promise.all(addCellsPromises);
+    return await this.prisma.inventoryCell.createMany({
+      data: cellsData,
+    });
   }
 
-  async addCell(
-    rowId: string,
-    columnIndex: number,
-    value: string,
-    color?: string,
-    formula?: string,
-  ) {
-    return await this.prisma.inventoryCell.create({
-      data: {
-        inventoryRowId: rowId,
-        columnIndex,
-        value,
-        color: color ? color : undefined,
-        formula,
-        isCalculated: !!formula,
-      },
+  async deleteCell(cellId: string) {
+    return await this.prisma.inventoryCell.delete({
+      where: { id: cellId },
     });
   }
 

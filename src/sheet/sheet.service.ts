@@ -214,8 +214,8 @@ export class SheetService {
   async updateCell(
     cellId: string,
     value: string,
-    color?: string,
     formula?: string,
+    color?: string,
   ) {
     return await this.prisma.cell.update({
       where: { id: cellId },
@@ -263,8 +263,8 @@ export class SheetService {
     rowId: string,
     columnIndex: number,
     value: string,
-    color?: string,
     formula?: string,
+    color?: string,
   ) {
     return await this.prisma.cell.create({
       data: {

@@ -1,9 +1,12 @@
 export class AddCalculationRowDto {
-  sheetId: string;
+  sheetId?: string;
+  inventoryId?: string;
   rowIndex: number;
+  description?: string;
 }
 
 export class AddCalculationRowsDto {
-  sheetId: string;
+  sheetId?: string;
+  inventoryId?: string;
   rowIndexes: number[];
 }

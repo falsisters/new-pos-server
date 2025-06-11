@@ -176,22 +176,34 @@ export class InventoryController {
   @UseGuards(JwtCashierAuthGuard)
   @Post('cell')
   async addCell(@Body() addCellDto: AddCellDto) {
-    const { rowId, columnIndex, value, formula } = addCellDto;
-    return this.inventoryService.addCell(rowId, columnIndex, value, formula);
+    const { rowId, columnIndex, value, formula, color } = addCellDto;
+    return this.inventoryService.addCell(
+      rowId,
+      columnIndex,
+      value,
+      formula,
+      color,
+    );
   }
 
   @UseGuards(JwtAuthGuard)
   @Post('user/cell')
   async addUserCell(@Body() addCellDto: AddCellDto) {
-    const { rowId, columnIndex, value, formula } = addCellDto;
-    return this.inventoryService.addCell(rowId, columnIndex, value, formula);
+    const { rowId, columnIndex, value, formula, color } = addCellDto;
+    return this.inventoryService.addCell(
+      rowId,
+      columnIndex,
+      value,
+      formula,
+      color,
+    );
   }
 
   @UseGuards(JwtCashierAuthGuard)
   @Patch('cell/:id')
   async updateCell(@Param('id') id: string, @Body() addCellDto: AddCellDto) {
-    const { value, formula } = addCellDto;
-    return this.inventoryService.updateCell(id, value, formula);
+    const { value, formula, color } = addCellDto;
+    return this.inventoryService.updateCell(id, value, formula, color);
   }
 
   @UseGuards(JwtAuthGuard)
@@ -200,8 +212,8 @@ export class InventoryController {
     @Param('id') id: string,
     @Body() addCellDto: AddCellDto,
   ) {
-    const { value, formula } = addCellDto;
-    return this.inventoryService.updateCell(id, value, formula);
+    const { value, formula, color } = addCellDto;
+    return this.inventoryService.updateCell(id, value, formula, color);
   }
 
   @UseGuards(JwtCashierAuthGuard)
@@ -240,5 +252,17 @@ export class InventoryController {
   @Patch('user/cells')
   async updateUserCells(@Body() editCellsDto: EditCellsDto) {
     return this.inventoryService.updateCells(editCellsDto.cells);
+  }
+
+  @UseGuards(JwtCashierAuthGuard)
+  @Get('sheet/:id')
+  async getInventorySheetById(@Param('id') id: string) {
+    return this.inventoryService.getInventorySheetWithData(id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('user/sheet/:id')
+  async getUserInventorySheetById(@Param('id') id: string) {
+    return this.inventoryService.getInventorySheetWithData(id);
   }
 }
