@@ -23,8 +23,6 @@ model User {
   Cashier     Cashier[]
   Employee    Employee[]
   Product     Product[]
-  Inventory   Inventory[]
-  Kahon       Kahon[]
   BillCount   BillCount[]
   Attachment  Attachment[]
   Order       Order[]
@@ -45,10 +43,8 @@ model Cashier {
   Sale        Sale[]
   Shift       Shift[]
   Transfer    Transfer[]
-  inventoryId String?
-  kahonId     String?
-  Kahon       Kahon?               @relation(fields: [kahonId], references: [id])
-  Inventory   Inventory?           @relation(fields: [inventoryId], references: [id])
+  Kahon       Kahon[]
+  Inventory   Inventory[]
 }
 
 enum CashierPermissions {
@@ -242,24 +238,22 @@ enum TransferType {
 model Kahon {
   id         String      @id @default(cuid())
   name       String
-  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId     String
+  cashier    Cashier     @relation(fields: [cashierId], references: [id], onDelete: Cascade)
+  cashierId  String
   createdAt  DateTime    @default(now())
   updatedAt  DateTime    @updatedAt
   KahonItems KahonItem[]
   Sheets     Sheet[]
-  Cashier    Cashier[]
 }
 
 model Inventory {
   id             String           @id @default(cuid())
   name           String
-  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId         String
+  cashier        Cashier          @relation(fields: [cashierId], references: [id], onDelete: Cascade)
+  cashierId      String
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
   InventorySheet InventorySheet[]
-  Cashier        Cashier[]
 }
 
 model KahonItem {

@@ -49,55 +49,14 @@ export class AuthService {
     const saltRounds = 10;
     const hashedPassword = await bcrypt.hash(password, saltRounds);
 
-    await this.prisma.$transaction(async (tx) => {
-      const user = await this.prisma.user.create({
-        data: {
-          email,
-          name,
-          password: hashedPassword,
-        },
-      });
-
-      await this.prisma.kahon.create({
-        data: {
-          userId: user.id,
-          name: 'Kahon',
-          Sheets: {
-            create: {
-              name: 'Kahon Sheet',
-              columns: 15,
-            },
-          },
-        },
-      });
-
-      await this.prisma.inventory.create({
-        data: {
-          userId: user.id,
-          name: 'Inventory',
-          InventorySheet: {
-            create: {
-              name: 'Inventory Sheet',
-              columns: 15,
-            },
-          },
-        },
-      });
-
-      await this.prisma.inventory.create({
-        data: {
-          userId: user.id,
-          name: 'Expenses',
-          InventorySheet: {
-            create: {
-              name: 'Expenses Sheet',
-              columns: 15,
-            },
-          },
-        },
-      });
-
-      return user;
+    const user = await this.prisma.user.create({
+      data: {
+        email,
+        name,
+        password: hashedPassword,
+      },
     });
+
+    return user;
   }
 }

@@ -31,15 +31,23 @@ export class SheetService {
     });
   }
 
-  async getSheetsByDateRange(userId: string, startDate?: Date, endDate?: Date) {
+  async getSheetsByDateRange(
+    cashierId: string,
+    startDate?: Date,
+    endDate?: Date,
+  ) {
     // Set date range
     const end = endDate || new Date();
     const start = startDate || new Date(end.getTime() - 24 * 60 * 60 * 1000);
 
     // Find the kahon for this cashier
     const kahon = await this.prisma.kahon.findFirst({
-      where: { userId, name: 'Kahon' },
+      where: { cashierId, name: 'Kahon' },
     });
+
+    if (!kahon) {
+      return null; // Or throw an error, or return an empty structure
+    }
 
     // Return sheets with rows filtered by date range
     return await this.prisma.sheet.findFirst({
@@ -61,6 +69,34 @@ export class SheetService {
         },
       },
     });
+  }
+
+  async getSheetsForUserByDateRange(
+    userId: string,
+    startDate?: Date,
+    endDate?: Date,
+  ) {
+    const cashiers = await this.prisma.cashier.findMany({
+      where: { userId },
+      select: { id: true, name: true },
+    });
+
+    const resultSheets = [];
+    for (const cashier of cashiers) {
+      const sheet = await this.getSheetsByDateRange(
+        cashier.id,
+        startDate,
+        endDate,
+      );
+      if (sheet) {
+        resultSheets.push({
+          cashierName: cashier.name,
+          cashierId: cashier.id,
+          sheet,
+        });
+      }
+    }
+    return resultSheets;
   }
 
   async addItemRow(sheetId: string, kahonItemId: string, rowIndex: number) {

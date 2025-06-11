@@ -10,13 +10,26 @@ export class KahonController {
   @UseGuards(JwtCashierAuthGuard)
   @Get('cashier')
   async getKahonByCashier(@Request() req) {
-    const userId = req.user.userId;
-    return this.kahonService.getKahonByCashier(userId);
+    const cashierId = req.user.id; // Use cashier's ID from JWT
+    // Add date query parameters if needed by getKahonByCashier
+    const { startDate: startDateStr, endDate: endDateStr } = req.query;
+    const startDate = startDateStr
+      ? new Date(startDateStr as string)
+      : undefined;
+    const endDate = endDateStr ? new Date(endDateStr as string) : undefined;
+    return this.kahonService.getKahonByCashier(cashierId, startDate, endDate);
   }
 
   @UseGuards(JwtAuthGuard)
-  @Get('cashier/:id')
-  async getKahonByUser(@Param('id') id) {
-    return this.kahonService.getKahonByCashier(id);
+  @Get('user') // Changed route from 'cashier/:id' to 'user' for clarity
+  async getKahonsByUser(@Request() req) {
+    // Changed method signature
+    const userId = req.user.id; // User's ID from JWT
+    const { startDate: startDateStr, endDate: endDateStr } = req.query;
+    const startDate = startDateStr
+      ? new Date(startDateStr as string)
+      : undefined;
+    const endDate = endDateStr ? new Date(endDateStr as string) : undefined;
+    return this.kahonService.getKahonsByUserId(userId, startDate, endDate);
   }
 }

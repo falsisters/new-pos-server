@@ -28,7 +28,7 @@ export class SheetController {
   @UseGuards(JwtCashierAuthGuard)
   @Get('date')
   async getSheetByDate(@Request() req) {
-    const userId = req.user.userId;
+    const cashierId = req.user.id; // Changed from userId to cashierId
     const { startDate: startDateStr, endDate: endDateStr } = req.query;
 
     // Handle null/undefined values for startDate and endDate
@@ -37,7 +37,11 @@ export class SheetController {
       : undefined;
     const endDate = endDateStr ? new Date(endDateStr as string) : undefined;
 
-    return this.sheetService.getSheetsByDateRange(userId, startDate, endDate);
+    return this.sheetService.getSheetsByDateRange(
+      cashierId,
+      startDate,
+      endDate,
+    ); // Changed userId to cashierId
   }
 
   @UseGuards(JwtAuthGuard)
@@ -52,7 +56,11 @@ export class SheetController {
       : undefined;
     const endDate = endDateStr ? new Date(endDateStr as string) : undefined;
 
-    return this.sheetService.getSheetsByDateRange(userId, startDate, endDate);
+    return this.sheetService.getSheetsForUserByDateRange(
+      userId,
+      startDate,
+      endDate,
+    ); // New method
   }
 
   @UseGuards(JwtCashierAuthGuard)

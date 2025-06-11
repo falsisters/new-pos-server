@@ -6,18 +6,22 @@ import { EditKahonItemsDto } from './dto/editKahonItemsDto';
 export class KahonService {
   constructor(private prisma: PrismaService) {}
 
-  async getKahonByCashier(userId: string, startDate?: Date, endDate?: Date) {
+  async getKahonByCashier(cashierId: string, startDate?: Date, endDate?: Date) {
     const end = endDate || new Date();
     const start = startDate || new Date(end.getTime() - 24 * 60 * 60 * 1000);
 
-    return await this.prisma.kahon.findMany({
+    // Assuming a cashier has one primary "Kahon" named 'Kahon'
+    return await this.prisma.kahon.findFirst({
       where: {
-        userId: userId,
+        cashierId: cashierId, // Changed from userId
+        name: 'Kahon', // Assuming we fetch the specific "Kahon"
       },
       include: {
-        user: {
+        cashier: {
+          // Optional: include cashier details if needed
           select: {
             name: true,
+            userId: true,
           },
         },
         KahonItems: {
@@ -28,8 +32,79 @@ export class KahonService {
             },
           },
         },
+        Sheets: {
+          // Include sheets as well, if needed for the response
+          include: {
+            Rows: {
+              orderBy: { rowIndex: 'asc' },
+              include: {
+                Cells: {
+                  orderBy: { columnIndex: 'asc' },
+                },
+              },
+            },
+          },
+        },
       },
     });
+  }
+
+  async getKahonsByUserId(userId: string, startDate?: Date, endDate?: Date) {
+    const end = endDate || new Date();
+    const start = startDate || new Date(end.getTime() - 24 * 60 * 60 * 1000);
+
+    const cashiers = await this.prisma.cashier.findMany({
+      where: { userId },
+      select: { id: true, name: true },
+    });
+
+    const kahonsWithCashierInfo = [];
+
+    for (const cashier of cashiers) {
+      const kahon = await this.prisma.kahon.findFirst({
+        where: {
+          cashierId: cashier.id,
+          name: 'Kahon',
+        },
+        include: {
+          KahonItems: {
+            where: {
+              createdAt: {
+                gte: start,
+                lte: end,
+              },
+            },
+          },
+          Sheets: {
+            include: {
+              Rows: {
+                where: {
+                  // Filter rows by date if sheets are per day, or adjust as needed
+                  createdAt: {
+                    gte: start,
+                    lte: end,
+                  },
+                },
+                orderBy: { rowIndex: 'asc' },
+                include: {
+                  Cells: {
+                    orderBy: { columnIndex: 'asc' },
+                  },
+                },
+              },
+            },
+          },
+        },
+      });
+      if (kahon) {
+        kahonsWithCashierInfo.push({
+          cashierName: cashier.name,
+          cashierId: cashier.id,
+          ...kahon,
+        });
+      }
+    }
+    return kahonsWithCashierInfo;
   }
 
   async editKahonItems(id: string, editKahonItemsDto: EditKahonItemsDto) {

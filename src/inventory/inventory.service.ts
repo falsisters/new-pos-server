@@ -5,20 +5,21 @@ import { PrismaService } from 'src/prisma/prisma.service';
 export class InventoryService {
   constructor(private prisma: PrismaService) {}
 
-  async findInventoryByCashier(userId: string) {
+  async findInventoryByCashier(cashierId: string, name: string = 'Inventory') {
+    // Added name parameter
     const inventory = await this.prisma.inventory.findFirst({
-      where: { userId, name: 'Inventory' },
+      where: { cashierId, name }, // Changed userId to cashierId
     });
 
     if (!inventory) {
       return this.prisma.inventory.create({
         data: {
-          userId,
-          name: 'Inventory',
+          cashierId, // Changed userId to cashierId
+          name,
           InventorySheet: {
             create: {
-              name: 'Inventory Sheet',
-              columns: 20,
+              name: `${name} Sheet`,
+              columns: 20, // Or your default
             },
           },
         },
@@ -27,9 +28,10 @@ export class InventoryService {
     return inventory;
   }
 
-  async findInventorySheetByCashier(userId: string) {
+  async findInventorySheetByCashier(cashierId: string) {
+    // For 'Inventory'
     const inventory = await this.prisma.inventory.findFirst({
-      where: { userId, name: 'Inventory' },
+      where: { cashierId, name: 'Inventory' }, // Changed userId to cashierId
       include: {
         InventorySheet: {
           include: {
@@ -49,7 +51,7 @@ export class InventoryService {
     if (!inventory) {
       const newInventory = await this.prisma.inventory.create({
         data: {
-          userId,
+          cashierId, // Changed userId to cashierId
           name: 'Inventory',
           InventorySheet: {
             create: {
@@ -77,9 +79,10 @@ export class InventoryService {
     return inventory.InventorySheet[0];
   }
 
-  async findExpensesSheetByCashier(userId: string) {
+  async findExpensesSheetByCashier(cashierId: string) {
+    // For 'Expenses'
     const expenses = await this.prisma.inventory.findFirst({
-      where: { userId, name: 'Expenses' },
+      where: { cashierId, name: 'Expenses' }, // Changed userId to cashierId
       include: {
         InventorySheet: {
           include: {
@@ -99,7 +102,7 @@ export class InventoryService {
     if (!expenses) {
       const newExpenses = await this.prisma.inventory.create({
         data: {
-          userId,
+          cashierId, // Changed userId to cashierId
           name: 'Expenses',
           InventorySheet: {
             create: {
@@ -158,7 +161,7 @@ export class InventoryService {
   }
 
   async getExpensesSheetsByDateRange(
-    userId: string,
+    cashierId: string, // Changed userId to cashierId
     startDate?: Date,
     endDate?: Date,
   ) {
@@ -166,13 +169,13 @@ export class InventoryService {
     const start = startDate || new Date(end.getTime() - 24 * 60 * 60 * 1000);
 
     let inventory = await this.prisma.inventory.findFirst({
-      where: { userId, name: 'Expenses' },
+      where: { cashierId, name: 'Expenses' }, // Changed userId to cashierId
     });
 
     if (!inventory) {
       inventory = await this.prisma.inventory.create({
         data: {
-          userId,
+          cashierId, // Changed userId to cashierId
           name: 'Expenses',
           InventorySheet: {
             create: {
@@ -206,7 +209,7 @@ export class InventoryService {
   }
 
   async getInventorySheetsByDateRange(
-    userId: string,
+    cashierId: string, // Changed userId to cashierId
     startDate?: Date,
     endDate?: Date,
   ) {
@@ -216,14 +219,14 @@ export class InventoryService {
 
     // Find the inventory for this cashier
     let inventory = await this.prisma.inventory.findFirst({
-      where: { userId, name: 'Inventory' },
+      where: { cashierId, name: 'Inventory' }, // Changed userId to cashierId
     });
 
     if (!inventory) {
       // Create a new inventory if it doesn't exist
       inventory = await this.prisma.inventory.create({
         data: {
-          userId,
+          cashierId, // Changed userId to cashierId
           name: 'Inventory',
           InventorySheet: {
             create: {
@@ -420,5 +423,59 @@ export class InventoryService {
     });
 
     return Promise.all(updatePromises);
+  }
+
+  async getInventorySheetsForUserByDateRange(
+    userId: string,
+    startDate?: Date,
+    endDate?: Date,
+  ) {
+    const cashiers = await this.prisma.cashier.findMany({
+      where: { userId },
+      select: { id: true, name: true },
+    });
+    const resultSheets = [];
+    for (const cashier of cashiers) {
+      const sheet = await this.getInventorySheetsByDateRange(
+        cashier.id,
+        startDate,
+        endDate,
+      );
+      if (sheet) {
+        resultSheets.push({
+          cashierName: cashier.name,
+          cashierId: cashier.id,
+          sheet,
+        });
+      }
+    }
+    return resultSheets;
+  }
+
+  async getExpensesSheetsForUserByDateRange(
+    userId: string,
+    startDate?: Date,
+    endDate?: Date,
+  ) {
+    const cashiers = await this.prisma.cashier.findMany({
+      where: { userId },
+      select: { id: true, name: true },
+    });
+    const resultSheets = [];
+    for (const cashier of cashiers) {
+      const sheet = await this.getExpensesSheetsByDateRange(
+        cashier.id,
+        startDate,
+        endDate,
+      );
+      if (sheet) {
+        resultSheets.push({
+          cashierName: cashier.name,
+          cashierId: cashier.id,
+          sheet,
+        });
+      }
+    }
+    return resultSheets;
   }
 }

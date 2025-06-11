@@ -18,21 +18,26 @@ export class DatabaseService {
       await tx.bills.deleteMany({ where: { billCount: { userId } } });
       await tx.billCount.deleteMany({ where: { userId } });
       await tx.attachment.deleteMany({ where: { userId } });
+      
+      // Updated: Clear inventory data via cashier relationship
       await tx.inventoryCell.deleteMany({
-        where: { inventoryRow: { inventorySheet: { inventory: { userId } } } },
+        where: { inventoryRow: { inventorySheet: { inventory: { cashier: { userId } } } } },
       });
       await tx.inventoryRow.deleteMany({
-        where: { inventorySheet: { inventory: { userId } } },
+        where: { inventorySheet: { inventory: { cashier: { userId } } } },
       });
-      await tx.inventorySheet.deleteMany({ where: { inventory: { userId } } });
-      await tx.inventory.deleteMany({ where: { userId } });
+      await tx.inventorySheet.deleteMany({ where: { inventory: { cashier: { userId } } } });
+      await tx.inventory.deleteMany({ where: { cashier: { userId } } });
+      
+      // Updated: Clear kahon data via cashier relationship
       await tx.cell.deleteMany({
-        where: { row: { sheet: { kahon: { userId } } } },
+        where: { row: { sheet: { kahon: { cashier: { userId } } } } },
       });
-      await tx.row.deleteMany({ where: { sheet: { kahon: { userId } } } });
-      await tx.sheet.deleteMany({ where: { kahon: { userId } } });
-      await tx.kahonItem.deleteMany({ where: { kahon: { userId } } });
-      await tx.kahon.deleteMany({ where: { userId } });
+      await tx.row.deleteMany({ where: { sheet: { kahon: { cashier: { userId } } } } });
+      await tx.sheet.deleteMany({ where: { kahon: { cashier: { userId } } } });
+      await tx.kahonItem.deleteMany({ where: { kahon: { cashier: { userId } } } });
+      await tx.kahon.deleteMany({ where: { cashier: { userId } } });
+      
       await tx.transfer.deleteMany({ where: { cashier: { userId } } });
       await tx.deliveryItem.deleteMany({
         where: { delivery: { cashier: { userId } } },
@@ -114,9 +119,11 @@ export class DatabaseService {
           },
         },
       }),
+      // Updated: Fetch kahons via cashier relationship
       this.prisma.kahon.findMany({
-        where: { userId },
+        where: { cashier: { userId } },
         include: {
+          cashier: { select: { name: true } },
           KahonItems: true,
           Sheets: {
             include: {
@@ -127,9 +134,11 @@ export class DatabaseService {
           },
         },
       }),
+      // Updated: Fetch inventories via cashier relationship
       this.prisma.inventory.findMany({
-        where: { userId },
+        where: { cashier: { userId } },
         include: {
+          cashier: { select: { name: true } },
           InventorySheet: {
             include: {
               Rows: {
@@ -273,6 +282,48 @@ export class DatabaseService {
         paymentMethod: '',
         status: transfer.type,
         details: `Transfer Type: ${transfer.type}`,
+      });
+    });
+
+    // Updated: Kahon data with cashier info
+    data.kahons.forEach((kahon) => {
+      kahon.KahonItems.forEach((item) => {
+        records.push({
+          type: 'Kahon Item',
+          id: kahon.id,
+          date: item.createdAt.toISOString(),
+          cashier: kahon.cashier.name,
+          customer: '',
+          product: item.name,
+          quantity: item.quantity,
+          amount: '',
+          paymentMethod: '',
+          status: 'Active',
+          details: `Kahon: ${kahon.name}`,
+        });
+      });
+    });
+
+    // Updated: Inventory data with cashier info
+    data.inventories.forEach((inventory) => {
+      inventory.InventorySheet.forEach((sheet) => {
+        sheet.Rows.forEach((row) => {
+          if (row.isItemRow && row.itemId) {
+            records.push({
+              type: 'Inventory Item',
+              id: inventory.id,
+              date: row.createdAt.toISOString(),
+              cashier: inventory.cashier.name,
+              customer: '',
+              product: `${inventory.name} Item`,
+              quantity: '',
+              amount: '',
+              paymentMethod: '',
+              status: 'Active',
+              details: `Inventory: ${inventory.name}, Sheet: ${sheet.name}`,
+            });
+          }
+        });
       });
     });
 

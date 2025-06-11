@@ -41,6 +41,7 @@ export class CashierService {
       id: cashier.id,
       userId: cashier.userId,
       name: cashier.name,
+      secureCode: cashier.secureCode,
       permissions: cashier.permissions,
     };
     return {
@@ -53,13 +54,59 @@ export class CashierService {
 
   async register(userId: string, registerCashierDto: RegisterCashierDto) {
     const { name, accessKey, permissions } = registerCashierDto;
-    const cashier = await this.prisma.cashier.create({
-      data: {
-        name,
-        accessKey,
-        permissions,
-        userId,
-      },
+
+    return this.prisma.$transaction(async (tx) => {
+      const cashier = await tx.cashier.create({
+        data: {
+          name,
+          accessKey,
+          permissions,
+          userId,
+        },
+      });
+
+      // Create default Kahon for the cashier
+      await tx.kahon.create({
+        data: {
+          cashierId: cashier.id,
+          name: 'Kahon',
+          Sheets: {
+            create: {
+              name: 'Kahon Sheet',
+              columns: 15, // Or your default
+            },
+          },
+        },
+      });
+
+      // Create default Inventory for products for the cashier
+      await tx.inventory.create({
+        data: {
+          cashierId: cashier.id,
+          name: 'Inventory',
+          InventorySheet: {
+            create: {
+              name: 'Inventory Sheet',
+              columns: 15, // Or your default
+            },
+          },
+        },
+      });
+
+      // Create default Inventory for expenses for the cashier
+      await tx.inventory.create({
+        data: {
+          cashierId: cashier.id,
+          name: 'Expenses',
+          InventorySheet: {
+            create: {
+              name: 'Expenses Sheet',
+              columns: 15, // Or your default
+            },
+          },
+        },
+      });
+      return cashier;
     });
   }
 

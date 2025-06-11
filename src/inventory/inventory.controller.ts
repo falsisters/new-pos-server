@@ -28,7 +28,7 @@ export class InventoryController {
   @UseGuards(JwtCashierAuthGuard)
   @Get('expenses/date')
   async getExpensesSheetByDate(@Request() req) {
-    const userId = req.user.userId;
+    const cashierId = req.user.id; // Changed from userId to cashierId
     const { startDate: startDateStr, endDate: endDateStr } = req.query;
 
     // Handle null/undefined values for startDate and endDate
@@ -38,7 +38,7 @@ export class InventoryController {
     const endDate = endDateStr ? new Date(endDateStr as string) : undefined;
 
     return this.inventoryService.getExpensesSheetsByDateRange(
-      userId,
+      cashierId, // Changed from userId
       startDate,
       endDate,
     );
@@ -56,7 +56,8 @@ export class InventoryController {
       : undefined;
     const endDate = endDateStr ? new Date(endDateStr as string) : undefined;
 
-    return this.inventoryService.getExpensesSheetsByDateRange(
+    return this.inventoryService.getExpensesSheetsForUserByDateRange(
+      // New method
       userId,
       startDate,
       endDate,
@@ -66,7 +67,7 @@ export class InventoryController {
   @UseGuards(JwtCashierAuthGuard)
   @Get('date')
   async getSheetByDate(@Request() req) {
-    const userId = req.user.userId;
+    const cashierId = req.user.id; // Changed from userId to cashierId
     const { startDate: startDateStr, endDate: endDateStr } = req.query;
 
     // Handle null/undefined values for startDate and endDate
@@ -76,7 +77,7 @@ export class InventoryController {
     const endDate = endDateStr ? new Date(endDateStr as string) : undefined;
 
     return this.inventoryService.getInventorySheetsByDateRange(
-      userId,
+      cashierId, // Changed from userId
       startDate,
       endDate,
     );
@@ -94,7 +95,8 @@ export class InventoryController {
       : undefined;
     const endDate = endDateStr ? new Date(endDateStr as string) : undefined;
 
-    return this.inventoryService.getInventorySheetsByDateRange(
+    return this.inventoryService.getInventorySheetsForUserByDateRange(
+      // New method
       userId,
       startDate,
       endDate,

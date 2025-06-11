@@ -44,22 +44,34 @@ export class TransferController {
     @Request() req,
     @Body() transferDeliveryDto: TransferDeliveryDto,
   ) {
-    const userId = req.user.userId;
-    return this.transferService.transferDelivery(userId, transferDeliveryDto);
+    const cashierId = req.user.id; // Use cashier's ID from JWT
+    return this.transferService.transferDelivery(
+      cashierId,
+      transferDeliveryDto,
+    );
   }
 
   @UseGuards(JwtAuthGuard)
   @Get()
   async getAllTransfersByUser(@Request() req) {
     const userId = req.user.id;
+    // This fetches transfers linked to cashiers under the user.
+    // The existing service logic for getAllTransfers should work if cashierIds are derived correctly.
     return this.transferService.getAllTransfers(userId);
   }
 
   @UseGuards(JwtCashierAuthGuard)
   @Get('cashier')
   async getAllTransfersByCashier(@Request() req) {
-    const userId = req.user.userId;
+    // This implies getting transfers for the specific logged-in cashier.
+    // The current getAllTransfers(userId) gets all transfers for all cashiers of a user.
+    // This might need a new service method or modification if it's strictly for the single logged-in cashier.
+    // For now, assuming it means all transfers visible to this cashier (i.e., all under their owner user).
+    const userId = req.user.userId; // Owner user ID
     return this.transferService.getAllTransfers(userId);
+    // If it should be only for the specific cashier:
+    // const cashierId = req.user.id;
+    // return this.prisma.transfer.findMany({ where: { cashierId } ... }); // Simplified example
   }
 
   @UseGuards(JwtCashierAuthGuard)
@@ -68,7 +80,8 @@ export class TransferController {
     @Request() req,
     @Query() filters: TransferFilterDto,
   ) {
-    const userId = req.user.userId;
+    const userId = req.user.userId; // Owner user ID
+    // Similar to above, this filters for all cashiers under the user.
     return this.transferService.getAllTransfersWithFilter(userId, filters);
   }
 

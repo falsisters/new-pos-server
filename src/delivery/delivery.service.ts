@@ -13,7 +13,7 @@ export class DeliveryService {
   async createDelivery(
     cashierId: string,
     createDeliveryDto: CreateDeliveryDto,
-    userId: string,
+    userId: string, // owner user's ID, not used for transferDelivery directly
   ) {
     const { driverName, deliveryTimeStart, deliveryItem } = createDeliveryDto;
 
@@ -34,7 +34,8 @@ export class DeliveryService {
           }
 
           if (item.perKiloPrice && currentProduct) {
-            await this.transferService.transferDelivery(userId, {
+            await this.transferService.transferDelivery(cashierId, {
+              // Use cashierId here
               name: `${currentProduct.name} ${item.perKiloPrice.quantity}KG`,
               quantity: 0,
             });
@@ -60,7 +61,7 @@ export class DeliveryService {
                   };
                 }
                 if (item.perKiloPrice && item.perKiloPrice.id) {
-                  deliveryItemData.PerKiloPrice = {
+                  deliveryItemData.perKiloPrice = {
                     connect: { id: item.perKiloPrice.id },
                   };
                 }
@@ -86,9 +87,9 @@ export class DeliveryService {
   }
 
   async editDelivery(
-    cashierId: string,
+    cashierId: string, // This is the performing cashier's ID
     deliveryId: string,
-    editDeliveryDto: CreateDeliveryDto,
+    editDeliveryDto: CreateDeliveryDto, // Assuming CreateDeliveryDto is also used for edit
   ) {
     const { driverName, deliveryTimeStart, deliveryItem } = editDeliveryDto;
 
@@ -132,6 +133,7 @@ export class DeliveryService {
 
           if (perKiloPrice) {
             await this.transferService.transferDelivery(cashierId, {
+              // Use cashierId here
               name: `${item.product.name} ${item.quantity}KG`,
               quantity: item.quantity,
             });
