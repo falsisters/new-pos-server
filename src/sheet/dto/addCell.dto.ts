@@ -4,4 +4,5 @@ export class AddCellDto {
   value: string;
   color?: string;
   formula?: string;
+  rowIndex?: number;
 }

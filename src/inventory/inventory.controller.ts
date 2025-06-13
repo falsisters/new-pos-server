@@ -122,8 +122,14 @@ export class InventoryController {
   async createCalculationRow(
     @Body() addCalculationRowDto: AddCalculationRowDto,
   ) {
-    const { inventoryId, rowIndex } = addCalculationRowDto;
-    return this.inventoryService.addCalculationRow(inventoryId, rowIndex);
+    const { sheetId, inventoryId, rowIndex, description } =
+      addCalculationRowDto;
+    return this.inventoryService.addCalculationRow(
+      sheetId,
+      rowIndex,
+      description || '',
+      inventoryId,
+    );
   }
 
   @UseGuards(JwtAuthGuard)
@@ -131,8 +137,14 @@ export class InventoryController {
   async createUserCalculationRow(
     @Body() addCalculationRowDto: AddCalculationRowDto,
   ) {
-    const { inventoryId, rowIndex } = addCalculationRowDto;
-    return this.inventoryService.addCalculationRow(inventoryId, rowIndex);
+    const { sheetId, inventoryId, rowIndex, description } =
+      addCalculationRowDto;
+    return this.inventoryService.addCalculationRow(
+      sheetId,
+      rowIndex,
+      description || '',
+      inventoryId,
+    );
   }
 
   @UseGuards(JwtCashierAuthGuard)
@@ -140,10 +152,15 @@ export class InventoryController {
   async createCalculationRows(
     @Body() addCalculationRowDto: AddInventoryRowsDto,
   ) {
-    const { inventoryId, rowIndexes } = addCalculationRowDto;
+    const { sheetId, inventoryId, rowIndexes } = addCalculationRowDto;
     return Promise.all(
       rowIndexes.map((rowIndex) =>
-        this.inventoryService.addCalculationRow(inventoryId, rowIndex),
+        this.inventoryService.addCalculationRow(
+          sheetId,
+          rowIndex,
+          '',
+          inventoryId,
+        ),
       ),
     );
   }
@@ -153,10 +170,15 @@ export class InventoryController {
   async createUserCalculationRows(
     @Body() addCalculationRowDto: AddInventoryRowsDto,
   ) {
-    const { inventoryId, rowIndexes } = addCalculationRowDto;
+    const { sheetId, inventoryId, rowIndexes } = addCalculationRowDto;
     return Promise.all(
       rowIndexes.map((rowIndex) =>
-        this.inventoryService.addCalculationRow(inventoryId, rowIndex),
+        this.inventoryService.addCalculationRow(
+          sheetId,
+          rowIndex,
+          '',
+          inventoryId,
+        ),
       ),
     );
   }
@@ -202,8 +224,14 @@ export class InventoryController {
   @UseGuards(JwtCashierAuthGuard)
   @Patch('cell/:id')
   async updateCell(@Param('id') id: string, @Body() addCellDto: AddCellDto) {
-    const { value, formula, color } = addCellDto;
-    return this.inventoryService.updateCell(id, value, formula, color);
+    const { value, formula, color, rowIndex } = addCellDto;
+    return this.inventoryService.updateCell(
+      id,
+      value,
+      formula,
+      color,
+      rowIndex,
+    );
   }
 
   @UseGuards(JwtAuthGuard)
@@ -212,8 +240,14 @@ export class InventoryController {
     @Param('id') id: string,
     @Body() addCellDto: AddCellDto,
   ) {
-    const { value, formula, color } = addCellDto;
-    return this.inventoryService.updateCell(id, value, formula, color);
+    const { value, formula, color, rowIndex } = addCellDto;
+    return this.inventoryService.updateCell(
+      id,
+      value,
+      formula,
+      color,
+      rowIndex,
+    );
   }
 
   @UseGuards(JwtCashierAuthGuard)
@@ -264,5 +298,75 @@ export class InventoryController {
   @Get('user/sheet/:id')
   async getUserInventorySheetById(@Param('id') id: string) {
     return this.inventoryService.getInventorySheetWithData(id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch('user/cells/batch')
+  async batchUpdateUserCells(@Body() batchUpdateDto: { changes: any[] }) {
+    const { changes } = batchUpdateDto;
+    const results = [];
+    const errors = [];
+
+    for (const change of changes) {
+      try {
+        if (change.changeType === 'update' && change.cellId) {
+          // Update existing cell
+          const result = await this.inventoryService.updateCell(
+            change.cellId,
+            change.newValue || '',
+            change.formula || undefined,
+            change.color || undefined,
+            change.rowIndex,
+          );
+          results.push({ changeId: change.id, result, success: true });
+        } else if (change.changeType === 'add' && change.rowId) {
+          // Add new cell
+          const result = await this.inventoryService.addCell(
+            change.rowId,
+            change.columnIndex,
+            change.newValue || '',
+            change.formula || undefined,
+            change.color || undefined,
+          );
+          results.push({ changeId: change.id, result, success: true });
+        }
+      } catch (error) {
+        errors.push({
+          changeId: change.id,
+          error: error.message || 'Unknown error',
+          success: false,
+        });
+      }
+    }
+
+    return { results, errors };
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch('user/rows/positions')
+  async batchUpdateUserRowPositions(
+    @Body() batchUpdateDto: { updates: any[] },
+  ) {
+    const { updates } = batchUpdateDto;
+    const results = [];
+    const errors = [];
+
+    for (const update of updates) {
+      try {
+        await this.inventoryService.updateRowPosition(
+          update.rowId,
+          update.newRowIndex,
+        );
+        results.push({ rowId: update.rowId, success: true });
+      } catch (error) {
+        errors.push({
+          rowId: update.rowId,
+          error: error.message || 'Unknown error',
+          success: false,
+        });
+      }
+    }
+
+    return { results, errors };
   }
 }

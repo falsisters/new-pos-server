@@ -216,7 +216,23 @@ export class SheetService {
     value: string,
     formula?: string,
     color?: string,
+    rowIndex?: number,
   ) {
+    // If rowIndex is provided, update the row first
+    if (rowIndex !== undefined) {
+      const cell = await this.prisma.cell.findUnique({
+        where: { id: cellId },
+        select: { rowId: true },
+      });
+
+      if (cell) {
+        await this.prisma.row.update({
+          where: { id: cell.rowId },
+          data: { rowIndex },
+        });
+      }
+    }
+
     return await this.prisma.cell.update({
       where: { id: cellId },
       data: {
@@ -295,5 +311,12 @@ export class SheetService {
     });
 
     return Promise.all(updatePromises);
+  }
+
+  async updateRowPosition(rowId: string, newRowIndex: number) {
+    return await this.prisma.row.update({
+      where: { id: rowId },
+      data: { rowIndex: newRowIndex },
+    });
   }
 }

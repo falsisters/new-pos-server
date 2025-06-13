@@ -289,13 +289,47 @@ export class InventoryService {
   }
 
   async addCalculationRow(
-    sheetId: string,
-    rowIndex: number,
+    sheetId?: string,
+    rowIndex?: number,
     description: string = '',
+    inventoryId?: string,
   ) {
+    let targetSheetId = sheetId;
+
+    // If sheetId is not provided but inventoryId is, find the sheet
+    if (!targetSheetId && inventoryId) {
+      const inventory = await this.prisma.inventory.findUnique({
+        where: { id: inventoryId },
+        include: {
+          InventorySheet: {
+            select: { id: true },
+          },
+        },
+      });
+
+      if (!inventory) {
+        throw new Error('Inventory not found');
+      }
+
+      if (inventory.InventorySheet.length === 0) {
+        // Create a new sheet if none exists
+        const newSheet = await this.createInventorySheet(
+          inventoryId,
+          'Inventory Sheet',
+        );
+        targetSheetId = newSheet.id;
+      } else {
+        targetSheetId = inventory.InventorySheet[0].id;
+      }
+    }
+
+    if (!targetSheetId) {
+      throw new Error('Neither sheetId nor inventoryId provided');
+    }
+
     // Get the sheet to determine the number of columns
     const sheet = await this.prisma.inventorySheet.findUnique({
-      where: { id: sheetId },
+      where: { id: targetSheetId },
       select: { columns: true },
     });
 
@@ -308,7 +342,7 @@ export class InventoryService {
       data: {
         rowIndex,
         isItemRow: false,
-        inventorySheet: { connect: { id: sheetId } },
+        inventorySheet: { connect: { id: targetSheetId } },
       },
     });
 
@@ -344,7 +378,23 @@ export class InventoryService {
     value: string,
     formula?: string,
     color?: string,
+    rowIndex?: number,
   ) {
+    // If rowIndex is provided, update the row first
+    if (rowIndex !== undefined) {
+      const cell = await this.prisma.inventoryCell.findUnique({
+        where: { id: cellId },
+        select: { inventoryRowId: true },
+      });
+
+      if (cell) {
+        await this.prisma.inventoryRow.update({
+          where: { id: cell.inventoryRowId },
+          data: { rowIndex },
+        });
+      }
+    }
+
     return await this.prisma.inventoryCell.update({
       where: { id: cellId },
       data: {
@@ -475,5 +525,12 @@ export class InventoryService {
       }
     }
     return resultSheets;
+  }
+
+  async updateRowPosition(rowId: string, newRowIndex: number) {
+    return await this.prisma.inventoryRow.update({
+      where: { id: rowId },
+      data: { rowIndex: newRowIndex },
+    });
   }
 }

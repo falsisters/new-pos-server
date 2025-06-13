@@ -280,7 +280,7 @@ model InventorySheet {
 
 model InventoryRow {
   id               String          @id @default(cuid())
-  rowIndex         Int // Position in the sheet
+  rowIndex         Int             @default(autoincrement())
   inventorySheet   InventorySheet  @relation(fields: [inventorySheetId], references: [id], onDelete: Cascade)
   inventorySheetId String
   isItemRow        Boolean         @default(true) // Regular row or total/calculation row
@@ -292,7 +292,7 @@ model InventoryRow {
 
 model InventoryCell {
   id             String       @id @default(cuid())
-  columnIndex    Int // Column position
+  columnIndex    Int          @default(autoincrement()) // Column position
   inventoryRow   InventoryRow @relation(fields: [inventoryRowId], references: [id], onDelete: Cascade)
   inventoryRowId String
   color          String?
