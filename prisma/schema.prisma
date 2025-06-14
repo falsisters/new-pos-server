@@ -53,7 +53,7 @@ enum CashierPermissions {
   STOCKS
   EDIT_PRICE
   KAHON
-  PROFITS
+  BILLS
   ATTACHMENTS
   SALES_HISTORY
 }

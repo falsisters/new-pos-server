@@ -111,60 +111,165 @@ export class ProductService {
       ? await this.uploadService.uploadSingleFile(picture, 'products/')
       : null;
 
-    return this.prisma.product.update({
-      where: {
-        id,
-      },
-      data: {
-        name,
-        ...(url && { picture: url }),
+    // Get current product to check existing relations
+    const currentProduct = await this.prisma.product.findUnique({
+      where: { id },
+      include: {
         SackPrice: {
-          update: sackPrice.map(
-            (price: {
-              id: string;
-              price: number;
-              type?: string;
-              stock?: number;
-              profit?: number;
-              specialPrice?: {
-                id: string;
-                price?: number;
-                minimumQty?: number;
-                profit?: number;
-              };
-            }) => ({
-              where: {
-                id: price.id,
-              },
-              data: {
-                price: price.price,
-                type: price.type,
-                stock: price.stock,
-                profit: price.profit,
-                specialPrice: price.specialPrice
-                  ? {
-                      update: {
-                        where: {
-                          id: price.specialPrice.id,
-                        },
-                        data: {
-                          price: price.specialPrice.price,
-                          minimumQty: price.specialPrice.minimumQty,
-                          profit: price.specialPrice.profit,
-                        },
-                      },
-                    }
-                  : undefined,
-              },
-            }),
-          ),
+          include: {
+            specialPrice: true,
+          },
         },
-        perKiloPrice: perKiloPrice
-          ? {
-              update: perKiloPrice,
-            }
-          : undefined,
+        perKiloPrice: true,
       },
+    });
+
+    if (!currentProduct) {
+      throw new Error('Product not found');
+    }
+
+    // Handle SackPrice operations
+    const sackPriceOperations = {
+      update: [],
+      create: [],
+    };
+
+    sackPrice.forEach(
+      (price: {
+        id?: string;
+        price: number;
+        type?: string;
+        stock?: number;
+        profit?: number;
+        specialPrice?: {
+          id?: string;
+          price?: number;
+          minimumQty?: number;
+          profit?: number;
+        };
+      }) => {
+        if (price.id) {
+          // Update existing SackPrice
+          const updateData: any = {
+            where: { id: price.id },
+            data: {
+              price: price.price,
+              type: price.type,
+              stock: price.stock,
+              profit: price.profit,
+            },
+          };
+
+          // Handle SpecialPrice for existing SackPrice
+          if (price.specialPrice) {
+            if (price.specialPrice.id) {
+              // Update existing SpecialPrice
+              updateData.data.specialPrice = {
+                update: {
+                  where: { id: price.specialPrice.id },
+                  data: {
+                    price: price.specialPrice.price,
+                    minimumQty: price.specialPrice.minimumQty,
+                    profit: price.specialPrice.profit,
+                  },
+                },
+              };
+            } else {
+              // Create new SpecialPrice
+              updateData.data.specialPrice = {
+                create: {
+                  price: price.specialPrice.price,
+                  minimumQty: price.specialPrice.minimumQty,
+                  profit: price.specialPrice.profit,
+                },
+              };
+            }
+          }
+
+          sackPriceOperations.update.push(updateData);
+        } else {
+          // Create new SackPrice
+          const createData: any = {
+            price: price.price,
+            type: price.type,
+            stock: price.stock,
+            profit: price.profit,
+          };
+
+          if (price.specialPrice) {
+            createData.specialPrice = {
+              create: {
+                price: price.specialPrice.price,
+                minimumQty: price.specialPrice.minimumQty,
+                profit: price.specialPrice.profit,
+              },
+            };
+          }
+
+          sackPriceOperations.create.push(createData);
+        }
+      },
+    );
+
+    // Handle PerKiloPrice operations
+    let perKiloPriceOperation = {};
+    if (perKiloPrice) {
+      if (currentProduct.perKiloPrice) {
+        // Update existing PerKiloPrice
+        perKiloPriceOperation = {
+          update: {
+            price: perKiloPrice.price,
+            stock: perKiloPrice.stock,
+            profit: perKiloPrice.profit,
+          },
+        };
+      } else {
+        // Create new PerKiloPrice
+        perKiloPriceOperation = {
+          create: {
+            price: perKiloPrice.price,
+            stock: perKiloPrice.stock,
+            profit: perKiloPrice.profit,
+          },
+        };
+      }
+    } else if (currentProduct.perKiloPrice) {
+      // Delete existing PerKiloPrice
+      perKiloPriceOperation = {
+        delete: true,
+      };
+    }
+
+    // Build the update data
+    const updateData: any = {
+      name,
+      ...(url && { picture: url }),
+    };
+
+    // Add SackPrice operations if there are any
+    if (
+      sackPriceOperations.update.length > 0 ||
+      sackPriceOperations.create.length > 0
+    ) {
+      updateData.SackPrice = {};
+
+      if (sackPriceOperations.update.length > 0) {
+        updateData.SackPrice.update = sackPriceOperations.update;
+      }
+
+      if (sackPriceOperations.create.length > 0) {
+        updateData.SackPrice.create = sackPriceOperations.create;
+      }
+    }
+
+    // Add PerKiloPrice operation if there is one
+    if (Object.keys(perKiloPriceOperation).length > 0) {
+      updateData.perKiloPrice = perKiloPriceOperation;
+    }
+
+    return this.prisma.product.update({
+      where: { id },
+      data: updateData,
       include: {
         perKiloPrice: true,
         SackPrice: {
