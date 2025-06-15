@@ -43,11 +43,8 @@ export class BillsService {
       const billCount = await this.prisma.billCount.create({
         data: {
           cashierId,
-          expenses: createDto.expenses || 0,
-          showExpenses: createDto.showExpenses || false,
           beginningBalance: createDto.beginningBalance || 0,
           showBeginningBalance: createDto.showBeginningBalance || false,
-          startingAmount: createDto.startingAmount || 0,
           createdAt: targetDate, // Set the creation date to the target date
         },
       });
@@ -76,16 +73,6 @@ export class BillsService {
     await this.prisma.billCount.update({
       where: { id: billCountId },
       data: {
-        startingAmount:
-          updateDto.startingAmount !== undefined
-            ? updateDto.startingAmount
-            : undefined,
-        expenses:
-          updateDto.expenses !== undefined ? updateDto.expenses : undefined,
-        showExpenses:
-          updateDto.showExpenses !== undefined
-            ? updateDto.showExpenses
-            : undefined,
         beginningBalance:
           updateDto.beginningBalance !== undefined
             ? updateDto.beginningBalance
@@ -99,13 +86,12 @@ export class BillsService {
 
     // If bills array is provided, update existing bills or create new ones
     if (updateDto.bills && updateDto.bills.length > 0) {
-      // Get existing bills
       // Delete existing bills
       await this.prisma.bills.deleteMany({
         where: { billCountId },
       });
 
-      // Update existing bills or create new ones
+      // Create new bills
       await Promise.all(
         updateDto.bills.map((bill) =>
           this.prisma.bills.create({
@@ -226,11 +212,8 @@ export class BillsService {
       const billCount = await this.prisma.billCount.create({
         data: {
           userId,
-          expenses: createDto.expenses || 0,
-          showExpenses: createDto.showExpenses || false,
           beginningBalance: createDto.beginningBalance || 0,
           showBeginningBalance: createDto.showBeginningBalance || false,
-          startingAmount: createDto.startingAmount || 0,
           createdAt: targetDate, // Set the creation date to the target date
         },
       });
@@ -530,16 +513,23 @@ export class BillsService {
       billsByType[bill.type] = bill.amount;
     });
 
+    // Calculate net cash (Total Cash - Expenses)
+    const netCash = totalCash - totalExpenses;
+
+    // Calculate summary values
+    const summaryStep1 =
+      billsTotal -
+      (billCount.showBeginningBalance ? billCount.beginningBalance : 0);
+    const summaryFinal = summaryStep1 + totalExpenses;
+
     return {
       id: billCount.id,
-      startingAmount: billCount.startingAmount,
       date: billCount.createdAt,
-      expenses: billCount.expenses,
-      showExpenses: billCount.showExpenses,
       beginningBalance: billCount.beginningBalance,
       showBeginningBalance: billCount.showBeginningBalance,
       totalCash,
       totalExpenses,
+      netCash,
       bills: billCount.Bills.map((bill) => ({
         id: bill.id,
         type: bill.type,
@@ -548,14 +538,8 @@ export class BillsService {
       })),
       billsByType,
       billsTotal,
-      // Calculate total with expenses if showExpenses is true
-      totalWithExpenses:
-        billsTotal + (billCount.showExpenses ? billCount.expenses : 0),
-      // Calculate final total with beginning balance if showBeginningBalance is true
-      finalTotal:
-        billsTotal +
-        (billCount.showExpenses ? billCount.expenses : 0) -
-        (billCount.showBeginningBalance ? billCount.beginningBalance : 0),
+      summaryStep1,
+      summaryFinal,
     };
   }
 

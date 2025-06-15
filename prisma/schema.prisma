@@ -366,9 +366,6 @@ model BillCount {
   Bills                Bills[]
   userId               String? // Optional for user oversight
   cashierId            String? // Optional for cashier operations
-  startingAmount       Float    @default(0)
-  expenses             Float
-  showExpenses         Boolean  @default(false)
   beginningBalance     Float
   showBeginningBalance Boolean  @default(false)
   user                 User?    @relation(fields: [userId], references: [id], onDelete: Cascade)

@@ -11,17 +11,6 @@ import { BillDto } from './create-bill-count.dto';
 export class UpdateBillCountDto {
   @IsOptional()
   @IsNumber()
-  expenses?: number;
-
-  @IsOptional()
-  startingAmount?: number;
-
-  @IsOptional()
-  @IsBoolean()
-  showExpenses?: boolean;
-
-  @IsOptional()
-  @IsNumber()
   beginningBalance?: number;
 
   @IsOptional()
