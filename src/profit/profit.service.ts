@@ -132,9 +132,9 @@ export class ProfitService {
           priceType = item.sackType; // Store the enum value
 
           if (item.isSpecialPrice && sackPriceInfo.specialPrice) {
-            profitPerUnit = sackPriceInfo.specialPrice.profit || 0;
+            profitPerUnit = sackPriceInfo.specialPrice.profit ?? 0;
           } else {
-            profitPerUnit = sackPriceInfo.profit || 0;
+            profitPerUnit = sackPriceInfo.profit ?? 0;
           }
           totalProfit = profitPerUnit * item.quantity;
 
@@ -176,13 +176,8 @@ export class ProfitService {
     profitItems.forEach((item) => {
       if (item.totalProfit <= 0) return; // Skip items with no profit
 
-      // Skip items where profit is null or undefined
-      if (
-        item.profitPerUnit === null ||
-        item.profitPerUnit === undefined ||
-        item.profitPerUnit === 0
-      )
-        return;
+      // Skip items where profit is null, undefined, or zero
+      if (item.profitPerUnit == null || item.profitPerUnit === 0) return;
 
       const key = item.isAsin
         ? `ASIN_${item.productName}`
@@ -362,9 +357,9 @@ export class ProfitService {
           priceType = item.sackType;
 
           if (item.isSpecialPrice && sackPriceInfo.specialPrice) {
-            profitPerUnit = sackPriceInfo.specialPrice.profit || 0;
+            profitPerUnit = sackPriceInfo.specialPrice.profit ?? 0;
           } else {
-            profitPerUnit = sackPriceInfo.profit || 0;
+            profitPerUnit = sackPriceInfo.profit ?? 0;
           }
           totalProfit = profitPerUnit * item.quantity;
 
@@ -406,13 +401,8 @@ export class ProfitService {
     profitItems.forEach((item) => {
       if (item.totalProfit <= 0) return;
 
-      // Skip items where profit is null or undefined
-      if (
-        item.profitPerUnit === null ||
-        item.profitPerUnit === undefined ||
-        item.profitPerUnit === 0
-      )
-        return;
+      // Skip items where profit is null, undefined, or zero
+      if (item.profitPerUnit == null || item.profitPerUnit === 0) return;
 
       const key = item.isAsin
         ? `ASIN_${item.productName}`
