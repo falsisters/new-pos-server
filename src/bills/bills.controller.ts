@@ -25,18 +25,8 @@ export class BillsController {
     @Request() req,
     @Body() createDto: CreateBillCountDto,
   ) {
-    const userId = req.user.userId;
-    return this.billsService.createOrUpdateBillCount(userId, createDto);
-  }
-
-  @UseGuards(JwtAuthGuard)
-  @Post('user')
-  async createOrUpdateUserBillCount(
-    @Request() req,
-    @Body() createDto: CreateBillCountDto,
-  ) {
-    const userId = req.user.id;
-    return this.billsService.createOrUpdateBillCount(userId, createDto);
+    const cashierId = req.user.id; // This is the cashier ID from JwtCashierAuthGuard
+    return this.billsService.createOrUpdateBillCount(cashierId, createDto);
   }
 
   @UseGuards(JwtCashierAuthGuard)
@@ -48,6 +38,30 @@ export class BillsController {
     return this.billsService.updateBillCount(id, updateDto);
   }
 
+  @UseGuards(JwtCashierAuthGuard)
+  @Get()
+  async getBillCountForDate(@Request() req, @Query('date') date?: string) {
+    const cashierId = req.user.id; // This is the cashier ID from JwtCashierAuthGuard
+    return this.billsService.getBillCountForDate(cashierId, date);
+  }
+
+  @UseGuards(JwtCashierAuthGuard)
+  @Get(':id')
+  async getBillCountById(@Param('id') id: string) {
+    return this.billsService.getBillCountById(id);
+  }
+
+  // User oversight routes
+  @UseGuards(JwtAuthGuard)
+  @Post('user')
+  async createOrUpdateUserBillCount(
+    @Request() req,
+    @Body() createDto: CreateBillCountDto,
+  ) {
+    const userId = req.user.id;
+    return this.billsService.createOrUpdateUserBillCount(userId, createDto);
+  }
+
   @UseGuards(JwtAuthGuard)
   @Put('user/:id')
   async updateUserBillCount(
@@ -57,24 +71,23 @@ export class BillsController {
     return this.billsService.updateBillCount(id, updateDto);
   }
 
-  @UseGuards(JwtCashierAuthGuard)
-  @Get()
-  async getBillCountForDate(@Request() req, @Query('date') date?: string) {
-    const userId = req.user.userId;
-    return this.billsService.getBillCountForDate(userId, date);
-  }
-
   @UseGuards(JwtAuthGuard)
   @Get('user')
   async getUserBillCountForDate(@Request() req, @Query('date') date?: string) {
     const userId = req.user.id;
-    return this.billsService.getBillCountForDate(userId, date);
+    return this.billsService.getUserBillCountForDate(userId, date);
   }
 
-  @UseGuards(JwtCashierAuthGuard)
-  @Get(':id')
-  async getBillCountById(@Param('id') id: string) {
-    return this.billsService.getBillCountById(id);
+  @UseGuards(JwtAuthGuard)
+  @Get('user/all')
+  async getAllUserBillCountsByDate(@Query('date') date?: string) {
+    return this.billsService.getAllUserBillCountsByDate(date);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('cashier/all')
+  async getAllCashierBillCountsByDate(@Query('date') date?: string) {
+    return this.billsService.getAllCashierBillCountsByDate(date);
   }
 
   @UseGuards(JwtAuthGuard)

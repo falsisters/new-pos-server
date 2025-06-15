@@ -45,6 +45,8 @@ model Cashier {
   Transfer    Transfer[]
   Kahon       Kahon[]
   Inventory   Inventory[]
+  BillCount   BillCount[]
+  ExpenseList ExpenseList[]
 }
 
 enum CashierPermissions {
@@ -362,13 +364,15 @@ enum AttachmentType {
 model BillCount {
   id                   String   @id @default(cuid())
   Bills                Bills[]
-  userId               String
+  userId               String? // Optional for user oversight
+  cashierId            String? // Optional for cashier operations
   startingAmount       Float    @default(0)
   expenses             Float
   showExpenses         Boolean  @default(false)
   beginningBalance     Float
   showBeginningBalance Boolean  @default(false)
-  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user                 User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cashier              Cashier? @relation(fields: [cashierId], references: [id], onDelete: Cascade)
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 }
@@ -444,8 +448,10 @@ enum OrderStatus {
 
 model ExpenseList {
   id           String         @id @default(cuid())
-  userId       String
-  user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId       String? // Optional for user oversight
+  cashierId    String? // Optional for cashier operations
+  user         User?          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cashier      Cashier?       @relation(fields: [cashierId], references: [id], onDelete: Cascade)
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
   ExpenseItems ExpenseItems[]

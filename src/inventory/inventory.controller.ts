@@ -307,30 +307,57 @@ export class InventoryController {
     const results = [];
     const errors = [];
 
+    console.log(
+      'Batch update inventory cells received:',
+      changes.length,
+      'changes',
+    );
+
     for (const change of changes) {
       try {
+        console.log('Processing change:', {
+          id: change.id,
+          cellId: change.cellId,
+          formula: change.formula,
+          newValue: change.newValue,
+          changeType: change.changeType,
+        });
+
         if (change.changeType === 'update' && change.cellId) {
-          // Update existing cell
+          // Update existing cell - explicitly pass formula
           const result = await this.inventoryService.updateCell(
             change.cellId,
             change.newValue || '',
-            change.formula || undefined,
+            change.formula, // Explicitly pass formula (can be null)
             change.color || undefined,
             change.rowIndex,
           );
           results.push({ changeId: change.id, result, success: true });
+          console.log('Updated cell successfully:', change.cellId);
         } else if (change.changeType === 'add' && change.rowId) {
-          // Add new cell
+          // Add new cell - explicitly pass formula
           const result = await this.inventoryService.addCell(
             change.rowId,
             change.columnIndex,
             change.newValue || '',
-            change.formula || undefined,
+            change.formula, // Explicitly pass formula (can be null)
             change.color || undefined,
           );
           results.push({ changeId: change.id, result, success: true });
+          console.log('Added new cell successfully:', result.id);
+        } else {
+          console.error(
+            'Invalid change type or missing required fields:',
+            change,
+          );
+          errors.push({
+            changeId: change.id,
+            error: 'Invalid change type or missing required fields',
+            success: false,
+          });
         }
       } catch (error) {
+        console.error('Error processing change:', change.id, error);
         errors.push({
           changeId: change.id,
           error: error.message || 'Unknown error',
@@ -339,6 +366,12 @@ export class InventoryController {
       }
     }
 
+    console.log(
+      'Batch update completed. Results:',
+      results.length,
+      'Errors:',
+      errors.length,
+    );
     return { results, errors };
   }
 

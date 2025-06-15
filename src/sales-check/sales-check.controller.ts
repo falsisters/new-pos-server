@@ -26,14 +26,24 @@ export class SalesCheckController {
     return this.salesCheckService.getTotalSales(userId, filterDto);
   }
 
+  @UseGuards(JwtAuthGuard)
+  @Get('cashiers/all')
+  async getAllCashierSalesByDate(@Request() req, @Query('date') date?: string) {
+    const userId = req.user.id;
+    return this.salesCheckService.getAllCashierSalesByDate(userId, date);
+  }
+
   @UseGuards(JwtCashierAuthGuard)
   @Get('cashier')
   async getCashierSalesWithFilter(
     @Request() req,
     @Query() filterDto: SalesCheckFilterDto,
   ) {
-    const userId = req.user.userId;
-    return this.salesCheckService.getSalesWithFilter(userId, filterDto);
+    const cashierId = req.user.id; // This is the cashier ID from JwtCashierAuthGuard
+    return this.salesCheckService.getCashierSalesWithFilter(
+      cashierId,
+      filterDto,
+    );
   }
 
   @UseGuards(JwtCashierAuthGuard)
@@ -42,7 +52,7 @@ export class SalesCheckController {
     @Request() req,
     @Query() filterDto: TotalSalesFilterDto,
   ) {
-    const userId = req.user.userId;
-    return this.salesCheckService.getTotalSales(userId, filterDto);
+    const cashierId = req.user.id; // This is the cashier ID from JwtCashierAuthGuard
+    return this.salesCheckService.getCashierTotalSales(cashierId, filterDto);
   }
 }

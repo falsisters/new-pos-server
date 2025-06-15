@@ -214,10 +214,18 @@ export class SheetService {
   async updateCell(
     cellId: string,
     value: string,
-    formula?: string,
+    formula?: string | null,
     color?: string,
     rowIndex?: number,
   ) {
+    console.log('SheetService updateCell called with:', {
+      cellId,
+      value,
+      formula,
+      color,
+      rowIndex,
+    });
+
     // If rowIndex is provided, update the row first
     if (rowIndex !== undefined) {
       const cell = await this.prisma.cell.findUnique({
@@ -233,15 +241,36 @@ export class SheetService {
       }
     }
 
-    return await this.prisma.cell.update({
+    // Build update data more explicitly
+    const updateData: any = {
+      value: value || '',
+    };
+
+    // Handle formula field explicitly - always set it to ensure it's updated
+    if (formula === null || formula === undefined || formula === '') {
+      updateData.formula = null;
+      updateData.isCalculated = false;
+    } else {
+      updateData.formula = formula;
+      updateData.isCalculated = true;
+    }
+
+    // Handle color field explicitly
+    if (color === null || color === undefined || color === '') {
+      updateData.color = null;
+    } else {
+      updateData.color = color;
+    }
+
+    console.log('Updating cell with data:', updateData);
+
+    const result = await this.prisma.cell.update({
       where: { id: cellId },
-      data: {
-        value,
-        formula,
-        color: color ? color : undefined,
-        isCalculated: !!formula,
-      },
+      data: updateData,
     });
+
+    console.log('Cell updated successfully:', result);
+    return result;
   }
 
   async deleteCell(cellId: string) {
@@ -279,19 +308,48 @@ export class SheetService {
     rowId: string,
     columnIndex: number,
     value: string,
-    formula?: string,
+    formula?: string | null,
     color?: string,
   ) {
-    return await this.prisma.cell.create({
-      data: {
-        rowId,
-        columnIndex,
-        value,
-        formula,
-        color: color ? color : undefined,
-        isCalculated: !!formula,
-      },
+    console.log('SheetService addCell called with:', {
+      rowId,
+      columnIndex,
+      value,
+      formula,
+      color,
     });
+
+    // Build create data more explicitly
+    const createData: any = {
+      rowId: rowId,
+      columnIndex: columnIndex,
+      value: value || '',
+    };
+
+    // Handle formula field explicitly
+    if (formula === null || formula === undefined || formula === '') {
+      createData.formula = null;
+      createData.isCalculated = false;
+    } else {
+      createData.formula = formula;
+      createData.isCalculated = true;
+    }
+
+    // Handle color field explicitly
+    if (color === null || color === undefined || color === '') {
+      createData.color = null;
+    } else {
+      createData.color = color;
+    }
+
+    console.log('Creating cell with data:', createData);
+
+    const result = await this.prisma.cell.create({
+      data: createData,
+    });
+
+    console.log('Cell created successfully:', result);
+    return result;
   }
 
   // For batch updating all cells at once

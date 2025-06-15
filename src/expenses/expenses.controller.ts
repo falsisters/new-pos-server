@@ -27,8 +27,11 @@ export class ExpensesController {
     @Request() req,
     @Body() createExpenseDto: CreateExpenseDto,
   ) {
-    const userId = req.user.userId;
-    return await this.expensesService.createExpense(userId, createExpenseDto);
+    const cashierId = req.user.id; // This is the cashier ID from JwtCashierAuthGuard
+    return await this.expensesService.createExpense(
+      cashierId,
+      createExpenseDto,
+    );
   }
 
   @UseGuards(JwtCashierAuthGuard)
@@ -47,8 +50,8 @@ export class ExpensesController {
   @UseGuards(JwtCashierAuthGuard)
   @Get('today')
   async getExpenseByDate(@Request() req, @Query('date') date?: string) {
-    const userId = req.user.userId;
-    return await this.expensesService.getFirstExpenseByDay(userId, { date });
+    const cashierId = req.user.id; // This is the cashier ID from JwtCashierAuthGuard
+    return await this.expensesService.getFirstExpenseByDay(cashierId, { date });
   }
 
   @UseGuards(JwtCashierAuthGuard)
@@ -57,7 +60,7 @@ export class ExpensesController {
     return await this.expensesService.deleteExpense(expenseId);
   }
 
-  // User routes (protected with JwtAuthGuard)
+  // User oversight routes (protected with JwtAuthGuard)
   @UseGuards(JwtAuthGuard)
   @Post('user/create')
   async userCreateExpense(
@@ -65,7 +68,10 @@ export class ExpensesController {
     @Body() createExpenseDto: CreateExpenseDto,
   ) {
     const userId = req.user.id;
-    return await this.expensesService.createExpense(userId, createExpenseDto);
+    return await this.expensesService.createUserExpense(
+      userId,
+      createExpenseDto,
+    );
   }
 
   @UseGuards(JwtAuthGuard)
@@ -84,14 +90,19 @@ export class ExpensesController {
   @Get('user/today')
   async userGetExpenseByDate(@Request() req, @Query('date') date?: string) {
     const userId = req.user.id;
-    return await this.expensesService.getFirstExpenseByDay(userId, { date });
+    return await this.expensesService.getUserExpenseByDate(userId, { date });
   }
 
   @UseGuards(JwtAuthGuard)
-  @Get('user/list')
-  async userGetAllExpenses(@Request() req) {
-    const userId = req.user.id;
-    return await this.expensesService.getExpenseList(userId);
+  @Get('user/all')
+  async getAllUserExpensesByDate(@Query('date') date?: string) {
+    return await this.expensesService.getAllUserExpensesByDate(date);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('cashier/all')
+  async getAllCashierExpensesByDate(@Query('date') date?: string) {
+    return await this.expensesService.getAllCashierExpensesByDate(date);
   }
 
   @UseGuards(JwtAuthGuard)
