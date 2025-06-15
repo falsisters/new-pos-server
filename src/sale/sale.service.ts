@@ -509,4 +509,40 @@ export class SaleService {
       },
     });
   }
+
+  async getSalesByCashierId(userId: string, cashierId: string) {
+    // First verify that the cashier belongs to the user
+    const cashier = await this.prisma.cashier.findFirst({
+      where: {
+        id: cashierId,
+        userId: userId,
+      },
+    });
+
+    if (!cashier) {
+      throw new Error('Cashier not found or does not belong to this user');
+    }
+
+    return this.prisma.sale.findMany({
+      where: {
+        cashierId,
+      },
+      include: {
+        SaleItem: {
+          include: {
+            product: {
+              include: {
+                perKiloPrice: true,
+                SackPrice: {
+                  include: {
+                    specialPrice: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+  }
 }

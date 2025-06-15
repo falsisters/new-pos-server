@@ -66,13 +66,17 @@ export class ProductService {
             price: price.price,
             type: price.type,
             stock: price.stock,
-            profit: price.profit,
+            ...(price.profit !== undefined &&
+              price.profit !== null && { profit: price.profit }),
             specialPrice: price.specialPrice
               ? {
                   create: {
                     price: price.specialPrice.price,
                     minimumQty: price.specialPrice.minimumQty,
-                    profit: price.specialPrice.profit,
+                    ...(price.specialPrice.profit !== undefined &&
+                      price.specialPrice.profit !== null && {
+                        profit: price.specialPrice.profit,
+                      }),
                   },
                 }
               : undefined,
@@ -80,7 +84,14 @@ export class ProductService {
         },
         perKiloPrice: perKiloPrice
           ? {
-              create: perKiloPrice,
+              create: {
+                price: perKiloPrice.price,
+                stock: perKiloPrice.stock,
+                ...(perKiloPrice.profit !== undefined &&
+                  perKiloPrice.profit !== null && {
+                    profit: perKiloPrice.profit,
+                  }),
+              },
             }
           : undefined,
       },
@@ -156,7 +167,8 @@ export class ProductService {
               price: price.price,
               type: price.type,
               stock: price.stock,
-              profit: price.profit,
+              ...(price.profit !== undefined &&
+                price.profit !== null && { profit: price.profit }),
             },
           };
 
@@ -170,7 +182,10 @@ export class ProductService {
                   data: {
                     price: price.specialPrice.price,
                     minimumQty: price.specialPrice.minimumQty,
-                    profit: price.specialPrice.profit,
+                    ...(price.specialPrice.profit !== undefined &&
+                      price.specialPrice.profit !== null && {
+                        profit: price.specialPrice.profit,
+                      }),
                   },
                 },
               };
@@ -180,7 +195,10 @@ export class ProductService {
                 create: {
                   price: price.specialPrice.price,
                   minimumQty: price.specialPrice.minimumQty,
-                  profit: price.specialPrice.profit,
+                  ...(price.specialPrice.profit !== undefined &&
+                    price.specialPrice.profit !== null && {
+                      profit: price.specialPrice.profit,
+                    }),
                 },
               };
             }
@@ -193,7 +211,8 @@ export class ProductService {
             price: price.price,
             type: price.type,
             stock: price.stock,
-            profit: price.profit,
+            ...(price.profit !== undefined &&
+              price.profit !== null && { profit: price.profit }),
           };
 
           if (price.specialPrice) {
@@ -201,7 +220,10 @@ export class ProductService {
               create: {
                 price: price.specialPrice.price,
                 minimumQty: price.specialPrice.minimumQty,
-                profit: price.specialPrice.profit,
+                ...(price.specialPrice.profit !== undefined &&
+                  price.specialPrice.profit !== null && {
+                    profit: price.specialPrice.profit,
+                  }),
               },
             };
           }
@@ -220,7 +242,8 @@ export class ProductService {
           update: {
             price: perKiloPrice.price,
             stock: perKiloPrice.stock,
-            profit: perKiloPrice.profit,
+            ...(perKiloPrice.profit !== undefined &&
+              perKiloPrice.profit !== null && { profit: perKiloPrice.profit }),
           },
         };
       } else {
@@ -229,7 +252,8 @@ export class ProductService {
           create: {
             price: perKiloPrice.price,
             stock: perKiloPrice.stock,
-            profit: perKiloPrice.profit,
+            ...(perKiloPrice.profit !== undefined &&
+              perKiloPrice.profit !== null && { profit: perKiloPrice.profit }),
           },
         };
       }

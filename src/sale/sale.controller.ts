@@ -66,4 +66,14 @@ export class SaleController {
     const cashierId = req.user.id;
     return this.saleService.getSalesByDate(cashierId, filters);
   }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('cashier/:cashierId')
+  async getSalesByCashierId(
+    @Request() req,
+    @Param('cashierId') cashierId: string,
+  ) {
+    const userId = req.user.id;
+    return this.saleService.getSalesByCashierId(userId, cashierId);
+  }
 }
