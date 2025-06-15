@@ -10,19 +10,24 @@ export class ExpensesService {
   async createExpense(cashierId: string, createExpenseDto: CreateExpenseDto) {
     const itemsToProcess = createExpenseDto.expenseItems || [];
 
-    // Get today's date boundaries
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const endOfDay = new Date(today);
+    // Use provided date or default to today
+    const targetDate = createExpenseDto.date
+      ? new Date(createExpenseDto.date)
+      : new Date();
+
+    // Set start and end of the target day
+    const startOfDay = new Date(targetDate);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(targetDate);
     endOfDay.setHours(23, 59, 59, 999);
 
     return this.prisma.$transaction(async (tx) => {
-      // Check if there's already an expense list for today
+      // Check if there's already an expense list for the target date
       const existingExpense = await tx.expenseList.findFirst({
         where: {
           cashierId,
           createdAt: {
-            gte: today,
+            gte: startOfDay,
             lte: endOfDay,
           },
         },
@@ -46,10 +51,11 @@ export class ExpensesService {
           },
         });
       } else {
-        // If not exists, create a new expense list
+        // If not exists, create a new expense list with the target date
         return await tx.expenseList.create({
           data: {
             cashierId,
+            createdAt: targetDate, // Set the creation date to the target date
             ExpenseItems: {
               create: itemsToProcess.map((item) => ({
                 name: item.name,
@@ -104,7 +110,10 @@ export class ExpensesService {
     });
   }
 
-  async getFirstExpenseByDay(cashierId: string, expenseDate: GetExpenseByDateDto) {
+  async getFirstExpenseByDay(
+    cashierId: string,
+    expenseDate: GetExpenseByDateDto,
+  ) {
     // Use provided date or default to today
     const { date } = expenseDate;
 
@@ -149,19 +158,24 @@ export class ExpensesService {
   async createUserExpense(userId: string, createExpenseDto: CreateExpenseDto) {
     const itemsToProcess = createExpenseDto.expenseItems || [];
 
-    // Get today's date boundaries
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const endOfDay = new Date(today);
+    // Use provided date or default to today
+    const targetDate = createExpenseDto.date
+      ? new Date(createExpenseDto.date)
+      : new Date();
+
+    // Set start and end of the target day
+    const startOfDay = new Date(targetDate);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(targetDate);
     endOfDay.setHours(23, 59, 59, 999);
 
     return this.prisma.$transaction(async (tx) => {
-      // Check if there's already an expense list for today
+      // Check if there's already an expense list for the target date
       const existingExpense = await tx.expenseList.findFirst({
         where: {
           userId,
           createdAt: {
-            gte: today,
+            gte: startOfDay,
             lte: endOfDay,
           },
         },
@@ -185,10 +199,11 @@ export class ExpensesService {
           },
         });
       } else {
-        // If not exists, create a new expense list
+        // If not exists, create a new expense list with the target date
         return await tx.expenseList.create({
           data: {
             userId,
+            createdAt: targetDate, // Set the creation date to the target date
             ExpenseItems: {
               create: itemsToProcess.map((item) => ({
                 name: item.name,

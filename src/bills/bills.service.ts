@@ -39,7 +39,7 @@ export class BillsService {
       // Update existing bill count
       return this.updateBillCount(existingBillCount.id, createDto);
     } else {
-      // Create new bill count
+      // Create new bill count with the target date
       const billCount = await this.prisma.billCount.create({
         data: {
           cashierId,
@@ -48,6 +48,7 @@ export class BillsService {
           beginningBalance: createDto.beginningBalance || 0,
           showBeginningBalance: createDto.showBeginningBalance || false,
           startingAmount: createDto.startingAmount || 0,
+          createdAt: targetDate, // Set the creation date to the target date
         },
       });
 
@@ -230,6 +231,7 @@ export class BillsService {
           beginningBalance: createDto.beginningBalance || 0,
           showBeginningBalance: createDto.showBeginningBalance || false,
           startingAmount: createDto.startingAmount || 0,
+          createdAt: targetDate, // Set the creation date to the target date
         },
       });
 

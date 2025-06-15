@@ -95,4 +95,33 @@ export class BillsController {
   async getUserBillCountById(@Param('id') id: string) {
     return this.billsService.getBillCountById(id);
   }
+
+  // New cashier-specific routes for user oversight
+  @UseGuards(JwtAuthGuard)
+  @Post('cashier/:cashierId')
+  async createOrUpdateCashierBillCount(
+    @Param('cashierId') cashierId: string,
+    @Body() createDto: CreateBillCountDto,
+  ) {
+    return this.billsService.createOrUpdateBillCount(cashierId, createDto);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Put('cashier/:cashierId/:id')
+  async updateCashierBillCount(
+    @Param('cashierId') cashierId: string,
+    @Param('id') id: string,
+    @Body() updateDto: UpdateBillCountDto,
+  ) {
+    return this.billsService.updateBillCount(id, updateDto);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('cashier/:cashierId')
+  async getCashierBillCountForDate(
+    @Param('cashierId') cashierId: string,
+    @Query('date') date?: string,
+  ) {
+    return this.billsService.getBillCountForDate(cashierId, date);
+  }
 }

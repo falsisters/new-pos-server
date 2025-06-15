@@ -116,4 +116,35 @@ export class ExpensesController {
   async userDeleteExpense(@Param('id') expenseListId: string) {
     return await this.expensesService.deleteExpense(expenseListId);
   }
+
+  // New cashier-specific routes for user oversight
+  @UseGuards(JwtAuthGuard)
+  @Post('cashier/:cashierId/create')
+  async createCashierExpense(
+    @Param('cashierId') cashierId: string,
+    @Body() createExpenseDto: CreateExpenseDto,
+  ) {
+    return await this.expensesService.createExpense(
+      cashierId,
+      createExpenseDto,
+    );
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('cashier/:cashierId/today')
+  async getCashierExpenseByDate(
+    @Param('cashierId') cashierId: string,
+    @Query('date') date?: string,
+  ) {
+    return await this.expensesService.getFirstExpenseByDay(cashierId, { date });
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Delete('cashier/:cashierId/:id')
+  async deleteCashierExpense(
+    @Param('cashierId') cashierId: string,
+    @Param('id') expenseId: string,
+  ) {
+    return await this.expensesService.deleteExpense(expenseId);
+  }
 }
