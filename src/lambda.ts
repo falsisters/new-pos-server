@@ -9,6 +9,10 @@ import { ValidationPipe } from '@nestjs/common';
 const server = express();
 let isNestAppInitialized = false;
 
+// Configure body parser limits
+server.use(express.json({ limit: '9mb' }));
+server.use(express.urlencoded({ limit: '9mb', extended: true }));
+
 // Add CORS middleware to the Express server directly
 server.use(
   cors({

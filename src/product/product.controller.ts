@@ -54,7 +54,13 @@ export class ProductController {
   }
 
   @UseGuards(JwtAuthGuard)
-  @UseInterceptors(FileInterceptor('picture'))
+  @UseInterceptors(
+    FileInterceptor('picture', {
+      limits: {
+        fileSize: 9 * 1024 * 1024, // 8MB
+      },
+    }),
+  )
   @Post('create')
   async createProduct(
     @Request() req,
@@ -69,7 +75,13 @@ export class ProductController {
   }
 
   @UseGuards(JwtAuthGuard)
-  @UseInterceptors(FileInterceptor('picture'))
+  @UseInterceptors(
+    FileInterceptor('picture', {
+      limits: {
+        fileSize: 9 * 1024 * 1024, // 9MB
+      },
+    }),
+  )
   @Patch(':id')
   async updateProduct(
     @Param('id') id: string,

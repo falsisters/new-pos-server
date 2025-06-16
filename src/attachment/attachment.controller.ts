@@ -47,7 +47,13 @@ export class AttachmentController {
   }
 
   @UseGuards(JwtCashierAuthGuard)
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(
+    FileInterceptor('file', {
+      limits: {
+        fileSize: 9 * 1024 * 1024, // 9MB
+      },
+    }),
+  )
   @Post('create')
   async createAttachment(
     @Request() req,
@@ -62,7 +68,13 @@ export class AttachmentController {
   }
 
   @UseGuards(JwtAuthGuard)
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(
+    FileInterceptor('file', {
+      limits: {
+        fileSize: 9 * 1024 * 1024, // 9MB
+      },
+    }),
+  )
   @Post('user/create')
   async createUserAttachment(
     @Request() req,
