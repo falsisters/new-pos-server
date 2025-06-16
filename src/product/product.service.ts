@@ -61,27 +61,31 @@ export class ProductService {
         name,
         picture: url,
         userId,
-        SackPrice: {
-          create: sackPrice.map((price) => ({
-            price: price.price,
-            type: price.type,
-            stock: price.stock,
-            ...(price.profit !== undefined &&
-              price.profit !== null && { profit: price.profit }),
-            specialPrice: price.specialPrice
-              ? {
-                  create: {
-                    price: price.specialPrice.price,
-                    minimumQty: price.specialPrice.minimumQty,
-                    ...(price.specialPrice.profit !== undefined &&
-                      price.specialPrice.profit !== null && {
-                        profit: price.specialPrice.profit,
-                      }),
-                  },
-                }
-              : undefined,
-          })),
-        },
+        // Only create SackPrice if array is not empty
+        ...(sackPrice &&
+          sackPrice.length > 0 && {
+            SackPrice: {
+              create: sackPrice.map((price) => ({
+                price: price.price,
+                type: price.type,
+                stock: price.stock,
+                ...(price.profit !== undefined &&
+                  price.profit !== null && { profit: price.profit }),
+                specialPrice: price.specialPrice
+                  ? {
+                      create: {
+                        price: price.specialPrice.price,
+                        minimumQty: price.specialPrice.minimumQty,
+                        ...(price.specialPrice.profit !== undefined &&
+                          price.specialPrice.profit !== null && {
+                            profit: price.specialPrice.profit,
+                          }),
+                      },
+                    }
+                  : undefined,
+              })),
+            },
+          }),
         perKiloPrice: perKiloPrice
           ? {
               create: {
@@ -143,43 +147,64 @@ export class ProductService {
     const sackPriceOperations = {
       update: [],
       create: [],
+      deleteMany: false,
     };
 
-    sackPrice.forEach(
-      (price: {
-        id?: string;
-        price: number;
-        type?: string;
-        stock?: number;
-        profit?: number;
-        specialPrice?: {
+    // If sackPrice is empty array, mark for deletion of all existing SackPrice records
+    if (!sackPrice || sackPrice.length === 0) {
+      if (currentProduct.SackPrice && currentProduct.SackPrice.length > 0) {
+        sackPriceOperations.deleteMany = true;
+      }
+    } else {
+      // Process non-empty sackPrice array
+      sackPrice.forEach(
+        (price: {
           id?: string;
-          price?: number;
-          minimumQty?: number;
+          price: number;
+          type?: string;
+          stock?: number;
           profit?: number;
-        };
-      }) => {
-        if (price.id) {
-          // Update existing SackPrice
-          const updateData: any = {
-            where: { id: price.id },
-            data: {
-              price: price.price,
-              type: price.type,
-              stock: price.stock,
-              ...(price.profit !== undefined &&
-                price.profit !== null && { profit: price.profit }),
-            },
+          specialPrice?: {
+            id?: string;
+            price?: number;
+            minimumQty?: number;
+            profit?: number;
           };
+        }) => {
+          if (price.id) {
+            // Update existing SackPrice
+            const updateData: any = {
+              where: { id: price.id },
+              data: {
+                price: price.price,
+                type: price.type,
+                stock: price.stock,
+                ...(price.profit !== undefined &&
+                  price.profit !== null && { profit: price.profit }),
+              },
+            };
 
-          // Handle SpecialPrice for existing SackPrice
-          if (price.specialPrice) {
-            if (price.specialPrice.id) {
-              // Update existing SpecialPrice
-              updateData.data.specialPrice = {
-                update: {
-                  where: { id: price.specialPrice.id },
-                  data: {
+            // Handle SpecialPrice for existing SackPrice
+            if (price.specialPrice) {
+              if (price.specialPrice.id) {
+                // Update existing SpecialPrice
+                updateData.data.specialPrice = {
+                  update: {
+                    where: { id: price.specialPrice.id },
+                    data: {
+                      price: price.specialPrice.price,
+                      minimumQty: price.specialPrice.minimumQty,
+                      ...(price.specialPrice.profit !== undefined &&
+                        price.specialPrice.profit !== null && {
+                          profit: price.specialPrice.profit,
+                        }),
+                    },
+                  },
+                };
+              } else {
+                // Create new SpecialPrice
+                updateData.data.specialPrice = {
+                  create: {
                     price: price.specialPrice.price,
                     minimumQty: price.specialPrice.minimumQty,
                     ...(price.specialPrice.profit !== undefined &&
@@ -187,11 +212,23 @@ export class ProductService {
                         profit: price.specialPrice.profit,
                       }),
                   },
-                },
-              };
-            } else {
-              // Create new SpecialPrice
-              updateData.data.specialPrice = {
+                };
+              }
+            }
+
+            sackPriceOperations.update.push(updateData);
+          } else {
+            // Create new SackPrice
+            const createData: any = {
+              price: price.price,
+              type: price.type,
+              stock: price.stock,
+              ...(price.profit !== undefined &&
+                price.profit !== null && { profit: price.profit }),
+            };
+
+            if (price.specialPrice) {
+              createData.specialPrice = {
                 create: {
                   price: price.specialPrice.price,
                   minimumQty: price.specialPrice.minimumQty,
@@ -202,36 +239,12 @@ export class ProductService {
                 },
               };
             }
+
+            sackPriceOperations.create.push(createData);
           }
-
-          sackPriceOperations.update.push(updateData);
-        } else {
-          // Create new SackPrice
-          const createData: any = {
-            price: price.price,
-            type: price.type,
-            stock: price.stock,
-            ...(price.profit !== undefined &&
-              price.profit !== null && { profit: price.profit }),
-          };
-
-          if (price.specialPrice) {
-            createData.specialPrice = {
-              create: {
-                price: price.specialPrice.price,
-                minimumQty: price.specialPrice.minimumQty,
-                ...(price.specialPrice.profit !== undefined &&
-                  price.specialPrice.profit !== null && {
-                    profit: price.specialPrice.profit,
-                  }),
-              },
-            };
-          }
-
-          sackPriceOperations.create.push(createData);
-        }
-      },
-    );
+        },
+      );
+    }
 
     // Handle PerKiloPrice operations
     let perKiloPriceOperation = {};
@@ -270,8 +283,13 @@ export class ProductService {
       ...(url && { picture: url }),
     };
 
-    // Add SackPrice operations if there are any
-    if (
+    // Add SackPrice operations
+    if (sackPriceOperations.deleteMany) {
+      // Delete all existing SackPrice records
+      updateData.SackPrice = {
+        deleteMany: {},
+      };
+    } else if (
       sackPriceOperations.update.length > 0 ||
       sackPriceOperations.create.length > 0
     ) {
