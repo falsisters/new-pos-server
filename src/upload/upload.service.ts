@@ -36,9 +36,27 @@ export class UploadService {
       : `${Date.now()}-${fileName}`;
 
     try {
-      const compressedFile = await sharp(file.buffer)
-        .jpeg({ quality: 85 })
-        .toBuffer();
+      let compressedFile: Buffer;
+      const sharpImage = sharp(file.buffer);
+
+      // Get image metadata to determine format
+      const metadata = await sharpImage.metadata();
+
+      // Compress based on original format
+      if (metadata.format === 'png') {
+        compressedFile = await sharpImage
+          .png({
+            quality: 85,
+            compressionLevel: 6,
+            adaptiveFiltering: true,
+          })
+          .toBuffer();
+      } else if (metadata.format === 'webp') {
+        compressedFile = await sharpImage.webp({ quality: 85 }).toBuffer();
+      } else {
+        // Default to JPEG for other formats (jpg, jpeg, etc.)
+        compressedFile = await sharpImage.jpeg({ quality: 85 }).toBuffer();
+      }
 
       const command = new PutObjectCommand({
         Bucket: this.defaultBucket,
