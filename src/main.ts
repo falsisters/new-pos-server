@@ -5,9 +5,10 @@ import { ValidationPipe } from '@nestjs/common';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  // Configure body parser limits
-  app.use(require('express').json({ limit: '9mb' }));
-  app.use(require('express').urlencoded({ limit: '9mb', extended: true }));
+  // Configure body parser limits - increased for multipart form data overhead
+  app.use(require('express').json({ limit: '15mb' }));
+  app.use(require('express').urlencoded({ limit: '15mb', extended: true }));
+  app.use(require('express').raw({ limit: '15mb' }));
 
   app.enableCors({
     origin: ['*'],

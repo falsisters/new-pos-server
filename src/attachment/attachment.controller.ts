@@ -50,7 +50,8 @@ export class AttachmentController {
   @UseInterceptors(
     FileInterceptor('file', {
       limits: {
-        fileSize: 9 * 1024 * 1024, // 9MB
+        fileSize: 15 * 1024 * 1024, // 15MB
+        fieldSize: 15 * 1024 * 1024, // 15MB
       },
     }),
   )
@@ -71,7 +72,8 @@ export class AttachmentController {
   @UseInterceptors(
     FileInterceptor('file', {
       limits: {
-        fileSize: 9 * 1024 * 1024, // 9MB
+        fileSize: 15 * 1024 * 1024, // 15MB
+        fieldSize: 15 * 1024 * 1024, // 15MB
       },
     }),
   )

@@ -57,7 +57,8 @@ export class ProductController {
   @UseInterceptors(
     FileInterceptor('picture', {
       limits: {
-        fileSize: 9 * 1024 * 1024, // 8MB
+        fileSize: 15 * 1024 * 1024, // 15MB
+        fieldSize: 15 * 1024 * 1024, // 15MB
       },
     }),
   )
@@ -78,7 +79,8 @@ export class ProductController {
   @UseInterceptors(
     FileInterceptor('picture', {
       limits: {
-        fileSize: 9 * 1024 * 1024, // 9MB
+        fileSize: 15 * 1024 * 1024, // 15MB
+        fieldSize: 15 * 1024 * 1024, // 15MB
       },
     }),
   )
