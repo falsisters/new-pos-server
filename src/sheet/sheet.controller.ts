@@ -310,4 +310,78 @@ export class SheetController {
 
     return { results, errors };
   }
+
+  @UseGuards(JwtCashierAuthGuard)
+  @Patch('rows/positions/batch')
+  async batchUpdateRowPositions(
+    @Body()
+    batchUpdateDto: {
+      updates: { rowId: string; newRowIndex: number }[];
+    },
+  ) {
+    const { updates } = batchUpdateDto;
+
+    try {
+      const results = await this.sheetService.batchUpdateRowPositions(updates);
+      return { success: true, results };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  @UseGuards(JwtCashierAuthGuard)
+  @Patch('cells/formulas/batch')
+  async batchUpdateCellsWithFormulas(
+    @Body()
+    batchUpdateDto: {
+      cellUpdates: {
+        id: string;
+        value: string;
+        formula?: string;
+        color?: string;
+      }[];
+      rowMappings: { oldRowIndex: number; newRowIndex: number }[];
+    },
+  ) {
+    const { cellUpdates, rowMappings } = batchUpdateDto;
+
+    try {
+      const results =
+        await this.sheetService.batchUpdateCellsWithFormulaUpdates(
+          cellUpdates,
+          rowMappings,
+        );
+      return { success: true, results };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  @UseGuards(JwtCashierAuthGuard)
+  @Post('reorder/comprehensive')
+  async comprehensiveRowReorder(
+    @Body()
+    reorderDto: {
+      sheetId: string;
+      rowReorders: { rowId: string; newRowIndex: number }[];
+      affectedFormulas: {
+        cellId: string;
+        newFormula: string;
+        newValue: string;
+      }[];
+    },
+  ) {
+    const { sheetId, rowReorders, affectedFormulas } = reorderDto;
+
+    try {
+      await this.sheetService.reorderRowsWithFormulaUpdates(
+        sheetId,
+        rowReorders,
+        affectedFormulas,
+      );
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
 }

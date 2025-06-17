@@ -377,4 +377,146 @@ export class SheetService {
       data: { rowIndex: newRowIndex },
     });
   }
+
+  // New method for batch row position updates with validation
+  async batchUpdateRowPositions(
+    updates: { rowId: string; newRowIndex: number }[],
+  ) {
+    // Validate for duplicates first
+    const newIndices = updates.map((u) => u.newRowIndex);
+    const duplicates = newIndices.filter(
+      (index, i) => newIndices.indexOf(index) !== i,
+    );
+
+    if (duplicates.length > 0) {
+      throw new Error(
+        `Duplicate row indices detected: ${duplicates.join(', ')}`,
+      );
+    }
+
+    // Use transaction to ensure atomicity
+    return await this.prisma.$transaction(
+      updates.map((update) =>
+        this.prisma.row.update({
+          where: { id: update.rowId },
+          data: { rowIndex: update.newRowIndex },
+        }),
+      ),
+    );
+  }
+
+  // New method for batch cell updates with formula reference updates
+  async batchUpdateCellsWithFormulaUpdates(
+    cellUpdates: {
+      id: string;
+      value: string;
+      formula?: string;
+      color?: string;
+    }[],
+    rowMappings: { oldRowIndex: number; newRowIndex: number }[],
+  ) {
+    // Update formula references in the cell updates
+    const updatedCellUpdates = cellUpdates.map((cell) => ({
+      ...cell,
+      formula: cell.formula
+        ? this.updateFormulaReferences(cell.formula, rowMappings)
+        : cell.formula,
+    }));
+
+    // Use transaction for atomic updates
+    return await this.prisma.$transaction(
+      updatedCellUpdates.map((cell) =>
+        this.prisma.cell.update({
+          where: { id: cell.id },
+          data: {
+            value: cell.value,
+            formula: cell.formula,
+            color: cell.color,
+            isCalculated: !!cell.formula,
+          },
+        }),
+      ),
+    );
+  }
+
+  // Helper method to update formula references when rows are moved
+  private updateFormulaReferences(
+    formula: string,
+    rowMappings: { oldRowIndex: number; newRowIndex: number }[],
+  ): string {
+    let updatedFormula = formula;
+
+    // Create a mapping for quick lookups
+    const mappingMap = new Map(
+      rowMappings.map((m) => [m.oldRowIndex, m.newRowIndex]),
+    );
+
+    // Pattern to match cell references like A1, B2, Quantity5, Name2, etc.
+    const cellReferencePattern = /([A-Za-z]+)(\d+)/g;
+
+    updatedFormula = updatedFormula.replace(
+      cellReferencePattern,
+      (match, column, row) => {
+        const rowIndex = parseInt(row);
+        const newRowIndex = mappingMap.get(rowIndex);
+
+        if (newRowIndex !== undefined) {
+          return `${column}${newRowIndex}`;
+        }
+
+        return match; // No change needed
+      },
+    );
+
+    // Handle range references like SUM(A1:A10)
+    const rangePattern = /([A-Za-z]+)(\d+):([A-Za-z]+)(\d+)/g;
+
+    updatedFormula = updatedFormula.replace(
+      rangePattern,
+      (match, startCol, startRow, endCol, endRow) => {
+        const startRowIndex = parseInt(startRow);
+        const endRowIndex = parseInt(endRow);
+
+        const newStartRow = mappingMap.get(startRowIndex) || startRowIndex;
+        const newEndRow = mappingMap.get(endRowIndex) || endRowIndex;
+
+        return `${startCol}${newStartRow}:${endCol}${newEndRow}`;
+      },
+    );
+
+    return updatedFormula;
+  }
+
+  // New method for comprehensive row reorder with formula updates
+  async reorderRowsWithFormulaUpdates(
+    sheetId: string,
+    rowReorders: { rowId: string; newRowIndex: number }[],
+    affectedFormulas: {
+      cellId: string;
+      newFormula: string;
+      newValue: string;
+    }[],
+  ) {
+    return await this.prisma.$transaction(async (tx) => {
+      // Update row positions
+      for (const reorder of rowReorders) {
+        await tx.row.update({
+          where: { id: reorder.rowId },
+          data: { rowIndex: reorder.newRowIndex },
+        });
+      }
+
+      // Update formulas that reference moved rows
+      for (const formulaUpdate of affectedFormulas) {
+        await tx.cell.update({
+          where: { id: formulaUpdate.cellId },
+          data: {
+            formula: formulaUpdate.newFormula,
+            value: formulaUpdate.newValue,
+            isCalculated: true,
+          },
+        });
+      }
+    });
+  }
 }

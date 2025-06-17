@@ -402,4 +402,70 @@ export class InventoryController {
 
     return { results, errors };
   }
+
+  @UseGuards(JwtCashierAuthGuard)
+  @Patch('rows/positions/batch')
+  async batchUpdateRowPositions(@Body() batchUpdateDto: { mappings: any[] }) {
+    const { mappings } = batchUpdateDto;
+    const results = [];
+    const errors = [];
+
+    console.log(
+      'Batch update row positions received:',
+      mappings.length,
+      'mappings',
+    );
+
+    for (const mapping of mappings) {
+      try {
+        await this.inventoryService.updateRowPosition(
+          mapping.rowId,
+          mapping.newRowIndex,
+        );
+        results.push({ rowId: mapping.rowId, success: true });
+      } catch (error) {
+        errors.push({
+          rowId: mapping.rowId,
+          error: error.message || 'Unknown error',
+          success: false,
+        });
+      }
+    }
+
+    return { results, errors };
+  }
+
+  @UseGuards(JwtCashierAuthGuard)
+  @Patch('cells/formulas/batch')
+  async batchUpdateCellFormulas(@Body() batchUpdateDto: { updates: any[] }) {
+    const { updates } = batchUpdateDto;
+    const results = [];
+    const errors = [];
+
+    console.log(
+      'Batch update cell formulas received:',
+      updates.length,
+      'updates',
+    );
+
+    for (const update of updates) {
+      try {
+        const result = await this.inventoryService.updateCell(
+          update.cellId,
+          update.value,
+          update.formula,
+          update.color,
+        );
+        results.push({ cellId: update.cellId, result, success: true });
+      } catch (error) {
+        errors.push({
+          cellId: update.cellId,
+          error: error.message || 'Unknown error',
+          success: false,
+        });
+      }
+    }
+
+    return { results, errors };
+  }
 }

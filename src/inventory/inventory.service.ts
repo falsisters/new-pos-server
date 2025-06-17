@@ -591,4 +591,63 @@ export class InventoryService {
       data: { rowIndex: newRowIndex },
     });
   }
+
+  async validateRowMappings(
+    mappings: { rowId: string; oldRowIndex: number; newRowIndex: number }[],
+    sheetId: string,
+  ) {
+    const errors: string[] = [];
+    const newIndices = mappings.map((m) => m.newRowIndex);
+
+    // Check for duplicate new indices
+    const duplicates = newIndices.filter(
+      (index, pos) => newIndices.indexOf(index) !== pos,
+    );
+    if (duplicates.length > 0) {
+      errors.push(`Duplicate row indices: ${duplicates.join(', ')}`);
+    }
+
+    // Check if all mappings belong to the same sheet
+    const sheet = await this.prisma.inventorySheet.findUnique({
+      where: { id: sheetId },
+      include: {
+        Rows: {
+          select: { id: true, rowIndex: true },
+        },
+      },
+    });
+
+    if (!sheet) {
+      errors.push('Sheet not found');
+      return { isValid: false, errors };
+    }
+
+    // Validate that all row IDs exist in the sheet
+    const sheetRowIds = sheet.Rows.map((r) => r.id);
+    const invalidRowIds = mappings
+      .map((m) => m.rowId)
+      .filter((id) => !sheetRowIds.includes(id));
+
+    if (invalidRowIds.length > 0) {
+      errors.push(`Invalid row IDs: ${invalidRowIds.join(', ')}`);
+    }
+
+    return {
+      isValid: errors.length === 0,
+      errors,
+    };
+  }
+
+  async batchUpdateRowPositions(
+    mappings: { rowId: string; oldRowIndex: number; newRowIndex: number }[],
+  ) {
+    const updatePromises = mappings.map((mapping) => {
+      return this.prisma.inventoryRow.update({
+        where: { id: mapping.rowId },
+        data: { rowIndex: mapping.newRowIndex },
+      });
+    });
+
+    return Promise.all(updatePromises);
+  }
 }
