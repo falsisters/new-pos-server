@@ -15,7 +15,6 @@ import { TransferModule } from './transfer/transfer.module';
 import { KahonModule } from './kahon/kahon.module';
 import { InventoryModule } from './inventory/inventory.module';
 import { SheetModule } from './sheet/sheet.module';
-import { CashModule } from './cash/cash.module';
 import { AttachmentModule } from './attachment/attachment.module';
 import { SalesCheckModule } from './sales-check/sales-check.module';
 import { ProfitModule } from './profit/profit.module';
@@ -43,7 +42,6 @@ import { DatabaseModule } from './database/database.module';
     KahonModule,
     InventoryModule,
     SheetModule,
-    CashModule,
     AttachmentModule,
     SalesCheckModule,
     ProfitModule,

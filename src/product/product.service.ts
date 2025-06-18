@@ -13,6 +13,7 @@ export class ProductService {
 
   async getAllPublicProducts() {
     return this.prisma.product.findMany({
+      orderBy: { name: 'asc' },
       include: {
         SackPrice: {
           include: {
@@ -336,6 +337,7 @@ export class ProductService {
       where: {
         userId,
       },
+      orderBy: { name: 'asc' },
       include: {
         SackPrice: {
           include: {
