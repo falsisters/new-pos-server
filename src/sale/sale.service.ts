@@ -12,6 +12,12 @@ export class SaleService {
     private order: OrderService,
   ) {}
 
+  // Helper function to convert UTC to Philippine time (UTC+8)
+  private convertToPhilippineTime(utcDate: Date): Date {
+    const philippineTime = new Date(utcDate.getTime() + 8 * 60 * 60 * 1000);
+    return philippineTime;
+  }
+
   async createSale(cashierId: string, products: CreateSaleDto) {
     const { totalAmount, paymentMethod, saleItem, orderId } = products;
 
@@ -452,7 +458,12 @@ export class SaleService {
         return [];
       }
 
-      return sales;
+      // Convert timestamps to Philippine time
+      return sales.map((sale) => ({
+        ...sale,
+        createdAt: this.convertToPhilippineTime(sale.createdAt),
+        updatedAt: this.convertToPhilippineTime(sale.updatedAt),
+      }));
     } catch (error) {
       console.error('Error fetching sales by date:', error);
       // Return empty array on error instead of potentially returning undefined

@@ -10,6 +10,12 @@ export class DeliveryService {
     private transferService: TransferService,
   ) {}
 
+  // Helper function to convert UTC to Philippine time (UTC+8)
+  private convertToPhilippineTime(utcDate: Date): Date {
+    const philippineTime = new Date(utcDate.getTime() + 8 * 60 * 60 * 1000);
+    return philippineTime;
+  }
+
   async createDelivery(
     cashierId: string,
     createDeliveryDto: CreateDeliveryDto,
@@ -218,7 +224,7 @@ export class DeliveryService {
   }
 
   async getDelivery(deliveryId: string) {
-    return this.prisma.delivery.findUnique({
+    const delivery = await this.prisma.delivery.findUnique({
       where: { id: deliveryId },
       include: {
         DeliveryItem: {
@@ -230,10 +236,23 @@ export class DeliveryService {
         },
       },
     });
+
+    if (delivery) {
+      return {
+        ...delivery,
+        createdAt: this.convertToPhilippineTime(delivery.createdAt),
+        updatedAt: this.convertToPhilippineTime(delivery.updatedAt),
+        deliveryTimeStart: delivery.deliveryTimeStart
+          ? this.convertToPhilippineTime(delivery.deliveryTimeStart)
+          : null,
+      };
+    }
+
+    return delivery;
   }
 
   async getAllDeliveries(userId: string) {
-    return this.prisma.delivery.findMany({
+    const deliveries = await this.prisma.delivery.findMany({
       where: {
         cashier: {
           userId,
@@ -249,5 +268,14 @@ export class DeliveryService {
         },
       },
     });
+
+    return deliveries.map((delivery) => ({
+      ...delivery,
+      createdAt: this.convertToPhilippineTime(delivery.createdAt),
+      updatedAt: this.convertToPhilippineTime(delivery.updatedAt),
+      deliveryTimeStart: delivery.deliveryTimeStart
+        ? this.convertToPhilippineTime(delivery.deliveryTimeStart)
+        : null,
+    }));
   }
 }

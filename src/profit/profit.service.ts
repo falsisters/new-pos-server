@@ -28,6 +28,12 @@ interface GroupedProfit {
 export class ProfitService {
   constructor(private prisma: PrismaService) {}
 
+  // Helper function to convert UTC to Philippine time (UTC+8)
+  private convertToPhilippineTime(utcDate: Date): Date {
+    const philippineTime = new Date(utcDate.getTime() + 8 * 60 * 60 * 1000);
+    return philippineTime;
+  }
+
   async getProfitsWithFilter(userId: string, filters: ProfitFilterDto) {
     // Set default date to today if not provided
     const targetDate = filters.date ? new Date(filters.date) : new Date();
@@ -164,7 +170,7 @@ export class ProfitService {
           formattedPriceType,
           paymentMethod: sale.paymentMethod,
           isSpecialPrice: item.isSpecialPrice,
-          saleDate: sale.createdAt,
+          saleDate: this.convertToPhilippineTime(sale.createdAt),
           isAsin: item.product?.name.toLowerCase().includes('asin') || false,
         };
       });
@@ -389,7 +395,7 @@ export class ProfitService {
           formattedPriceType,
           paymentMethod: sale.paymentMethod,
           isSpecialPrice: item.isSpecialPrice,
-          saleDate: sale.createdAt,
+          saleDate: this.convertToPhilippineTime(sale.createdAt),
           isAsin: item.product?.name.toLowerCase().includes('asin') || false,
         };
       });

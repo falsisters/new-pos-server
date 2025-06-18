@@ -8,6 +8,12 @@ import { EmployeeAttendanceFilterDto } from './dto/employee-attendance.dto';
 export class EmployeeService {
   constructor(private prisma: PrismaService) {}
 
+  // Helper function to convert UTC to Philippine time (UTC+8)
+  private convertToPhilippineTime(utcDate: Date): Date {
+    const philippineTime = new Date(utcDate.getTime() + 8 * 60 * 60 * 1000);
+    return philippineTime;
+  }
+
   async createEmployee(userId: string, createEmployeeDto: CreateEmployeeDto) {
     return this.prisma.employee.create({
       data: {
@@ -111,14 +117,24 @@ export class EmployeeService {
 
     // Format the attendance data
     const attendanceData = shifts.map((shift) => {
-      const shiftDate = shift.startTime.toISOString().split('T')[0];
-      const shiftStartTime = shift.startTime.toLocaleTimeString('en-US', {
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: true,
-      });
-      const shiftEndTime = shift.endTime
-        ? shift.endTime.toLocaleTimeString('en-US', {
+      const shiftStartTimePhilippine = this.convertToPhilippineTime(
+        shift.startTime,
+      );
+      const shiftEndTimePhilippine = shift.endTime
+        ? this.convertToPhilippineTime(shift.endTime)
+        : null;
+
+      const shiftDate = shiftStartTimePhilippine.toISOString().split('T')[0];
+      const shiftStartTime = shiftStartTimePhilippine.toLocaleTimeString(
+        'en-US',
+        {
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: true,
+        },
+      );
+      const shiftEndTime = shiftEndTimePhilippine
+        ? shiftEndTimePhilippine.toLocaleTimeString('en-US', {
             hour: '2-digit',
             minute: '2-digit',
             hour12: true,
@@ -135,7 +151,7 @@ export class EmployeeService {
         employees: shift.employee.map((shiftEmployee) => ({
           id: shiftEmployee.employee.id,
           name: shiftEmployee.employee.name,
-          joinedAt: shiftEmployee.createdAt,
+          joinedAt: this.convertToPhilippineTime(shiftEmployee.createdAt),
         })),
         totalEmployees: shift.employee.length,
       };
