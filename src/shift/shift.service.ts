@@ -97,7 +97,7 @@ export class ShiftService {
 
   async editShift(id: string, editShiftDto: EditShiftDto) {
     const { employees } = editShiftDto;
-    return this.prisma.shift.update({
+    const updatedShift = await this.prisma.shift.update({
       where: {
         id,
       },
@@ -105,7 +105,7 @@ export class ShiftService {
         employee: {
           deleteMany: {},
           create: employees.map((employee) => ({
-            employeeId: employee.id,
+            employeeId: employee,
           })),
         },
       },
@@ -117,5 +117,12 @@ export class ShiftService {
         },
       },
     });
+
+    // Transform the data to match the expected frontend structure
+    return {
+      ...updatedShift,
+      employees: updatedShift.employee.map((e) => e.employee),
+      employee: undefined, // Remove the nested structure
+    };
   }
 }

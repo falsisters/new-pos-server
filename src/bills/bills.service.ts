@@ -181,9 +181,13 @@ export class BillsService {
       return null; // Return null for non-existing bill count
     }
 
-    // Use the cashier's userId for calculations
-    const userId = billCount.cashier.userId;
-    return this.formatBillCountResponse(billCount, userId, targetDate, false);
+    // Use the cashierId directly for calculations
+    return this.formatBillCountResponse(
+      billCount,
+      cashierId,
+      targetDate,
+      false,
+    );
   }
 
   // User oversight methods
@@ -369,7 +373,7 @@ export class BillsService {
 
   // Helper method to calculate total cash sales for a given date
   private async calculateTotalCash(
-    userId: string,
+    ownerId: string,
     targetDate: Date,
     isUser: boolean,
   ): Promise<number> {
@@ -385,7 +389,7 @@ export class BillsService {
         where: {
           paymentMethod: PaymentMethod.CASH,
           cashier: {
-            userId,
+            userId: ownerId,
           },
           createdAt: {
             gte: startOfDay,
@@ -399,17 +403,11 @@ export class BillsService {
 
       return cashSales.reduce((sum, sale) => sum + sale.totalAmount, 0);
     } else {
-      // For cashiers, find the cashier by userId and get their sales
-      const cashier = await this.prisma.cashier.findFirst({
-        where: { userId },
-      });
-
-      if (!cashier) return 0;
-
+      // For cashiers, use the cashierId directly
       const cashSales = await this.prisma.sale.findMany({
         where: {
           paymentMethod: PaymentMethod.CASH,
-          cashierId: cashier.id,
+          cashierId: ownerId,
           createdAt: {
             gte: startOfDay,
             lte: endOfDay,
@@ -426,7 +424,7 @@ export class BillsService {
 
   // Helper method to calculate total expenses for a given date
   private async calculateTotalExpenses(
-    userId: string,
+    ownerId: string,
     targetDate: Date,
     isUser: boolean,
   ): Promise<number> {
@@ -441,7 +439,7 @@ export class BillsService {
     if (isUser) {
       expenseList = await this.prisma.expenseList.findFirst({
         where: {
-          userId,
+          userId: ownerId,
           createdAt: {
             gte: startOfDay,
             lte: endOfDay,
@@ -452,16 +450,10 @@ export class BillsService {
         },
       });
     } else {
-      // For cashiers, find the cashier by userId and get their expense list
-      const cashier = await this.prisma.cashier.findFirst({
-        where: { userId },
-      });
-
-      if (!cashier) return 0;
-
+      // For cashiers, use the cashierId directly
       expenseList = await this.prisma.expenseList.findFirst({
         where: {
-          cashierId: cashier.id,
+          cashierId: ownerId,
           createdAt: {
             gte: startOfDay,
             lte: endOfDay,
