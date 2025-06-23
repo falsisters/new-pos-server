@@ -22,7 +22,6 @@ model User {
   updatedAt   DateTime      @updatedAt
   Cashier     Cashier[]
   Employee    Employee[]
-  Product     Product[]
   BillCount   BillCount[]
   Attachment  Attachment[]
   Order       Order[]
@@ -39,6 +38,7 @@ model Cashier {
   updatedAt   DateTime             @updatedAt
   user        User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId      String
+  Product     Product[] // Add this relation
   Delivery    Delivery[]
   Sale        Sale[]
   Shift       Shift[]
@@ -97,8 +97,8 @@ model Product {
   picture      String         @default("https://placehold.co/800x800?text=Product")
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
-  userId       String
-  user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cashierId    String? // Made optional for migration
+  cashier      Cashier?       @relation(fields: [cashierId], references: [id], onDelete: Cascade) // Made optional
   SackPrice    SackPrice[]
   perKiloPrice PerKiloPrice?
   DeliveryItem DeliveryItem[]

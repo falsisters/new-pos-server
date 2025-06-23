@@ -33,12 +33,7 @@ export class DeliveryController {
     @Body() createDeliveryDto: CreateDeliveryDto,
   ) {
     const cashierId = req.user.id;
-    const userId = req.user.userId;
-    return this.deliveryService.createDelivery(
-      cashierId,
-      createDeliveryDto,
-      userId,
-    );
+    return this.deliveryService.createDelivery(cashierId, createDeliveryDto);
   }
 
   @UseGuards(JwtAuthGuard)

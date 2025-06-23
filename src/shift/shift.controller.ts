@@ -34,7 +34,10 @@ export class ShiftController {
 
   @UseGuards(JwtAuthGuard)
   @Patch(':id')
-  async updateShift(@Param('id') id: string, @Body() editShiftDto: EditShiftDto) {
+  async updateShift(
+    @Param('id') id: string,
+    @Body() editShiftDto: EditShiftDto,
+  ) {
     return this.shiftService.editShift(id, editShiftDto);
   }
 
@@ -56,5 +59,4 @@ export class ShiftController {
   async getShift(@Param('id') id: string) {
     return this.shiftService.getShiftById(id);
   }
-}
 }

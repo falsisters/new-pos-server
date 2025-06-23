@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { CreateOrderDto } from './dto/createOrder.dto';
-import { SaleService } from 'src/sale/sale.service';
+import { CreateOrderDto } from './dto/create.dto';
+import { EditOrderDto } from './dto/edit.dto';
 
 @Injectable()
 export class OrderService {
@@ -59,182 +59,154 @@ export class OrderService {
     });
   }
 
-  async createOrder(customerId: string, createOrderDto: CreateOrderDto) {
-    const { orderItem } = createOrderDto;
-
-    return this.prisma.$transaction(async (tx) => {
-      // Calculate total price by fetching prices for each item
-      let totalPrice = 0;
-
-      const firstOrderItemProductId = orderItem[0].productId;
-      const firstOrderItemProduct = await tx.product.findUnique({
-        where: { id: firstOrderItemProductId },
-      });
-
-      if (!firstOrderItemProduct) {
-        throw new Error(`Product with ID ${firstOrderItemProductId} not found`);
-      }
-
-      const userId = firstOrderItemProduct.userId;
-
-      // Process each order item to calculate the total price
-      for (const item of orderItem) {
-        if (item.sackPriceId) {
-          // Get sack price if specified
-          const sackPrice = await tx.sackPrice.findUnique({
-            where: { id: item.sackPriceId },
-          });
-
-          if (sackPrice) {
-            totalPrice += sackPrice.price * item.quantity;
-          }
-        } else if (item.perKiloPriceId) {
-          // Get per kilo price if specified
-          const perKiloPrice = await tx.perKiloPrice.findUnique({
-            where: { id: item.perKiloPriceId },
-          });
-
-          if (perKiloPrice) {
-            totalPrice += perKiloPrice.price * item.quantity;
-          }
-        }
-      }
-
-      // Create the order with the calculated total price
-      const order = await tx.order.create({
-        data: {
-          user: {
-            connect: { id: userId },
-          },
-          totalPrice,
-          customer: {
-            connect: { id: customerId },
-          },
-          OrderItem: {
-            create: orderItem.map((item) => {
-              const orderItemData: any = {
-                quantity: item.quantity,
-                product: {
-                  connect: { id: item.productId },
+  // New method to get products available for orders from all cashiers under a user
+  async getAvailableProductsForOrder(userId: string) {
+    return this.prisma.product.findMany({
+      where: {
+        cashier: {
+          userId,
+        },
+        OR: [
+          {
+            SackPrice: {
+              some: {
+                stock: {
+                  gt: 0,
                 },
-                isSpecialPrice: item.isSpecialPrice || false,
-              };
-
-              // Only add SackPrice connection if sackPriceId is provided
-              if (item.sackPriceId) {
-                orderItemData.SackPrice = {
-                  connect: { id: item.sackPriceId },
-                };
-              }
-
-              // Only add perKiloPrice connection if perKiloPriceId is provided
-              if (item.perKiloPriceId) {
-                orderItemData.perKiloPrice = {
-                  connect: { id: item.perKiloPriceId },
-                };
-              }
-
-              return orderItemData;
-            }),
-          },
-        },
-        include: {
-          customer: {
-            select: {
-              id: true,
-              name: true,
-              phone: true,
-              address: true,
-              createdAt: true,
-              updatedAt: true,
+              },
             },
           },
-          OrderItem: {
-            include: {
-              product: true,
+          {
+            perKiloPrice: {
+              stock: {
+                gt: 0,
+              },
+            },
+          },
+        ],
+      },
+      include: {
+        SackPrice: {
+          include: {
+            specialPrice: true,
+          },
+          where: {
+            stock: {
+              gt: 0,
             },
           },
         },
-      });
-
-      return order;
+        perKiloPrice: {
+          where: {
+            stock: {
+              gt: 0,
+            },
+          },
+        },
+        cashier: {
+          select: {
+            name: true,
+            id: true,
+          },
+        },
+      },
     });
   }
 
-  async editOrder(id: string, updateOrderDto: Partial<CreateOrderDto>) {
-    const { orderItem } = updateOrderDto;
+  async createOrder(userId: string, createOrderDto: CreateOrderDto) {
+    const { customerId, orderItem, totalPrice } = createOrderDto;
 
-    return this.prisma.$transaction(async (tx) => {
-      // Find the existing order
-      const existingOrder = await tx.order.findUnique({
-        where: { id },
-        include: {
-          OrderItem: true,
-        },
-      });
-
-      if (!existingOrder) {
-        throw new Error(`Order with ID ${id} not found`);
-      }
-
-      // Delete existing order items if we're updating them
-      if (orderItem && orderItem.length > 0) {
-        await tx.orderItem.deleteMany({
-          where: { orderId: id },
-        });
-
-        // Calculate new total price
-        let totalPrice = 0;
-
-        // Process each order item to calculate the total price
+    return this.prisma.$transaction(
+      async (tx) => {
+        // Verify that all products belong to cashiers under this user
         for (const item of orderItem) {
-          if (item.sackPriceId) {
-            // Get sack price if specified
-            const sackPrice = await tx.sackPrice.findUnique({
-              where: { id: item.sackPriceId },
+          const product = await tx.product.findFirst({
+            where: {
+              id: item.id,
+              cashier: {
+                userId, // Ensure product belongs to a cashier under this user
+              },
+            },
+            include: {
+              cashier: {
+                select: {
+                  name: true,
+                  id: true,
+                },
+              },
+            },
+          });
+
+          if (!product) {
+            throw new Error(
+              `Product ${item.id} not found or not available from your stores`,
+            );
+          }
+
+          // Check stock availability
+          if (item.sackPrice) {
+            const sackPrice = await tx.sackPrice.findFirst({
+              where: {
+                id: item.sackPrice.id,
+                productId: item.id,
+                stock: {
+                  gte: item.sackPrice.quantity,
+                },
+              },
             });
 
-            if (sackPrice) {
-              totalPrice += sackPrice.price * item.quantity;
+            if (!sackPrice) {
+              throw new Error(
+                `Insufficient stock for ${product.name} (${item.sackPrice.type}) at ${product.cashier.name}`,
+              );
             }
-          } else if (item.perKiloPriceId) {
-            // Get per kilo price if specified
-            const perKiloPrice = await tx.perKiloPrice.findUnique({
-              where: { id: item.perKiloPriceId },
+          }
+
+          if (item.perKiloPrice) {
+            const perKiloPrice = await tx.perKiloPrice.findFirst({
+              where: {
+                id: item.perKiloPrice.id,
+                productId: item.id,
+                stock: {
+                  gte: item.perKiloPrice.quantity,
+                },
+              },
             });
 
-            if (perKiloPrice) {
-              totalPrice += perKiloPrice.price * item.quantity;
+            if (!perKiloPrice) {
+              throw new Error(
+                `Insufficient stock for ${product.name} (per kilo) at ${product.cashier.name}`,
+              );
             }
           }
         }
 
-        // Update the order with new items and total price
-        const updatedOrder = await tx.order.update({
-          where: { id },
+        // Create the order
+        return tx.order.create({
           data: {
             totalPrice,
+            user: { connect: { id: userId } },
+            customer: { connect: { id: customerId } },
             OrderItem: {
               create: orderItem.map((item) => {
                 const orderItemData: any = {
-                  quantity: item.quantity,
-                  product: {
-                    connect: { id: item.productId },
-                  },
+                  quantity: item.sackPrice
+                    ? item.sackPrice.quantity
+                    : item.perKiloPrice.quantity,
+                  product: { connect: { id: item.id } },
                   isSpecialPrice: item.isSpecialPrice || false,
                 };
 
-                // Only add SackPrice connection if sackPriceId is provided
-                if (item.sackPriceId) {
+                if (item.sackPrice && item.sackPrice.id) {
                   orderItemData.SackPrice = {
-                    connect: { id: item.sackPriceId },
+                    connect: { id: item.sackPrice.id },
                   };
+                  orderItemData.sackType = item.sackPrice.type;
                 }
 
-                // Only add perKiloPrice connection if perKiloPriceId is provided
-                if (item.perKiloPriceId) {
+                if (item.perKiloPrice && item.perKiloPrice.id) {
                   orderItemData.perKiloPrice = {
-                    connect: { id: item.perKiloPriceId },
+                    connect: { id: item.perKiloPrice.id },
                   };
                 }
 
@@ -243,30 +215,196 @@ export class OrderService {
             },
           },
           include: {
-            customer: {
-              select: {
-                id: true,
-                name: true,
-                phone: true,
-                address: true,
-                createdAt: true,
-                updatedAt: true,
-              },
-            },
             OrderItem: {
               include: {
-                product: true,
+                product: {
+                  include: {
+                    cashier: {
+                      select: {
+                        name: true,
+                        id: true,
+                      },
+                    },
+                  },
+                },
+                SackPrice: {
+                  include: {
+                    specialPrice: true,
+                  },
+                },
+                perKiloPrice: true,
+              },
+            },
+            customer: true,
+          },
+        });
+      },
+      {
+        timeout: 20000,
+      },
+    );
+  }
+
+  async editOrder(id: string, editOrderDto: EditOrderDto) {
+    const { orderItem, totalPrice } = editOrderDto;
+
+    return this.prisma.$transaction(
+      async (tx) => {
+        // Get the existing order to verify user ownership
+        const existingOrder = await tx.order.findUnique({
+          where: { id },
+          include: {
+            OrderItem: {
+              include: {
+                product: {
+                  include: {
+                    cashier: {
+                      select: {
+                        userId: true,
+                      },
+                    },
+                  },
+                },
               },
             },
           },
         });
 
-        return updatedOrder;
-      }
+        if (!existingOrder) {
+          throw new Error('Order not found');
+        }
 
-      // If no items to update, just return the existing order
-      return existingOrder;
-    });
+        const userId = existingOrder.OrderItem[0]?.product.cashier.userId;
+
+        // Verify that all new products belong to cashiers under this user
+        for (const item of orderItem) {
+          const product = await tx.product.findFirst({
+            where: {
+              id: item.id,
+              cashier: {
+                userId,
+              },
+            },
+            include: {
+              cashier: {
+                select: {
+                  name: true,
+                  id: true,
+                },
+              },
+            },
+          });
+
+          if (!product) {
+            throw new Error(
+              `Product ${item.id} not found or not available from your stores`,
+            );
+          }
+
+          // Check stock availability for new items
+          if (item.sackPrice) {
+            const sackPrice = await tx.sackPrice.findFirst({
+              where: {
+                id: item.sackPrice.id,
+                productId: item.id,
+                stock: {
+                  gte: item.sackPrice.quantity,
+                },
+              },
+            });
+
+            if (!sackPrice) {
+              throw new Error(
+                `Insufficient stock for ${product.name} (${item.sackPrice.type}) at ${product.cashier.name}`,
+              );
+            }
+          }
+
+          if (item.perKiloPrice) {
+            const perKiloPrice = await tx.perKiloPrice.findFirst({
+              where: {
+                id: item.perKiloPrice.id,
+                productId: item.id,
+                stock: {
+                  gte: item.perKiloPrice.quantity,
+                },
+              },
+            });
+
+            if (!perKiloPrice) {
+              throw new Error(
+                `Insufficient stock for ${product.name} (per kilo) at ${product.cashier.name}`,
+              );
+            }
+          }
+        }
+
+        // Delete existing order items
+        await tx.orderItem.deleteMany({
+          where: { orderId: id },
+        });
+
+        // Update the order with new items
+        return tx.order.update({
+          where: { id },
+          data: {
+            totalPrice,
+            OrderItem: {
+              create: orderItem.map((item) => {
+                const orderItemData: any = {
+                  quantity: item.sackPrice
+                    ? item.sackPrice.quantity
+                    : item.perKiloPrice.quantity,
+                  product: { connect: { id: item.id } },
+                  isSpecialPrice: item.isSpecialPrice || false,
+                };
+
+                if (item.sackPrice && item.sackPrice.id) {
+                  orderItemData.SackPrice = {
+                    connect: { id: item.sackPrice.id },
+                  };
+                  orderItemData.sackType = item.sackPrice.type;
+                }
+
+                if (item.perKiloPrice && item.perKiloPrice.id) {
+                  orderItemData.perKiloPrice = {
+                    connect: { id: item.perKiloPrice.id },
+                  };
+                }
+
+                return orderItemData;
+              }),
+            },
+          },
+          include: {
+            OrderItem: {
+              include: {
+                product: {
+                  include: {
+                    cashier: {
+                      select: {
+                        name: true,
+                        id: true,
+                      },
+                    },
+                  },
+                },
+                SackPrice: {
+                  include: {
+                    specialPrice: true,
+                  },
+                },
+                perKiloPrice: true,
+              },
+            },
+            customer: true,
+          },
+        });
+      },
+      {
+        timeout: 20000,
+      },
+    );
   }
 
   async cancelOrder(id: string) {

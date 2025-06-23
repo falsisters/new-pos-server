@@ -24,8 +24,8 @@ export class ProductController {
   @UseGuards(JwtCashierAuthGuard)
   @Get('cashier')
   async getAllProductsByCashier(@Request() req) {
-    const userId = req.user.userId;
-    return this.productService.getAllProducts(userId);
+    const cashierId = req.user.id; // Changed to use cashierId directly
+    return this.productService.getAllProductsByCashier(cashierId);
   }
 
   @UseGuards(JwtCustomerAuthGuard)
@@ -53,7 +53,7 @@ export class ProductController {
     return this.productService.getProductById(id);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtCashierAuthGuard)
   @UseInterceptors(
     FileInterceptor('picture', {
       limits: {
@@ -62,14 +62,14 @@ export class ProductController {
       },
     }),
   )
-  @Post('create')
-  async createProduct(
+  @Post('cashier/create')
+  async createProductByCashier(
     @Request() req,
     @Body() formData: any,
     @UploadedFile() picture: Express.Multer.File,
   ) {
-    const userId = req.user.id;
-    return this.productService.createProduct(userId, {
+    const cashierId = req.user.id;
+    return this.productService.createProduct(cashierId, {
       ...formData,
       picture,
     });
@@ -84,21 +84,81 @@ export class ProductController {
       },
     }),
   )
-  @Patch(':id')
-  async updateProduct(
-    @Param('id') id: string,
+  @Post('user/create/:cashierId')
+  async createProductForCashier(
+    @Request() req,
+    @Param('cashierId') cashierId: string,
     @Body() formData: any,
     @UploadedFile() picture: Express.Multer.File,
   ) {
-    return this.productService.editProduct(id, {
+    const userId = req.user.id;
+
+    return this.productService.createProductForCashier(userId, cashierId, {
       ...formData,
       picture,
     });
   }
 
   @UseGuards(JwtAuthGuard)
-  @Delete(':id')
-  async deleteProduct(@Param('id') id: string) {
+  @UseInterceptors(
+    FileInterceptor('picture', {
+      limits: {
+        fileSize: 15 * 1024 * 1024, // 15MB
+        fieldSize: 15 * 1024 * 1024, // 15MB
+      },
+    }),
+  )
+  @Patch('user/:id')
+  async updateProductByUser(
+    @Request() req,
+    @Param('id') id: string,
+    @Body() formData: any,
+    @UploadedFile() picture: Express.Multer.File,
+  ) {
+    const userId = req.user.id;
+
+    // Verify that the product belongs to a cashier under this user
+    await this.productService.verifyProductOwnership(userId, id);
+
+    // Extract cashierId from formData if provided for reassignment
+    const cashierId = formData.cashierId;
+
+    return this.productService.editProduct(
+      id,
+      {
+        ...formData,
+        picture,
+      },
+      cashierId,
+    );
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch('user/:id/assign-cashier/:cashierId')
+  async assignCashierToProduct(
+    @Request() req,
+    @Param('id') id: string,
+    @Param('cashierId') cashierId: string,
+  ) {
+    const userId = req.user.id;
+    return this.productService.assignCashierToProduct(userId, id, cashierId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('user/unassigned')
+  async getUnassignedProducts(@Request() req) {
+    const userId = req.user.id;
+    return this.productService.getUnassignedProducts(userId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Delete('user/:id')
+  async deleteProductByUser(@Request() req, @Param('id') id: string) {
+    const userId = req.user.id;
+
+    // Verify that the product belongs to a cashier under this user
+    await this.productService.verifyProductOwnership(userId, id);
+
     return this.productService.deleteProduct(id);
   }
 }

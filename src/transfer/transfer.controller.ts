@@ -29,13 +29,8 @@ export class TransferController {
     @Body() transferProductDto: TransferProductDto,
   ) {
     const cashierId = req.user.id;
-    const userId = req.user.userId;
-    console.log('transferProductDto', transferProductDto);
-    return this.transferService.transferProduct(
-      userId,
-      cashierId,
-      transferProductDto,
-    );
+    // Remove userId since products are now under cashier
+    return this.transferService.transferProduct(cashierId, transferProductDto);
   }
 
   @UseGuards(JwtCashierAuthGuard)

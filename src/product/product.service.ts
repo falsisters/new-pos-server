@@ -21,6 +21,12 @@ export class ProductService {
           },
         },
         perKiloPrice: true,
+        cashier: {
+          select: {
+            name: true,
+            userId: true,
+          },
+        },
       },
     });
   }
@@ -37,11 +43,17 @@ export class ProductService {
           },
         },
         perKiloPrice: true,
+        cashier: {
+          select: {
+            name: true,
+            userId: true,
+          },
+        },
       },
     });
   }
 
-  async createProduct(userId: string, formData: ProductFormData) {
+  async createProduct(cashierId: string, formData: ProductFormData) {
     // Extract file from form data
     const picture = formData.picture;
 
@@ -61,7 +73,7 @@ export class ProductService {
       data: {
         name,
         picture: url,
-        userId,
+        cashierId, // Will be provided
         // Only create SackPrice if array is not empty
         ...(sackPrice &&
           sackPrice.length > 0 && {
@@ -107,11 +119,36 @@ export class ProductService {
             specialPrice: true,
           },
         },
+        cashier: {
+          select: {
+            name: true,
+            userId: true,
+          },
+        },
       },
     });
   }
 
-  async editProduct(id: string, formData: EditProductFormData) {
+  // New method for users to create products with cashier assignment
+  async createProductForCashier(
+    userId: string,
+    cashierId: string,
+    formData: ProductFormData,
+  ) {
+    // Verify cashier ownership
+    const cashier = await this.verifyCashierOwnership(userId, cashierId);
+    if (!cashier) {
+      throw new Error('Cashier not found or does not belong to this user');
+    }
+
+    return this.createProduct(cashierId, formData);
+  }
+
+  async editProduct(
+    id: string,
+    formData: EditProductFormData,
+    cashierId?: string,
+  ) {
     // Extract file from form data
     const picture = formData.picture;
 
@@ -282,6 +319,8 @@ export class ProductService {
     const updateData: any = {
       name,
       ...(url && { picture: url }),
+      // Add cashierId if provided
+      ...(cashierId && { cashierId }),
     };
 
     // Add SackPrice operations
@@ -320,6 +359,12 @@ export class ProductService {
             specialPrice: true,
           },
         },
+        cashier: {
+          select: {
+            name: true,
+            userId: true,
+          },
+        },
       },
     });
   }
@@ -333,11 +378,67 @@ export class ProductService {
   }
 
   async getAllProducts(userId: string) {
+    // Get products from all cashiers under this user, including products without cashiers
     return this.prisma.product.findMany({
       where: {
-        userId,
+        OR: [
+          {
+            cashier: {
+              userId,
+            },
+          },
+          {
+            cashierId: null, // Include products without assigned cashiers for migration
+            // You might want to add additional conditions here to limit this
+          },
+        ],
       },
       orderBy: { name: 'asc' },
+      include: {
+        SackPrice: {
+          include: {
+            specialPrice: true,
+          },
+        },
+        perKiloPrice: true,
+        cashier: {
+          select: {
+            name: true,
+            userId: true,
+          },
+        },
+      },
+    });
+  }
+
+  async getAllProductsByCashier(cashierId: string) {
+    return this.prisma.product.findMany({
+      where: {
+        cashierId,
+      },
+      orderBy: { name: 'asc' },
+      include: {
+        SackPrice: {
+          include: {
+            specialPrice: true,
+          },
+        },
+        perKiloPrice: true,
+        cashier: {
+          select: {
+            name: true,
+            userId: true,
+          },
+        },
+      },
+    });
+  }
+
+  async getProductById(id: string) {
+    return this.prisma.product.findUnique({
+      where: {
+        id,
+      },
       include: {
         SackPrice: {
           include: {
@@ -349,11 +450,93 @@ export class ProductService {
     });
   }
 
-  async getProductById(id: string) {
-    return this.prisma.product.findUnique({
+  async verifyCashierOwnership(userId: string, cashierId: string) {
+    return this.prisma.cashier.findFirst({
       where: {
-        id,
+        id: cashierId,
+        userId: userId,
       },
+      select: {
+        id: true,
+        name: true,
+      },
+    });
+  }
+
+  async verifyProductOwnership(userId: string, productId: string) {
+    const product = await this.prisma.product.findFirst({
+      where: {
+        id: productId,
+        OR: [
+          {
+            cashier: {
+              userId: userId,
+            },
+          },
+          {
+            cashierId: null, // Allow editing products without cashiers during migration
+          },
+        ],
+      },
+      select: {
+        id: true,
+        cashierId: true,
+        cashier: {
+          select: {
+            id: true,
+            name: true,
+            userId: true,
+          },
+        },
+      },
+    });
+
+    if (!product) {
+      throw new Error(
+        'Product not found or you do not have permission to modify it',
+      );
+    }
+
+    return product;
+  }
+
+  // New method to assign cashier to existing products
+  async assignCashierToProduct(
+    userId: string,
+    productId: string,
+    cashierId: string,
+  ) {
+    // Verify product ownership
+    await this.verifyProductOwnership(userId, productId);
+
+    // Verify cashier ownership
+    const cashier = await this.verifyCashierOwnership(userId, cashierId);
+    if (!cashier) {
+      throw new Error('Cashier not found or does not belong to this user');
+    }
+
+    return this.prisma.product.update({
+      where: { id: productId },
+      data: { cashierId },
+      include: {
+        cashier: {
+          select: {
+            name: true,
+            userId: true,
+          },
+        },
+      },
+    });
+  }
+
+  // Get products without assigned cashiers for migration helper
+  async getUnassignedProducts(userId: string) {
+    return this.prisma.product.findMany({
+      where: {
+        cashierId: null,
+        // Add additional filter if needed to limit to specific user's products
+      },
+      orderBy: { name: 'asc' },
       include: {
         SackPrice: {
           include: {

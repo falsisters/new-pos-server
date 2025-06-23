@@ -19,16 +19,36 @@ export class DeliveryService {
   async createDelivery(
     cashierId: string,
     createDeliveryDto: CreateDeliveryDto,
-    userId: string, // owner user's ID, not used for transferDelivery directly
   ) {
     const { driverName, deliveryTimeStart, deliveryItem } = createDeliveryDto;
 
     return this.prisma.$transaction(
       async (tx) => {
         for (const item of deliveryItem) {
-          const currentProduct = await tx.product.findUnique({
-            where: { id: item.id },
+          // Verify that the product belongs to this cashier or is unassigned
+          const currentProduct = await tx.product.findFirst({
+            where: {
+              id: item.id,
+              OR: [
+                { cashierId }, // Product belongs to this cashier
+                { cashierId: null }, // Unassigned product (migration period)
+              ],
+            },
           });
+
+          if (!currentProduct) {
+            throw new Error(
+              `Product ${item.id} not found or not accessible by this cashier`,
+            );
+          }
+
+          // If product is unassigned, assign it to this cashier
+          if (!currentProduct.cashierId) {
+            await tx.product.update({
+              where: { id: item.id },
+              data: { cashierId },
+            });
+          }
 
           if (item.sackPrice) {
             await tx.sackPrice.update({

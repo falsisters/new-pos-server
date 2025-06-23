@@ -189,24 +189,48 @@ export class TransferService {
   }
 
   async transferProduct(
-    userId: string, // This is ownerUserId
-    cashierId: string, // This is performingCashierId
+    cashierId: string, // Remove userId parameter since we're using cashierId
     transferProductDto: TransferProductDto,
   ) {
     const { product } = transferProductDto;
 
+    // Verify product belongs to cashier or is unassigned
+    const currentProduct = await this.prisma.product.findFirst({
+      where: {
+        id: product.id,
+        OR: [
+          { cashierId }, // Product belongs to this cashier
+          { cashierId: null }, // Unassigned product (migration period)
+        ],
+      },
+    });
+
+    if (!currentProduct) {
+      throw new Error(
+        `Product ${product.id} not found or not accessible by this cashier`,
+      );
+    }
+
+    // If product is unassigned, assign it to this cashier
+    if (!currentProduct.cashierId) {
+      await this.prisma.product.update({
+        where: { id: product.id },
+        data: { cashierId },
+      });
+    }
+
     if (transferProductDto.transferType === 'KAHON') {
       let selectedKahon: Kahon & { Sheets: any[] };
       const currentKahon = await this.prisma.kahon.findFirst({
-        where: { cashierId, name: 'Kahon' }, // Use performingCashierId for Kahon
-        include: { Sheets: true }, // Include sheets to check if any exist
+        where: { cashierId, name: 'Kahon' },
+        include: { Sheets: true },
       });
 
       if (!currentKahon) {
         selectedKahon = await this.prisma.kahon.create({
           data: {
             name: 'Kahon',
-            cashierId, // Use performingCashierId for Kahon
+            cashierId,
             Sheets: {
               create: {
                 name: 'Kahon Sheet',
@@ -221,7 +245,7 @@ export class TransferService {
       }
 
       return this.prisma.$transaction(async (tx) => {
-        // Update stock logic
+        // Update stock logic - products are now under the same cashier
         if (product.sackPrice) {
           await tx.sackPrice.update({
             where: { id: product.sackPrice.id },
