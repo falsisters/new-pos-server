@@ -26,6 +26,7 @@ model User {
   Attachment  Attachment[]
   Order       Order[]
   ExpenseList ExpenseList[]
+  Product     Product[]
 }
 
 model Cashier {
@@ -99,6 +100,8 @@ model Product {
   updatedAt    DateTime       @updatedAt
   cashierId    String? // Made optional for migration
   cashier      Cashier?       @relation(fields: [cashierId], references: [id], onDelete: Cascade) // Made optional
+  userId       String
+  user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   SackPrice    SackPrice[]
   perKiloPrice PerKiloPrice?
   DeliveryItem DeliveryItem[]

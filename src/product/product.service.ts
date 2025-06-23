@@ -53,7 +53,11 @@ export class ProductService {
     });
   }
 
-  async createProduct(cashierId: string, formData: ProductFormData) {
+  async createProduct(
+    cashierId: string,
+    formData: ProductFormData,
+    userId: string,
+  ) {
     // Extract file from form data
     const picture = formData.picture;
 
@@ -74,6 +78,7 @@ export class ProductService {
         name,
         picture: url,
         cashierId, // Will be provided
+        userId,
         // Only create SackPrice if array is not empty
         ...(sackPrice &&
           sackPrice.length > 0 && {
@@ -141,7 +146,7 @@ export class ProductService {
       throw new Error('Cashier not found or does not belong to this user');
     }
 
-    return this.createProduct(cashierId, formData);
+    return this.createProduct(cashierId, formData, userId);
   }
 
   async editProduct(
@@ -534,7 +539,7 @@ export class ProductService {
     return this.prisma.product.findMany({
       where: {
         cashierId: null,
-        // Add additional filter if needed to limit to specific user's products
+        userId: userId, // Ensure these products belong to the user
       },
       orderBy: { name: 'asc' },
       include: {

@@ -69,10 +69,15 @@ export class ProductController {
     @UploadedFile() picture: Express.Multer.File,
   ) {
     const cashierId = req.user.id;
-    return this.productService.createProduct(cashierId, {
-      ...formData,
-      picture,
-    });
+    const userId = req.user.userId; // Assuming the userId is stored in the request
+    return this.productService.createProduct(
+      cashierId,
+      {
+        ...formData,
+        picture,
+      },
+      userId,
+    );
   }
 
   @UseGuards(JwtAuthGuard)
