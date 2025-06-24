@@ -505,4 +505,84 @@ export class TransferService {
       },
     });
   }
+
+  async getAllTransfersByCashier(cashierId: string) {
+    return this.prisma.transfer.findMany({
+      where: {
+        cashierId,
+      },
+      include: {
+        cashier: {
+          select: {
+            name: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+  }
+
+  async getAllTransfersWithFilterByCashier(
+    cashierId: string,
+    filters: TransferFilterDto,
+  ) {
+    // Set default date to today if not provided
+    const targetDate = filters.date ? new Date(filters.date) : new Date();
+
+    // Set start and end of the target day
+    const startOfDay = new Date(targetDate);
+    startOfDay.setHours(0, 0, 0, 0);
+
+    const endOfDay = new Date(targetDate);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    return this.prisma.transfer.findMany({
+      where: {
+        AND: [
+          {
+            cashierId,
+          },
+          {
+            createdAt: {
+              gte: startOfDay,
+              lte: endOfDay,
+            },
+          },
+        ],
+      },
+      include: {
+        cashier: {
+          select: {
+            name: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+  }
+
+  async verifyCashierOwnership(userId: string, cashierId: string) {
+    const cashier = await this.prisma.cashier.findFirst({
+      where: {
+        id: cashierId,
+        userId: userId,
+      },
+      select: {
+        id: true,
+        name: true,
+      },
+    });
+
+    if (!cashier) {
+      throw new Error(
+        'Cashier not found or you do not have permission to access it',
+      );
+    }
+
+    return cashier;
+  }
 }

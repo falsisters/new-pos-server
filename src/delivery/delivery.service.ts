@@ -298,4 +298,34 @@ export class DeliveryService {
         : null,
     }));
   }
+
+  async getAllDeliveriesByCashier(cashierId: string) {
+    const deliveries = await this.prisma.delivery.findMany({
+      where: {
+        cashierId,
+      },
+      include: {
+        cashier: true,
+        DeliveryItem: {
+          include: {
+            product: true,
+            SackPrice: true,
+            perKiloPrice: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+    return deliveries.map((delivery) => ({
+      ...delivery,
+      createdAt: this.convertToPhilippineTime(delivery.createdAt),
+      updatedAt: this.convertToPhilippineTime(delivery.updatedAt),
+      deliveryTimeStart: delivery.deliveryTimeStart
+        ? this.convertToPhilippineTime(delivery.deliveryTimeStart)
+        : null,
+    }));
+  }
 }

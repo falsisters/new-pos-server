@@ -58,4 +58,10 @@ export class DeliveryController {
   async deleteDelivery(@Param('id') id: string) {
     return this.deliveryService.deleteDelivery(id);
   }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('cashier/:cashierId')
+  async getAllDeliveriesByCashier(@Param('cashierId') cashierId: string) {
+    return this.deliveryService.getAllDeliveriesByCashier(cashierId);
+  }
 }

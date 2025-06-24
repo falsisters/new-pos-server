@@ -58,26 +58,37 @@ export class TransferController {
   @UseGuards(JwtCashierAuthGuard)
   @Get('cashier')
   async getAllTransfersByCashier(@Request() req) {
-    // This implies getting transfers for the specific logged-in cashier.
-    // The current getAllTransfers(userId) gets all transfers for all cashiers of a user.
-    // This might need a new service method or modification if it's strictly for the single logged-in cashier.
-    // For now, assuming it means all transfers visible to this cashier (i.e., all under their owner user).
-    const userId = req.user.userId; // Owner user ID
-    return this.transferService.getAllTransfers(userId);
-    // If it should be only for the specific cashier:
-    // const cashierId = req.user.id;
-    // return this.prisma.transfer.findMany({ where: { cashierId } ... }); // Simplified example
+    const cashierId = req.user.id;
+    // Get transfers for this specific cashier only
+    return this.transferService.getAllTransfersByCashier(cashierId);
   }
 
-  @UseGuards(JwtCashierAuthGuard)
-  @Get('cashier/date')
+  @UseGuards(JwtAuthGuard)
+  @Get('cashier/:cashierId')
+  async getAllTransfersByCashierId(
+    @Request() req,
+    @Param('cashierId') cashierId: string,
+  ) {
+    const userId = req.user.id;
+    // Verify cashier belongs to this user
+    await this.transferService.verifyCashierOwnership(userId, cashierId);
+    return this.transferService.getAllTransfersByCashier(cashierId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('cashier/:cashierId/date')
   async getAllTransfersByCashierWithDate(
     @Request() req,
+    @Param('cashierId') cashierId: string,
     @Query() filters: TransferFilterDto,
   ) {
-    const userId = req.user.userId; // Owner user ID
-    // Similar to above, this filters for all cashiers under the user.
-    return this.transferService.getAllTransfersWithFilter(userId, filters);
+    const userId = req.user.id;
+    // Verify cashier belongs to this user
+    await this.transferService.verifyCashierOwnership(userId, cashierId);
+    return this.transferService.getAllTransfersWithFilterByCashier(
+      cashierId,
+      filters,
+    );
   }
 
   @UseGuards(JwtAuthGuard)
