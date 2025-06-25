@@ -48,6 +48,7 @@ model Cashier {
   Inventory   Inventory[]
   BillCount   BillCount[]
   ExpenseList ExpenseList[]
+  Order       Order[] // Add this relation
 }
 
 enum CashierPermissions {
@@ -413,6 +414,8 @@ model Order {
   totalPrice Float
   userId     String
   user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cashierId  String? // Add cashier relationship
+  cashier    Cashier?    @relation(fields: [cashierId], references: [id], onDelete: Cascade)
   customer   Customer    @relation(fields: [customerId], references: [id], onDelete: Cascade)
   customerId String
   status     OrderStatus @default(PENDING)

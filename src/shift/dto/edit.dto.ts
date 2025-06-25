@@ -5,4 +5,3 @@ export class EditShiftDto {
   @IsOptional()
   employees: string[];
 }
-}

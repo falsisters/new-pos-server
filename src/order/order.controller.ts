@@ -31,6 +31,27 @@ export class OrderController {
     return this.orderService.getUserOrderById(userId, id);
   }
 
+  @UseGuards(JwtCashierAuthGuard)
+  @Get('cashier-orders')
+  async getCashierOrders(@Request() req) {
+    const cashierId = req.user.cashierId;
+    return this.orderService.getCashierOrders(cashierId);
+  }
+
+  @UseGuards(JwtCashierAuthGuard)
+  @Get('cashier-orders/:id')
+  async getCashierOrderById(@Request() req, @Param('id') id: string) {
+    const cashierId = req.user.cashierId;
+    return this.orderService.getCashierOrderById(cashierId, id);
+  }
+
+  @UseGuards(JwtCashierAuthGuard)
+  @Get('products-for-order')
+  async getProductsForOrder(@Request() req) {
+    const cashierId = req.user.cashierId;
+    return this.orderService.getAvailableProductsForOrderByCashier(cashierId);
+  }
+
   @UseGuards(JwtCustomerAuthGuard)
   @Get('all')
   async getAllOrders(@Request() req) {

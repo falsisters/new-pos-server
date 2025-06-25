@@ -28,6 +28,12 @@ export class ProductController {
     return this.productService.getAllProductsByCashier(cashierId);
   }
 
+  @UseGuards(JwtAuthGuard)
+  @Get('cashier/:id')
+  async getAllProductsByCashierId(@Request() req, @Param('id') id: string) {
+    return this.productService.getAllProductsByCashier(id);
+  }
+
   @UseGuards(JwtCustomerAuthGuard)
   @Get('customer')
   async getAllProductsByCustomer(@Request() req) {

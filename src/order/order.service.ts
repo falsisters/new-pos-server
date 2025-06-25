@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { CreateOrderDto } from './dto/create.dto';
-import { EditOrderDto } from './dto/edit.dto';
+import { CreateOrderDto } from './dto/createOrder.dto';
 
 @Injectable()
 export class OrderService {
@@ -19,6 +18,12 @@ export class OrderService {
             address: true,
             createdAt: true,
             updatedAt: true,
+          },
+        },
+        cashier: {
+          select: {
+            id: true,
+            name: true,
           },
         },
         OrderItem: {
@@ -48,6 +53,12 @@ export class OrderService {
             updatedAt: true,
           },
         },
+        cashier: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
         OrderItem: {
           include: {
             SackPrice: true,
@@ -59,13 +70,11 @@ export class OrderService {
     });
   }
 
-  // New method to get products available for orders from all cashiers under a user
-  async getAvailableProductsForOrder(userId: string) {
+  // New method to get products available for orders from a specific cashier
+  async getAvailableProductsForOrderByCashier(cashierId: string) {
     return this.prisma.product.findMany({
       where: {
-        cashier: {
-          userId,
-        },
+        cashierId,
         OR: [
           {
             SackPrice: {
@@ -113,71 +122,76 @@ export class OrderService {
     });
   }
 
-  async createOrder(userId: string, createOrderDto: CreateOrderDto) {
-    const { customerId, orderItem, totalPrice } = createOrderDto;
+  async createOrder(customerId: string, createOrderDto: CreateOrderDto) {
+    const { orderItem, cashierId } = createOrderDto;
 
     return this.prisma.$transaction(
       async (tx) => {
-        // Verify that all products belong to cashiers under this user
+        // Calculate total price based on order items
+        let totalPrice = 0;
+
+        // Verify that all products exist and calculate total
         for (const item of orderItem) {
-          const product = await tx.product.findFirst({
-            where: {
-              id: item.id,
-              cashier: {
-                userId, // Ensure product belongs to a cashier under this user
-              },
-            },
+          const product = await tx.product.findUnique({
+            where: { id: item.productId },
             include: {
-              cashier: {
-                select: {
-                  name: true,
-                  id: true,
-                },
-              },
+              SackPrice: true,
+              perKiloPrice: true,
             },
           });
 
           if (!product) {
-            throw new Error(
-              `Product ${item.id} not found or not available from your stores`,
-            );
+            throw new Error(`Product ${item.productId} not found`);
           }
 
-          // Check stock availability
-          if (item.sackPrice) {
+          // Check stock and calculate price
+          if (item.sackPriceId) {
             const sackPrice = await tx.sackPrice.findFirst({
               where: {
-                id: item.sackPrice.id,
-                productId: item.id,
+                id: item.sackPriceId,
+                productId: item.productId,
                 stock: {
-                  gte: item.sackPrice.quantity,
+                  gte: item.quantity,
                 },
+              },
+              include: {
+                specialPrice: true,
               },
             });
 
             if (!sackPrice) {
-              throw new Error(
-                `Insufficient stock for ${product.name} (${item.sackPrice.type}) at ${product.cashier.name}`,
-              );
+              throw new Error(`Insufficient stock for ${product.name} (sack)`);
             }
+
+            // Calculate price (use special price if applicable and quantity meets minimum)
+            const price =
+              item.isSpecialPrice &&
+              sackPrice.specialPrice &&
+              item.quantity >= sackPrice.specialPrice.minimumQty
+                ? sackPrice.specialPrice.price
+                : sackPrice.price;
+
+            totalPrice += price * item.quantity;
           }
 
-          if (item.perKiloPrice) {
+          if (item.perKiloPriceId) {
             const perKiloPrice = await tx.perKiloPrice.findFirst({
               where: {
-                id: item.perKiloPrice.id,
-                productId: item.id,
+                id: item.perKiloPriceId,
+                productId: item.productId,
                 stock: {
-                  gte: item.perKiloPrice.quantity,
+                  gte: item.quantity,
                 },
               },
             });
 
             if (!perKiloPrice) {
               throw new Error(
-                `Insufficient stock for ${product.name} (per kilo) at ${product.cashier.name}`,
+                `Insufficient stock for ${product.name} (per kilo)`,
               );
             }
+
+            totalPrice += perKiloPrice.price * item.quantity;
           }
         }
 
@@ -185,48 +199,27 @@ export class OrderService {
         return tx.order.create({
           data: {
             totalPrice,
-            user: { connect: { id: userId } },
             customer: { connect: { id: customerId } },
+            user: { connect: { id: createOrderDto.userId } },
+            ...(cashierId && { cashier: { connect: { id: cashierId } } }), // Add cashier if provided
             OrderItem: {
-              create: orderItem.map((item) => {
-                const orderItemData: any = {
-                  quantity: item.sackPrice
-                    ? item.sackPrice.quantity
-                    : item.perKiloPrice.quantity,
-                  product: { connect: { id: item.id } },
-                  isSpecialPrice: item.isSpecialPrice || false,
-                };
-
-                if (item.sackPrice && item.sackPrice.id) {
-                  orderItemData.SackPrice = {
-                    connect: { id: item.sackPrice.id },
-                  };
-                  orderItemData.sackType = item.sackPrice.type;
-                }
-
-                if (item.perKiloPrice && item.perKiloPrice.id) {
-                  orderItemData.perKiloPrice = {
-                    connect: { id: item.perKiloPrice.id },
-                  };
-                }
-
-                return orderItemData;
-              }),
+              create: orderItem.map((item) => ({
+                quantity: item.quantity,
+                product: { connect: { id: item.productId } },
+                isSpecialPrice: item.isSpecialPrice || false,
+                ...(item.sackPriceId && {
+                  SackPrice: { connect: { id: item.sackPriceId } },
+                }),
+                ...(item.perKiloPriceId && {
+                  perKiloPrice: { connect: { id: item.perKiloPriceId } },
+                }),
+              })),
             },
           },
           include: {
             OrderItem: {
               include: {
-                product: {
-                  include: {
-                    cashier: {
-                      select: {
-                        name: true,
-                        id: true,
-                      },
-                    },
-                  },
-                },
+                product: true,
                 SackPrice: {
                   include: {
                     specialPrice: true,
@@ -236,6 +229,12 @@ export class OrderService {
               },
             },
             customer: true,
+            cashier: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
           },
         });
       },
@@ -245,97 +244,89 @@ export class OrderService {
     );
   }
 
-  async editOrder(id: string, editOrderDto: EditOrderDto) {
-    const { orderItem, totalPrice } = editOrderDto;
+  async editOrder(id: string, updateOrderDto: Partial<CreateOrderDto>) {
+    const { orderItem } = updateOrderDto;
+
+    if (!orderItem) {
+      throw new Error('Order items are required for update');
+    }
 
     return this.prisma.$transaction(
       async (tx) => {
-        // Get the existing order to verify user ownership
+        // Get the existing order
         const existingOrder = await tx.order.findUnique({
           where: { id },
-          include: {
-            OrderItem: {
-              include: {
-                product: {
-                  include: {
-                    cashier: {
-                      select: {
-                        userId: true,
-                      },
-                    },
-                  },
-                },
-              },
-            },
-          },
         });
 
         if (!existingOrder) {
           throw new Error('Order not found');
         }
 
-        const userId = existingOrder.OrderItem[0]?.product.cashier.userId;
+        // Calculate new total price
+        let totalPrice = 0;
 
-        // Verify that all new products belong to cashiers under this user
+        // Verify that all products exist and calculate total
         for (const item of orderItem) {
-          const product = await tx.product.findFirst({
-            where: {
-              id: item.id,
-              cashier: {
-                userId,
-              },
-            },
+          const product = await tx.product.findUnique({
+            where: { id: item.productId },
             include: {
-              cashier: {
-                select: {
-                  name: true,
-                  id: true,
-                },
-              },
+              SackPrice: true,
+              perKiloPrice: true,
             },
           });
 
           if (!product) {
-            throw new Error(
-              `Product ${item.id} not found or not available from your stores`,
-            );
+            throw new Error(`Product ${item.productId} not found`);
           }
 
-          // Check stock availability for new items
-          if (item.sackPrice) {
+          // Check stock and calculate price
+          if (item.sackPriceId) {
             const sackPrice = await tx.sackPrice.findFirst({
               where: {
-                id: item.sackPrice.id,
-                productId: item.id,
+                id: item.sackPriceId,
+                productId: item.productId,
                 stock: {
-                  gte: item.sackPrice.quantity,
+                  gte: item.quantity,
                 },
+              },
+              include: {
+                specialPrice: true,
               },
             });
 
             if (!sackPrice) {
-              throw new Error(
-                `Insufficient stock for ${product.name} (${item.sackPrice.type}) at ${product.cashier.name}`,
-              );
+              throw new Error(`Insufficient stock for ${product.name} (sack)`);
             }
+
+            // Calculate price (use special price if applicable and quantity meets minimum)
+            const price =
+              item.isSpecialPrice &&
+              sackPrice.specialPrice &&
+              item.quantity >= sackPrice.specialPrice.minimumQty
+                ? sackPrice.specialPrice.price
+                : sackPrice.price;
+
+            totalPrice += price * item.quantity;
           }
 
-          if (item.perKiloPrice) {
+          if (item.perKiloPriceId) {
             const perKiloPrice = await tx.perKiloPrice.findFirst({
               where: {
-                id: item.perKiloPrice.id,
-                productId: item.id,
+                id: item.perKiloPriceId,
+                productId: item.productId,
                 stock: {
-                  gte: item.perKiloPrice.quantity,
+                  gte: item.quantity,
                 },
               },
             });
 
             if (!perKiloPrice) {
               throw new Error(
-                `Insufficient stock for ${product.name} (per kilo) at ${product.cashier.name}`,
+                `Insufficient stock for ${product.name} (per kilo)`,
               );
             }
+
+            totalPrice += perKiloPrice.price * item.quantity;
           }
         }
 
@@ -350,45 +341,23 @@ export class OrderService {
           data: {
             totalPrice,
             OrderItem: {
-              create: orderItem.map((item) => {
-                const orderItemData: any = {
-                  quantity: item.sackPrice
-                    ? item.sackPrice.quantity
-                    : item.perKiloPrice.quantity,
-                  product: { connect: { id: item.id } },
-                  isSpecialPrice: item.isSpecialPrice || false,
-                };
-
-                if (item.sackPrice && item.sackPrice.id) {
-                  orderItemData.SackPrice = {
-                    connect: { id: item.sackPrice.id },
-                  };
-                  orderItemData.sackType = item.sackPrice.type;
-                }
-
-                if (item.perKiloPrice && item.perKiloPrice.id) {
-                  orderItemData.perKiloPrice = {
-                    connect: { id: item.perKiloPrice.id },
-                  };
-                }
-
-                return orderItemData;
-              }),
+              create: orderItem.map((item) => ({
+                quantity: item.quantity,
+                product: { connect: { id: item.productId } },
+                isSpecialPrice: item.isSpecialPrice || false,
+                ...(item.sackPriceId && {
+                  SackPrice: { connect: { id: item.sackPriceId } },
+                }),
+                ...(item.perKiloPriceId && {
+                  perKiloPrice: { connect: { id: item.perKiloPriceId } },
+                }),
+              })),
             },
           },
           include: {
             OrderItem: {
               include: {
-                product: {
-                  include: {
-                    cashier: {
-                      select: {
-                        name: true,
-                        id: true,
-                      },
-                    },
-                  },
-                },
+                product: true,
                 SackPrice: {
                   include: {
                     specialPrice: true,
@@ -454,6 +423,12 @@ export class OrderService {
             updatedAt: true,
           },
         },
+        cashier: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
         OrderItem: {
           include: {
             product: true,
@@ -480,6 +455,82 @@ export class OrderService {
             address: true,
             createdAt: true,
             updatedAt: true,
+          },
+        },
+        cashier: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        OrderItem: {
+          include: {
+            product: true,
+            SackPrice: true,
+            perKiloPrice: true,
+          },
+        },
+      },
+    });
+  }
+
+  // New method to get orders for a specific cashier
+  async getCashierOrders(cashierId: string) {
+    return this.prisma.order.findMany({
+      where: {
+        cashierId,
+        status: 'PENDING',
+      },
+      include: {
+        customer: {
+          select: {
+            id: true,
+            name: true,
+            phone: true,
+            address: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        },
+        cashier: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        OrderItem: {
+          include: {
+            product: true,
+            SackPrice: true,
+            perKiloPrice: true,
+          },
+        },
+      },
+    });
+  }
+
+  // New method to get a specific order for a cashier
+  async getCashierOrderById(cashierId: string, orderId: string) {
+    return this.prisma.order.findUnique({
+      where: {
+        id: orderId,
+        cashierId,
+      },
+      include: {
+        customer: {
+          select: {
+            id: true,
+            name: true,
+            phone: true,
+            address: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        },
+        cashier: {
+          select: {
+            id: true,
+            name: true,
           },
         },
         OrderItem: {

@@ -15,7 +15,6 @@ export class PrismaService
     }
 
     super({
-      log: ['query', 'info', 'warn', 'error'],
       datasources: {
         db: {
           url:

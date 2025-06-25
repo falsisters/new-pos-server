@@ -7,6 +7,8 @@ class OrderItemDto {
 }
 
 export class CreateOrderDto {
-  customerId: string;
+  customerId?: string; // Make optional for cashier creation
+  cashierId?: string; // Add cashier ID for cashier-specific orders
+  userId: string;
   orderItem: OrderItemDto[];
 }
