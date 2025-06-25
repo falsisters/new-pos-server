@@ -1,6 +1,14 @@
-import { Controller, Delete, Get, Request, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Delete,
+  Get,
+  Request,
+  UseGuards,
+  Res,
+} from '@nestjs/common';
 import { DatabaseService } from './database.service';
 import { JwtAuthGuard } from 'src/auth/guards/jwt.guard';
+import { Response } from 'express';
 
 @Controller('database')
 export class DatabaseController {
@@ -15,8 +23,19 @@ export class DatabaseController {
 
   @UseGuards(JwtAuthGuard)
   @Get('export')
-  async exportDatabase(@Request() req) {
+  async exportDatabase(@Request() req, @Res() res: Response) {
     const userId = req.user.id;
-    return this.databaseService.exportDatabase(userId);
+    const zipBuffer = await this.databaseService.exportDatabase(userId);
+
+    const timestamp = new Date().toISOString().split('T')[0];
+    const filename = `database-export-${timestamp}.zip`;
+
+    res.set({
+      'Content-Type': 'application/zip',
+      'Content-Disposition': `attachment; filename="${filename}"`,
+      'Content-Length': zipBuffer.length,
+    });
+
+    res.send(zipBuffer);
   }
 }
