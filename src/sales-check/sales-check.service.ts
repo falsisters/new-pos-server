@@ -208,7 +208,8 @@ export class SalesCheckService {
           totalAmount: item.totalAmount,
           paymentMethod: item.paymentMethod,
           isSpecialPrice: item.isSpecialPrice,
-          isDiscounted: item.isDiscounted, // Add this field
+          isDiscounted: item.isDiscounted,
+          discountedPrice: item.isDiscounted ? item.discountedPrice : null, // Add this field
           formattedSale: `${item.quantity} ${item.product.name} ${item.priceType} = ${item.totalAmount}${
             item.paymentMethod !== 'CASH'
               ? ` (${item.paymentMethod.replace('_', ' ')})`
@@ -422,7 +423,8 @@ export class SalesCheckService {
           totalAmount: item.totalAmount,
           paymentMethod: item.paymentMethod,
           isSpecialPrice: item.isSpecialPrice,
-          isDiscounted: item.isDiscounted, // Add this field
+          isDiscounted: item.isDiscounted,
+          discountedPrice: item.isDiscounted ? item.discountedPrice : null, // Add this field
           formattedSale: `${item.quantity} ${item.product.name} ${item.priceType} = ${item.totalAmount}${
             item.paymentMethod !== 'CASH'
               ? ` (${item.paymentMethod.replace('_', ' ')})`
