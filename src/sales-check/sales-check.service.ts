@@ -162,7 +162,7 @@ export class SalesCheckService {
           totalAmount: Number(totalAmount.toFixed(2)),
           paymentMethod: sale.paymentMethod,
           isSpecialPrice: item.isSpecialPrice,
-          isDiscounted: item.isDiscounted,
+          isDiscounted: item.isDiscounted, // Add this field
           discountedPrice: item.isDiscounted ? item.discountedPrice : null,
           saleDate: this.convertToPhilippineTime(sale.createdAt),
         };
@@ -208,7 +208,7 @@ export class SalesCheckService {
           totalAmount: item.totalAmount,
           paymentMethod: item.paymentMethod,
           isSpecialPrice: item.isSpecialPrice,
-          isDiscounted: item.isDiscounted,
+          isDiscounted: item.isDiscounted, // Add this field
           formattedSale: `${item.quantity} ${item.product.name} ${item.priceType} = ${item.totalAmount}${
             item.paymentMethod !== 'CASH'
               ? ` (${item.paymentMethod.replace('_', ' ')})`
@@ -376,7 +376,7 @@ export class SalesCheckService {
           totalAmount: Number(totalAmount.toFixed(2)),
           paymentMethod: sale.paymentMethod,
           isSpecialPrice: item.isSpecialPrice,
-          isDiscounted: item.isDiscounted,
+          isDiscounted: item.isDiscounted, // Add this field
           discountedPrice: item.isDiscounted ? item.discountedPrice : null,
           saleDate: this.convertToPhilippineTime(sale.createdAt),
         };
@@ -422,7 +422,7 @@ export class SalesCheckService {
           totalAmount: item.totalAmount,
           paymentMethod: item.paymentMethod,
           isSpecialPrice: item.isSpecialPrice,
-          isDiscounted: item.isDiscounted,
+          isDiscounted: item.isDiscounted, // Add this field
           formattedSale: `${item.quantity} ${item.product.name} ${item.priceType} = ${item.totalAmount}${
             item.paymentMethod !== 'CASH'
               ? ` (${item.paymentMethod.replace('_', ' ')})`
@@ -587,7 +587,7 @@ export class SalesCheckService {
           totalAmount: Number(totalAmount.toFixed(2)),
           paymentMethod: sale.paymentMethod,
           isSpecialPrice: item.isSpecialPrice,
-          isDiscounted: item.isDiscounted,
+          isDiscounted: item.isDiscounted, // Add this field
           discountedPrice: item.isDiscounted ? item.discountedPrice : null,
           saleDate: saleDateTime,
           formattedTime,
@@ -785,7 +785,7 @@ export class SalesCheckService {
           totalAmount: Number(totalAmount.toFixed(2)),
           paymentMethod: sale.paymentMethod,
           isSpecialPrice: item.isSpecialPrice,
-          isDiscounted: item.isDiscounted,
+          isDiscounted: item.isDiscounted, // Add this field
           discountedPrice: item.isDiscounted ? item.discountedPrice : null,
           saleDate: saleDateTime,
           formattedTime,
