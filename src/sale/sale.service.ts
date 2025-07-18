@@ -19,7 +19,8 @@ export class SaleService {
   }
 
   async createSale(cashierId: string, products: CreateSaleDto) {
-    const { totalAmount, paymentMethod, saleItem, orderId } = products;
+    const { totalAmount, paymentMethod, saleItem, orderId, metadata } =
+      products;
 
     return this.prisma.$transaction(
       async (tx) => {
@@ -129,7 +130,11 @@ export class SaleService {
           this.order.completeOrder(orderId, sale.id);
         }
 
-        return sale;
+        // 4. Return the sale with metadata attached (not saved to DB)
+        return {
+          ...sale,
+          ...(metadata && { metadata }),
+        };
       },
       {
         timeout: 20000, // 20 seconds in milliseconds

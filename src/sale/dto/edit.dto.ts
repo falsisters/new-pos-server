@@ -55,4 +55,16 @@ export class EditSaleDto {
 
   @IsNotEmpty()
   saleItem: ProductDto[];
+
+  @IsOptional()
+  changeAmount: number;
+
+  @IsOptional()
+  cashierId: string;
+
+  @IsOptional()
+  cashierName: string;
+
+  @IsOptional()
+  metadata: Record<string, any>;
 }
