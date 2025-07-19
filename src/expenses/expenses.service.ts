@@ -7,6 +7,29 @@ import { GetExpenseByDateDto } from './dto/getExpenseByDate.dto';
 export class ExpensesService {
   constructor(private prisma: PrismaService) {}
 
+  // Helper function to convert UTC to Philippine time (UTC+8)
+  private convertToPhilippineTime(utcDate: Date): Date {
+    if (!utcDate) return null;
+    const philippineTime = new Date(utcDate.getTime() + 8 * 60 * 60 * 1000);
+    return philippineTime;
+  }
+
+  private formatExpenseList(expenseList: any) {
+    if (!expenseList) return null;
+    return {
+      ...expenseList,
+      createdAt: this.convertToPhilippineTime(expenseList.createdAt),
+      updatedAt: this.convertToPhilippineTime(expenseList.updatedAt),
+      ExpenseItems: expenseList.ExpenseItems
+        ? expenseList.ExpenseItems.map((item) => ({
+            ...item,
+            createdAt: this.convertToPhilippineTime(item.createdAt),
+            updatedAt: this.convertToPhilippineTime(item.updatedAt),
+          }))
+        : [],
+    };
+  }
+
   async createExpense(cashierId: string, createExpenseDto: CreateExpenseDto) {
     const itemsToProcess = createExpenseDto.expenseItems || [];
 
@@ -21,7 +44,7 @@ export class ExpensesService {
     const endOfDay = new Date(targetDate);
     endOfDay.setHours(23, 59, 59, 999);
 
-    return this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       // Check if there's already an expense list for the target date
       const existingExpense = await tx.expenseList.findFirst({
         where: {
@@ -69,12 +92,13 @@ export class ExpensesService {
         });
       }
     });
+    return this.formatExpenseList(result);
   }
 
   async editExpense(expenseListId: string, editExpenseDto: CreateExpenseDto) {
     const itemsToProcess = editExpenseDto.expenseItems || [];
 
-    return this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       const expense = await tx.expenseList.update({
         where: { id: expenseListId },
         data: {
@@ -90,24 +114,27 @@ export class ExpensesService {
 
       return expense;
     });
+    return this.formatExpenseList(result);
   }
 
   async getExpenseList(cashierId: string) {
-    return this.prisma.expenseList.findMany({
+    const expenses = await this.prisma.expenseList.findMany({
       where: { cashierId },
       include: {
         ExpenseItems: true,
       },
     });
+    return expenses.map((e) => this.formatExpenseList(e));
   }
 
   async getExpenseById(expenseListId: string) {
-    return this.prisma.expenseList.findUnique({
+    const expense = await this.prisma.expenseList.findUnique({
       where: { id: expenseListId },
       include: {
         ExpenseItems: true,
       },
     });
+    return this.formatExpenseList(expense);
   }
 
   async getFirstExpenseByDay(
@@ -131,7 +158,7 @@ export class ExpensesService {
     const endOfDay = new Date(targetDate);
     endOfDay.setHours(23, 59, 59, 999);
 
-    return this.prisma.expenseList.findFirst({
+    const expense = await this.prisma.expenseList.findFirst({
       where: {
         cashierId,
         createdAt: {
@@ -146,12 +173,14 @@ export class ExpensesService {
         createdAt: 'asc',
       },
     });
+    return this.formatExpenseList(expense);
   }
 
   async deleteExpense(expenseListId: string) {
-    return this.prisma.expenseList.delete({
+    const expense = await this.prisma.expenseList.delete({
       where: { id: expenseListId },
     });
+    return this.formatExpenseList(expense);
   }
 
   // User oversight methods
@@ -169,7 +198,7 @@ export class ExpensesService {
     const endOfDay = new Date(targetDate);
     endOfDay.setHours(23, 59, 59, 999);
 
-    return this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       // Check if there's already an expense list for the target date
       const existingExpense = await tx.expenseList.findFirst({
         where: {
@@ -217,6 +246,7 @@ export class ExpensesService {
         });
       }
     });
+    return this.formatExpenseList(result);
   }
 
   async getUserExpenseByDate(userId: string, expenseDate: GetExpenseByDateDto) {
@@ -235,7 +265,7 @@ export class ExpensesService {
     const endOfDay = new Date(targetDate);
     endOfDay.setHours(23, 59, 59, 999);
 
-    return this.prisma.expenseList.findFirst({
+    const expense = await this.prisma.expenseList.findFirst({
       where: {
         userId,
         createdAt: {
@@ -250,6 +280,7 @@ export class ExpensesService {
         createdAt: 'asc',
       },
     });
+    return this.formatExpenseList(expense);
   }
 
   async getAllUserExpensesByDate(date?: string) {
@@ -266,7 +297,7 @@ export class ExpensesService {
     const endOfDay = new Date(targetDate);
     endOfDay.setHours(23, 59, 59, 999);
 
-    return this.prisma.expenseList.findMany({
+    const expenses = await this.prisma.expenseList.findMany({
       where: {
         userId: { not: null },
         createdAt: {
@@ -288,6 +319,7 @@ export class ExpensesService {
         createdAt: 'asc',
       },
     });
+    return expenses.map((e) => this.formatExpenseList(e));
   }
 
   async getAllCashierExpensesByDate(date?: string) {
@@ -304,7 +336,7 @@ export class ExpensesService {
     const endOfDay = new Date(targetDate);
     endOfDay.setHours(23, 59, 59, 999);
 
-    return this.prisma.expenseList.findMany({
+    const expenses = await this.prisma.expenseList.findMany({
       where: {
         cashierId: { not: null },
         createdAt: {
@@ -332,5 +364,6 @@ export class ExpensesService {
         createdAt: 'asc',
       },
     });
+    return expenses.map((e) => this.formatExpenseList(e));
   }
 }

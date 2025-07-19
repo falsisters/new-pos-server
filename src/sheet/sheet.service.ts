@@ -5,18 +5,53 @@ import { PrismaService } from 'src/prisma/prisma.service';
 export class SheetService {
   constructor(private prisma: PrismaService) {}
 
+  // Helper function to convert UTC to Philippine time (UTC+8)
+  private convertToPhilippineTime(utcDate: Date): Date {
+    if (!utcDate) return null;
+    const philippineTime = new Date(utcDate.getTime() + 8 * 60 * 60 * 1000);
+    return philippineTime;
+  }
+
+  private formatSheet(sheet: any) {
+    if (!sheet) return null;
+    return {
+      ...sheet,
+      createdAt: this.convertToPhilippineTime(sheet.createdAt),
+      updatedAt: this.convertToPhilippineTime(sheet.updatedAt),
+      Rows: sheet.Rows
+        ? sheet.Rows.map((row) => ({
+            ...row,
+            createdAt: this.convertToPhilippineTime(row.createdAt),
+            updatedAt: this.convertToPhilippineTime(row.updatedAt),
+            Cells: row.Cells
+              ? row.Cells.map((cell) => ({
+                  ...cell,
+                  createdAt: this.convertToPhilippineTime(cell.createdAt),
+                  updatedAt: this.convertToPhilippineTime(cell.updatedAt),
+                }))
+              : [],
+          }))
+        : [],
+    };
+  }
+
   async createSheet(kahonId: string, name: string, columns: number = 10) {
-    return await this.prisma.sheet.create({
+    const result = await this.prisma.sheet.create({
       data: {
         name,
         columns,
         kahon: { connect: { id: kahonId } },
       },
     });
+    return {
+      ...result,
+      createdAt: this.convertToPhilippineTime(result.createdAt),
+      updatedAt: this.convertToPhilippineTime(result.updatedAt),
+    };
   }
 
   async getSheetWithData(sheetId: string) {
-    return await this.prisma.sheet.findUnique({
+    const result = await this.prisma.sheet.findUnique({
       where: { id: sheetId },
       include: {
         Rows: {
@@ -29,6 +64,7 @@ export class SheetService {
         },
       },
     });
+    return this.formatSheet(result);
   }
 
   async getSheetsByDateRange(
@@ -50,7 +86,7 @@ export class SheetService {
     }
 
     // Return sheets with rows filtered by date range
-    return await this.prisma.sheet.findFirst({
+    const result = await this.prisma.sheet.findFirst({
       where: { kahonId: kahon.id },
       include: {
         Rows: {
@@ -69,6 +105,8 @@ export class SheetService {
         },
       },
     });
+
+    return this.formatSheet(result);
   }
 
   async getSheetsForUserByDateRange(
@@ -151,7 +189,11 @@ export class SheetService {
       data: cellsData,
     });
 
-    return row;
+    return {
+      ...row,
+      createdAt: this.convertToPhilippineTime(row.createdAt),
+      updatedAt: this.convertToPhilippineTime(row.updatedAt),
+    };
   }
 
   async addCalculationRow(
@@ -196,7 +238,11 @@ export class SheetService {
       data: cellsData,
     });
 
-    return row;
+    return {
+      ...row,
+      createdAt: this.convertToPhilippineTime(row.createdAt),
+      updatedAt: this.convertToPhilippineTime(row.updatedAt),
+    };
   }
 
   async deleteRow(rowId: string) {

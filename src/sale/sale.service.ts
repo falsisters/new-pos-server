@@ -18,6 +18,26 @@ export class SaleService {
     return philippineTime;
   }
 
+  private formatSale(sale: any) {
+    if (!sale) return null;
+    return {
+      ...sale,
+      createdAt: this.convertToPhilippineTime(sale.createdAt),
+      updatedAt: this.convertToPhilippineTime(sale.updatedAt),
+      SaleItem: sale.SaleItem
+        ? sale.SaleItem.map((item) => ({
+            ...item,
+            createdAt: this.convertToPhilippineTime(item.createdAt),
+            updatedAt: this.convertToPhilippineTime(item.updatedAt),
+          }))
+        : [],
+    };
+  }
+
+  private formatSales(sales: any[]) {
+    return sales.map((sale) => this.formatSale(sale));
+  }
+
   async createSale(cashierId: string, products: CreateSaleDto) {
     const { totalAmount, paymentMethod, saleItem, orderId, metadata } =
       products;
@@ -389,7 +409,7 @@ export class SaleService {
   }
 
   async getSale(id: string) {
-    return this.prisma.sale.findUnique({
+    const result = await this.prisma.sale.findUnique({
       where: { id },
       include: {
         SaleItem: {
@@ -408,6 +428,7 @@ export class SaleService {
         },
       },
     });
+    return this.formatSale(result);
   }
 
   async getSalesByDate(cashierId: string, filters: RecentSalesFilterDto) {
@@ -463,21 +484,15 @@ export class SaleService {
         return [];
       }
 
-      // Convert timestamps to Philippine time
-      return sales.map((sale) => ({
-        ...sale,
-        createdAt: this.convertToPhilippineTime(sale.createdAt),
-        updatedAt: this.convertToPhilippineTime(sale.updatedAt),
-      }));
+      return this.formatSales(sales);
     } catch (error) {
       console.error('Error fetching sales by date:', error);
-      // Return empty array on error instead of potentially returning undefined
       return [];
     }
   }
 
   async getAllSales(userId: string) {
-    return this.prisma.sale.findMany({
+    const sales = await this.prisma.sale.findMany({
       where: {
         cashier: {
           userId,
@@ -500,10 +515,11 @@ export class SaleService {
         },
       },
     });
+    return this.formatSales(sales);
   }
 
   async getSalesByCashier(cashierId: string) {
-    return this.prisma.sale.findMany({
+    const sales = await this.prisma.sale.findMany({
       where: {
         cashierId,
       },
@@ -524,6 +540,7 @@ export class SaleService {
         },
       },
     });
+    return this.formatSales(sales);
   }
 
   async getSalesByCashierId(userId: string, cashierId: string) {
@@ -539,7 +556,7 @@ export class SaleService {
       throw new Error('Cashier not found or does not belong to this user');
     }
 
-    return this.prisma.sale.findMany({
+    const sales = await this.prisma.sale.findMany({
       where: {
         cashierId,
       },
@@ -560,5 +577,6 @@ export class SaleService {
         },
       },
     });
+    return this.formatSales(sales);
   }
 }

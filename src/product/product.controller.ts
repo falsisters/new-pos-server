@@ -66,6 +66,33 @@ export class ProductController {
         fileSize: 15 * 1024 * 1024, // 15MB
         fieldSize: 15 * 1024 * 1024, // 15MB
       },
+      fileFilter: (req, file, callback) => {
+        // Enhanced file filter for better image format support
+        const allowedMimeTypes = [
+          'image/jpeg',
+          'image/jpg',
+          'image/png',
+          'image/webp',
+          'image/tiff',
+          'image/tif',
+          'image/avif',
+          'image/heic',
+          'image/heif',
+          'image/bmp',
+          'image/gif',
+        ];
+
+        if (allowedMimeTypes.includes(file.mimetype)) {
+          callback(null, true);
+        } else {
+          callback(
+            new Error(
+              'Only image files (JPEG, PNG, WebP, HEIC, TIFF, AVIF, BMP, GIF) are allowed',
+            ),
+            false,
+          );
+        }
+      },
     }),
   )
   @Post('cashier/create')
@@ -93,6 +120,32 @@ export class ProductController {
         fileSize: 15 * 1024 * 1024, // 15MB
         fieldSize: 15 * 1024 * 1024, // 15MB
       },
+      fileFilter: (req, file, callback) => {
+        const allowedMimeTypes = [
+          'image/jpeg',
+          'image/jpg',
+          'image/png',
+          'image/webp',
+          'image/tiff',
+          'image/tif',
+          'image/avif',
+          'image/heic',
+          'image/heif',
+          'image/bmp',
+          'image/gif',
+        ];
+
+        if (allowedMimeTypes.includes(file.mimetype)) {
+          callback(null, true);
+        } else {
+          callback(
+            new Error(
+              'Only image files (JPEG, PNG, WebP, HEIC, TIFF, AVIF, BMP, GIF) are allowed',
+            ),
+            false,
+          );
+        }
+      },
     }),
   )
   @Post('user/create/:cashierId')
@@ -116,6 +169,32 @@ export class ProductController {
       limits: {
         fileSize: 15 * 1024 * 1024, // 15MB
         fieldSize: 15 * 1024 * 1024, // 15MB
+      },
+      fileFilter: (req, file, callback) => {
+        const allowedMimeTypes = [
+          'image/jpeg',
+          'image/jpg',
+          'image/png',
+          'image/webp',
+          'image/tiff',
+          'image/tif',
+          'image/avif',
+          'image/heic',
+          'image/heif',
+          'image/bmp',
+          'image/gif',
+        ];
+
+        if (allowedMimeTypes.includes(file.mimetype)) {
+          callback(null, true);
+        } else {
+          callback(
+            new Error(
+              'Only image files (JPEG, PNG, WebP, HEIC, TIFF, AVIF, BMP, GIF) are allowed',
+            ),
+            false,
+          );
+        }
       },
     }),
   )

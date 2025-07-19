@@ -53,6 +53,42 @@ export class AttachmentController {
         fileSize: 15 * 1024 * 1024, // 15MB
         fieldSize: 15 * 1024 * 1024, // 15MB
       },
+      fileFilter: (req, file, callback) => {
+        // Allow more file types for attachments including enhanced image formats
+        const allowedMimeTypes = [
+          // Images
+          'image/jpeg',
+          'image/jpg',
+          'image/png',
+          'image/webp',
+          'image/tiff',
+          'image/tif',
+          'image/avif',
+          'image/heic',
+          'image/heif',
+          'image/bmp',
+          'image/gif',
+          'image/svg+xml',
+          // Documents
+          'application/pdf',
+          'text/plain',
+          'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          'application/msword',
+          'application/vnd.ms-excel',
+        ];
+
+        if (allowedMimeTypes.includes(file.mimetype)) {
+          callback(null, true);
+        } else {
+          callback(
+            new Error(
+              'File type not supported. Please upload images, PDFs, or Office documents.',
+            ),
+            false,
+          );
+        }
+      },
     }),
   )
   @Post('create')
@@ -74,6 +110,41 @@ export class AttachmentController {
       limits: {
         fileSize: 15 * 1024 * 1024, // 15MB
         fieldSize: 15 * 1024 * 1024, // 15MB
+      },
+      fileFilter: (req, file, callback) => {
+        const allowedMimeTypes = [
+          // Images
+          'image/jpeg',
+          'image/jpg',
+          'image/png',
+          'image/webp',
+          'image/tiff',
+          'image/tif',
+          'image/avif',
+          'image/heic',
+          'image/heif',
+          'image/bmp',
+          'image/gif',
+          'image/svg+xml',
+          // Documents
+          'application/pdf',
+          'text/plain',
+          'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          'application/msword',
+          'application/vnd.ms-excel',
+        ];
+
+        if (allowedMimeTypes.includes(file.mimetype)) {
+          callback(null, true);
+        } else {
+          callback(
+            new Error(
+              'File type not supported. Please upload images, PDFs, or Office documents.',
+            ),
+            false,
+          );
+        }
       },
     }),
   )

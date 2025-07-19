@@ -10,38 +10,67 @@ export class EmployeeService {
 
   // Helper function to convert UTC to Philippine time (UTC+8)
   private convertToPhilippineTime(utcDate: Date): Date {
+    if (!utcDate) return null;
     const philippineTime = new Date(utcDate.getTime() + 8 * 60 * 60 * 1000);
     return philippineTime;
   }
 
+  private formatEmployee(employee: any) {
+    if (!employee) return null;
+    return {
+      ...employee,
+      createdAt: this.convertToPhilippineTime(employee.createdAt),
+      updatedAt: this.convertToPhilippineTime(employee.updatedAt),
+      ShiftEmployee: employee.ShiftEmployee
+        ? employee.ShiftEmployee.map((se) => ({
+            ...se,
+            createdAt: this.convertToPhilippineTime(se.createdAt),
+            updatedAt: this.convertToPhilippineTime(se.updatedAt),
+            shift: se.shift
+              ? {
+                  ...se.shift,
+                  startTime: this.convertToPhilippineTime(se.shift.startTime),
+                  endTime: this.convertToPhilippineTime(se.shift.endTime),
+                  createdAt: this.convertToPhilippineTime(se.shift.createdAt),
+                  updatedAt: this.convertToPhilippineTime(se.shift.updatedAt),
+                }
+              : null,
+          }))
+        : [],
+    };
+  }
+
   async createEmployee(userId: string, createEmployeeDto: CreateEmployeeDto) {
-    return this.prisma.employee.create({
+    const employee = await this.prisma.employee.create({
       data: {
         ...createEmployeeDto,
         userId,
       },
     });
+    return this.formatEmployee(employee);
   }
 
   async editEmployee(id: string, editEmployeeDto: EditEmployeeDto) {
-    return this.prisma.employee.update({
+    const employee = await this.prisma.employee.update({
       where: {
         id,
       },
       data: editEmployeeDto,
     });
+    return this.formatEmployee(employee);
   }
 
   async deleteEmployee(id: string) {
-    return this.prisma.employee.delete({
+    const employee = await this.prisma.employee.delete({
       where: {
         id,
       },
     });
+    return this.formatEmployee(employee);
   }
 
   async getAllEmployees(userId: string) {
-    return this.prisma.employee.findMany({
+    const employees = await this.prisma.employee.findMany({
       where: {
         userId,
       },
@@ -53,10 +82,11 @@ export class EmployeeService {
         },
       },
     });
+    return employees.map((e) => this.formatEmployee(e));
   }
 
   async getEmployeeById(id: string) {
-    return this.prisma.employee.findUnique({
+    const employee = await this.prisma.employee.findUnique({
       where: {
         id,
       },
@@ -68,6 +98,7 @@ export class EmployeeService {
         },
       },
     });
+    return this.formatEmployee(employee);
   }
 
   async getEmployeeAttendance(
@@ -152,8 +183,12 @@ export class EmployeeService {
           id: shiftEmployee.employee.id,
           name: shiftEmployee.employee.name,
           joinedAt: this.convertToPhilippineTime(shiftEmployee.createdAt),
+          createdAt: this.convertToPhilippineTime(shiftEmployee.createdAt),
+          updatedAt: this.convertToPhilippineTime(shiftEmployee.updatedAt),
         })),
         totalEmployees: shift.employee.length,
+        createdAt: this.convertToPhilippineTime(shift.createdAt),
+        updatedAt: this.convertToPhilippineTime(shift.updatedAt),
       };
     });
 

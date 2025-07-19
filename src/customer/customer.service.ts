@@ -13,6 +13,23 @@ export class CustomerService {
     private configService: ConfigService,
   ) {}
 
+  // Helper function to convert UTC to Philippine time (UTC+8)
+  private convertToPhilippineTime(utcDate: Date): Date {
+    if (!utcDate) return null;
+    const philippineTime = new Date(utcDate.getTime() + 8 * 60 * 60 * 1000);
+    return philippineTime;
+  }
+
+  private formatCustomer(customer: any) {
+    if (!customer) return null;
+    const { password, ...result } = customer;
+    return {
+      ...result,
+      createdAt: this.convertToPhilippineTime(customer.createdAt),
+      updatedAt: this.convertToPhilippineTime(customer.updatedAt),
+    };
+  }
+
   private async findExistingCustomer(email: string) {
     return this.prisma.customer.findUnique({
       where: {
@@ -66,27 +83,30 @@ export class CustomerService {
         address,
       },
     });
-    return customer;
+    return this.formatCustomer(customer);
   }
 
   async getCustomer(id: string) {
-    return this.prisma.customer.findUnique({
+    const customer = await this.prisma.customer.findUnique({
       where: {
         id,
       },
     });
+    return this.formatCustomer(customer);
   }
 
   async getCustomerByEmail(email: string) {
-    return this.prisma.customer.findUnique({
+    const customer = await this.prisma.customer.findUnique({
       where: {
         email,
       },
     });
+    return this.formatCustomer(customer);
   }
 
   async getAllCustomers() {
-    return this.prisma.customer.findMany();
+    const customers = await this.prisma.customer.findMany();
+    return customers.map((c) => this.formatCustomer(c));
   }
 
   async editCustomer(
@@ -99,7 +119,7 @@ export class CustomerService {
       editCustomerDto.password = hashedPassword;
     }
 
-    return this.prisma.customer.update({
+    const customer = await this.prisma.customer.update({
       where: {
         id,
       },
@@ -107,13 +127,15 @@ export class CustomerService {
         ...editCustomerDto,
       },
     });
+    return this.formatCustomer(customer);
   }
 
   async deleteCustomer(id: string) {
-    return this.prisma.customer.delete({
+    const customer = await this.prisma.customer.delete({
       where: {
         id,
       },
     });
+    return this.formatCustomer(customer);
   }
 }

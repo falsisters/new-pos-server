@@ -13,6 +13,23 @@ export class AuthService {
     private jwtService: JwtService,
   ) {}
 
+  // Helper function to convert UTC to Philippine time (UTC+8)
+  private convertToPhilippineTime(utcDate: Date): Date {
+    if (!utcDate) return null;
+    const philippineTime = new Date(utcDate.getTime() + 8 * 60 * 60 * 1000);
+    return philippineTime;
+  }
+
+  private formatUser(user: any) {
+    if (!user) return null;
+    const { password, ...result } = user;
+    return {
+      ...result,
+      createdAt: this.convertToPhilippineTime(user.createdAt),
+      updatedAt: this.convertToPhilippineTime(user.updatedAt),
+    };
+  }
+
   private async findExistingUser(email: string) {
     return this.prisma.user.findUnique({
       where: {
@@ -57,6 +74,6 @@ export class AuthService {
       },
     });
 
-    return user;
+    return this.formatUser(user);
   }
 }

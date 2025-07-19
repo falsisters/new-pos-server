@@ -11,8 +11,57 @@ export class ProductService {
     private uploadService: UploadService,
   ) {}
 
+  // Helper function to convert UTC to Philippine time (UTC+8)
+  private convertToPhilippineTime(utcDate: Date): Date {
+    if (!utcDate) return null;
+    const philippineTime = new Date(utcDate.getTime() + 8 * 60 * 60 * 1000);
+    return philippineTime;
+  }
+
+  private formatProduct(product: any) {
+    if (!product) return null;
+    return {
+      ...product,
+      createdAt: this.convertToPhilippineTime(product.createdAt),
+      updatedAt: this.convertToPhilippineTime(product.updatedAt),
+      SackPrice: product.SackPrice
+        ? product.SackPrice.map((price) => ({
+            ...price,
+            createdAt: this.convertToPhilippineTime(price.createdAt),
+            updatedAt: this.convertToPhilippineTime(price.updatedAt),
+            specialPrice: price.specialPrice
+              ? {
+                  ...price.specialPrice,
+                  createdAt: this.convertToPhilippineTime(
+                    price.specialPrice.createdAt,
+                  ),
+                  updatedAt: this.convertToPhilippineTime(
+                    price.specialPrice.updatedAt,
+                  ),
+                }
+              : null,
+          }))
+        : [],
+      perKiloPrice: product.perKiloPrice
+        ? {
+            ...product.perKiloPrice,
+            createdAt: this.convertToPhilippineTime(
+              product.perKiloPrice.createdAt,
+            ),
+            updatedAt: this.convertToPhilippineTime(
+              product.perKiloPrice.updatedAt,
+            ),
+          }
+        : null,
+    };
+  }
+
+  private formatProducts(products: any[]) {
+    return products.map((product) => this.formatProduct(product));
+  }
+
   async getAllPublicProducts() {
-    return this.prisma.product.findMany({
+    const products = await this.prisma.product.findMany({
       orderBy: { name: 'asc' },
       include: {
         SackPrice: {
@@ -29,10 +78,11 @@ export class ProductService {
         },
       },
     });
+    return this.formatProducts(products);
   }
 
   async getPublicProductById(id: string) {
-    return this.prisma.product.findUnique({
+    const result = await this.prisma.product.findUnique({
       where: {
         id,
       },
@@ -51,6 +101,7 @@ export class ProductService {
         },
       },
     });
+    return this.formatProduct(result);
   }
 
   async createProduct(
@@ -73,7 +124,7 @@ export class ProductService {
       ? await this.uploadService.uploadSingleFile(picture, 'products/')
       : null;
 
-    return this.prisma.product.create({
+    const result = await this.prisma.product.create({
       data: {
         name,
         picture: url,
@@ -132,6 +183,8 @@ export class ProductService {
         },
       },
     });
+
+    return this.formatProduct(result);
   }
 
   // New method for users to create products with cashier assignment
@@ -354,7 +407,7 @@ export class ProductService {
       updateData.perKiloPrice = perKiloPriceOperation;
     }
 
-    return this.prisma.product.update({
+    const result = await this.prisma.product.update({
       where: { id },
       data: updateData,
       include: {
@@ -372,6 +425,8 @@ export class ProductService {
         },
       },
     });
+
+    return this.formatProduct(result);
   }
 
   async deleteProduct(id: string) {
@@ -383,8 +438,7 @@ export class ProductService {
   }
 
   async getAllProducts(userId: string) {
-    // Get products from all cashiers under this user, including products without cashiers
-    return this.prisma.product.findMany({
+    const products = await this.prisma.product.findMany({
       where: {
         OR: [
           {
@@ -414,10 +468,11 @@ export class ProductService {
         },
       },
     });
+    return this.formatProducts(products);
   }
 
   async getAllProductsByCashier(cashierId: string) {
-    return this.prisma.product.findMany({
+    const products = await this.prisma.product.findMany({
       where: {
         cashierId,
       },
@@ -437,10 +492,11 @@ export class ProductService {
         },
       },
     });
+    return this.formatProducts(products);
   }
 
   async getProductById(id: string) {
-    return this.prisma.product.findUnique({
+    const result = await this.prisma.product.findUnique({
       where: {
         id,
       },
@@ -453,6 +509,7 @@ export class ProductService {
         perKiloPrice: true,
       },
     });
+    return this.formatProduct(result);
   }
 
   async verifyCashierOwnership(userId: string, cashierId: string) {
@@ -520,7 +577,7 @@ export class ProductService {
       throw new Error('Cashier not found or does not belong to this user');
     }
 
-    return this.prisma.product.update({
+    const result = await this.prisma.product.update({
       where: { id: productId },
       data: { cashierId },
       include: {
@@ -532,11 +589,13 @@ export class ProductService {
         },
       },
     });
+
+    return this.formatProduct(result);
   }
 
   // Get products without assigned cashiers for migration helper
   async getUnassignedProducts(userId: string) {
-    return this.prisma.product.findMany({
+    const products = await this.prisma.product.findMany({
       where: {
         cashierId: null,
         userId: userId, // Ensure these products belong to the user
@@ -551,5 +610,6 @@ export class ProductService {
         perKiloPrice: true,
       },
     });
+    return this.formatProducts(products);
   }
 }

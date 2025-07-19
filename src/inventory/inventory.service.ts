@@ -5,14 +5,59 @@ import { PrismaService } from 'src/prisma/prisma.service';
 export class InventoryService {
   constructor(private prisma: PrismaService) {}
 
+  // Helper function to convert UTC to Philippine time (UTC+8)
+  private convertToPhilippineTime(utcDate: Date): Date {
+    if (!utcDate) return null;
+    const philippineTime = new Date(utcDate.getTime() + 8 * 60 * 60 * 1000);
+    return philippineTime;
+  }
+
+  private formatInventorySheet(sheet: any) {
+    if (!sheet) return null;
+    return {
+      ...sheet,
+      createdAt: this.convertToPhilippineTime(sheet.createdAt),
+      updatedAt: this.convertToPhilippineTime(sheet.updatedAt),
+      Rows: sheet.Rows
+        ? sheet.Rows.map((row) => ({
+            ...row,
+            createdAt: this.convertToPhilippineTime(row.createdAt),
+            updatedAt: this.convertToPhilippineTime(row.updatedAt),
+            Cells: row.Cells
+              ? row.Cells.map((cell) => ({
+                  ...cell,
+                  createdAt: this.convertToPhilippineTime(cell.createdAt),
+                  updatedAt: this.convertToPhilippineTime(cell.updatedAt),
+                }))
+              : [],
+          }))
+        : [],
+    };
+  }
+
+  private formatInventory(inventory: any) {
+    if (!inventory) return null;
+    return {
+      ...inventory,
+      createdAt: this.convertToPhilippineTime(inventory.createdAt),
+      updatedAt: this.convertToPhilippineTime(inventory.updatedAt),
+      InventorySheet: inventory.InventorySheet
+        ? inventory.InventorySheet.map((sheet) =>
+            this.formatInventorySheet(sheet),
+          )
+        : [],
+    };
+  }
+
   async findInventoryByCashier(cashierId: string, name: string = 'Inventory') {
     // Added name parameter
     const inventory = await this.prisma.inventory.findFirst({
       where: { cashierId, name }, // Changed userId to cashierId
     });
 
-    if (!inventory) {
-      return this.prisma.inventory.create({
+    const result =
+      inventory ||
+      (await this.prisma.inventory.create({
         data: {
           cashierId, // Changed userId to cashierId
           name,
@@ -23,9 +68,9 @@ export class InventoryService {
             },
           },
         },
-      });
-    }
-    return inventory;
+      }));
+
+    return this.formatInventory(result);
   }
 
   async findInventorySheetByCashier(cashierId: string) {
@@ -48,35 +93,11 @@ export class InventoryService {
       },
     });
 
-    if (!inventory) {
-      const newInventory = await this.prisma.inventory.create({
-        data: {
-          cashierId, // Changed userId to cashierId
-          name: 'Inventory',
-          InventorySheet: {
-            create: {
-              name: 'Inventory Sheet',
-              columns: 20,
-            },
-          },
-        },
-        include: {
-          InventorySheet: true,
-        },
-      });
+    const result =
+      inventory?.InventorySheet[0] ||
+      (await this.createInventorySheet(inventory.id, 'Expenses Sheet'));
 
-      return newInventory.InventorySheet[0];
-    }
-
-    if (inventory.InventorySheet.length === 0) {
-      const inventorySheet = await this.createInventorySheet(
-        inventory.id,
-        'Expenses Sheet',
-      );
-      return inventorySheet;
-    }
-
-    return inventory.InventorySheet[0];
+    return this.formatInventorySheet(result);
   }
 
   async findExpensesSheetByCashier(cashierId: string) {
@@ -99,35 +120,11 @@ export class InventoryService {
       },
     });
 
-    if (!expenses) {
-      const newExpenses = await this.prisma.inventory.create({
-        data: {
-          cashierId, // Changed userId to cashierId
-          name: 'Expenses',
-          InventorySheet: {
-            create: {
-              name: 'Expenses Sheet',
-              columns: 20,
-            },
-          },
-        },
-        include: {
-          InventorySheet: true,
-        },
-      });
+    const result =
+      expenses?.InventorySheet[0] ||
+      (await this.createInventorySheet(expenses.id, 'Expenses Sheet'));
 
-      return newExpenses.InventorySheet[0];
-    }
-
-    if (expenses.InventorySheet.length === 0) {
-      const expensesSheet = await this.createInventorySheet(
-        expenses.id,
-        'Expenses Sheet',
-      );
-      return expensesSheet;
-    }
-
-    return expenses.InventorySheet[0];
+    return this.formatInventorySheet(result);
   }
 
   async createInventorySheet(
@@ -145,7 +142,7 @@ export class InventoryService {
   }
 
   async getInventorySheetWithData(sheetId: string) {
-    return await this.prisma.inventorySheet.findUnique({
+    const result = await this.prisma.inventorySheet.findUnique({
       where: { id: sheetId },
       include: {
         Rows: {
@@ -158,6 +155,7 @@ export class InventoryService {
         },
       },
     });
+    return this.formatInventorySheet(result);
   }
 
   async getExpensesSheetsByDateRange(
@@ -187,7 +185,7 @@ export class InventoryService {
       });
     }
 
-    return await this.prisma.inventorySheet.findFirst({
+    const result = await this.prisma.inventorySheet.findFirst({
       where: { inventoryId: inventory.id },
       include: {
         Rows: {
@@ -206,6 +204,8 @@ export class InventoryService {
         },
       },
     });
+
+    return this.formatInventorySheet(result);
   }
 
   async getInventorySheetsByDateRange(
@@ -238,8 +238,7 @@ export class InventoryService {
       });
     }
 
-    // Return sheets with rows filtered by date range
-    return await this.prisma.inventorySheet.findFirst({
+    const result = await this.prisma.inventorySheet.findFirst({
       where: { inventoryId: inventory.id },
       include: {
         Rows: {
@@ -258,6 +257,8 @@ export class InventoryService {
         },
       },
     });
+
+    return this.formatInventorySheet(result);
   }
 
   async addItemRow(sheetId: string, inventoryItemId: string, rowIndex: number) {

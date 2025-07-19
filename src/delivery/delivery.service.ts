@@ -12,8 +12,28 @@ export class DeliveryService {
 
   // Helper function to convert UTC to Philippine time (UTC+8)
   private convertToPhilippineTime(utcDate: Date): Date {
+    if (!utcDate) return null;
     const philippineTime = new Date(utcDate.getTime() + 8 * 60 * 60 * 1000);
     return philippineTime;
+  }
+
+  private formatDelivery(delivery: any) {
+    if (!delivery) return null;
+    return {
+      ...delivery,
+      createdAt: this.convertToPhilippineTime(delivery.createdAt),
+      updatedAt: this.convertToPhilippineTime(delivery.updatedAt),
+      deliveryTimeStart: this.convertToPhilippineTime(
+        delivery.deliveryTimeStart,
+      ),
+      DeliveryItem: delivery.DeliveryItem
+        ? delivery.DeliveryItem.map((item) => ({
+            ...item,
+            createdAt: this.convertToPhilippineTime(item.createdAt),
+            updatedAt: this.convertToPhilippineTime(item.updatedAt),
+          }))
+        : [],
+    };
   }
 
   async createDelivery(
@@ -22,7 +42,7 @@ export class DeliveryService {
   ) {
     const { driverName, deliveryTimeStart, deliveryItem } = createDeliveryDto;
 
-    return this.prisma.$transaction(
+    const result = await this.prisma.$transaction(
       async (tx) => {
         for (const item of deliveryItem) {
           // Verify that the product belongs to this cashier or is unassigned
@@ -110,6 +130,7 @@ export class DeliveryService {
         timeout: 20000, // 20 seconds in milliseconds
       },
     );
+    return this.formatDelivery(result);
   }
 
   async editDelivery(
@@ -119,7 +140,7 @@ export class DeliveryService {
   ) {
     const { driverName, deliveryTimeStart, deliveryItem } = editDeliveryDto;
 
-    return this.prisma.$transaction(
+    const result = await this.prisma.$transaction(
       async (tx) => {
         // Get current delivery items to decrement stock
         const currentDelivery = await tx.delivery.findUnique({
@@ -235,12 +256,14 @@ export class DeliveryService {
         timeout: 20000, // 20 seconds in milliseconds
       },
     );
+    return this.formatDelivery(result);
   }
 
   async deleteDelivery(deliveryId: string) {
-    return this.prisma.delivery.delete({
+    const delivery = await this.prisma.delivery.delete({
       where: { id: deliveryId },
     });
+    return this.formatDelivery(delivery);
   }
 
   async getDelivery(deliveryId: string) {
@@ -257,18 +280,7 @@ export class DeliveryService {
       },
     });
 
-    if (delivery) {
-      return {
-        ...delivery,
-        createdAt: this.convertToPhilippineTime(delivery.createdAt),
-        updatedAt: this.convertToPhilippineTime(delivery.updatedAt),
-        deliveryTimeStart: delivery.deliveryTimeStart
-          ? this.convertToPhilippineTime(delivery.deliveryTimeStart)
-          : null,
-      };
-    }
-
-    return delivery;
+    return this.formatDelivery(delivery);
   }
 
   async getAllDeliveries(userId: string) {
@@ -289,14 +301,7 @@ export class DeliveryService {
       },
     });
 
-    return deliveries.map((delivery) => ({
-      ...delivery,
-      createdAt: this.convertToPhilippineTime(delivery.createdAt),
-      updatedAt: this.convertToPhilippineTime(delivery.updatedAt),
-      deliveryTimeStart: delivery.deliveryTimeStart
-        ? this.convertToPhilippineTime(delivery.deliveryTimeStart)
-        : null,
-    }));
+    return deliveries.map((delivery) => this.formatDelivery(delivery));
   }
 
   async getAllDeliveriesByCashier(cashierId: string) {
@@ -319,13 +324,6 @@ export class DeliveryService {
       },
     });
 
-    return deliveries.map((delivery) => ({
-      ...delivery,
-      createdAt: this.convertToPhilippineTime(delivery.createdAt),
-      updatedAt: this.convertToPhilippineTime(delivery.updatedAt),
-      deliveryTimeStart: delivery.deliveryTimeStart
-        ? this.convertToPhilippineTime(delivery.deliveryTimeStart)
-        : null,
-    }));
+    return deliveries.map((delivery) => this.formatDelivery(delivery));
   }
 }

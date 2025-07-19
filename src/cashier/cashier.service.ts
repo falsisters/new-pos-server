@@ -14,6 +14,22 @@ export class CashierService {
     private configService: ConfigService,
   ) {}
 
+  // Helper function to convert UTC to Philippine time (UTC+8)
+  private convertToPhilippineTime(utcDate: Date): Date {
+    if (!utcDate) return null;
+    const philippineTime = new Date(utcDate.getTime() + 8 * 60 * 60 * 1000);
+    return philippineTime;
+  }
+
+  private formatCashier(cashier: any) {
+    if (!cashier) return null;
+    return {
+      ...cashier,
+      createdAt: this.convertToPhilippineTime(cashier.createdAt),
+      updatedAt: this.convertToPhilippineTime(cashier.updatedAt),
+    };
+  }
+
   private async findExistingCashier(name: string) {
     return this.prisma.cashier.findUnique({
       where: {
@@ -55,7 +71,7 @@ export class CashierService {
   async register(userId: string, registerCashierDto: RegisterCashierDto) {
     const { name, accessKey, permissions } = registerCashierDto;
 
-    return this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       const cashier = await tx.cashier.create({
         data: {
           name,
@@ -108,28 +124,31 @@ export class CashierService {
       });
       return cashier;
     });
+    return this.formatCashier(result);
   }
 
   async getCashier(id: string) {
-    return this.prisma.cashier.findUnique({
+    const cashier = await this.prisma.cashier.findUnique({
       where: {
         id,
       },
     });
+    return this.formatCashier(cashier);
   }
 
   async getAllCashiers(userId: string) {
-    return this.prisma.cashier.findMany({
+    const cashiers = await this.prisma.cashier.findMany({
       where: {
         userId,
       },
     });
+    return cashiers.map((c) => this.formatCashier(c));
   }
 
   async editCashier(id: string, editCashierDto: EditCashierDto) {
     const { name, accessKey, permissions } = editCashierDto;
 
-    return this.prisma.cashier.update({
+    const cashier = await this.prisma.cashier.update({
       where: {
         id,
       },
@@ -139,10 +158,12 @@ export class CashierService {
         permissions,
       },
     });
+    return this.formatCashier(cashier);
   }
   async deleteCashier(id: string) {
-    return this.prisma.cashier.delete({
+    const cashier = await this.prisma.cashier.delete({
       where: { id },
     });
+    return this.formatCashier(cashier);
   }
 }

@@ -10,6 +10,26 @@ import { TransferFilterDto } from './dto/transferWithFilter.dto';
 export class TransferService {
   constructor(private prisma: PrismaService) {}
 
+  // Helper function to convert UTC to Philippine time (UTC+8)
+  private convertToPhilippineTime(utcDate: Date): Date {
+    if (!utcDate) return null;
+    const philippineTime = new Date(utcDate.getTime() + 8 * 60 * 60 * 1000);
+    return philippineTime;
+  }
+
+  private formatTransfer(transfer: any) {
+    if (!transfer) return null;
+    return {
+      ...transfer,
+      createdAt: this.convertToPhilippineTime(transfer.createdAt),
+      updatedAt: this.convertToPhilippineTime(transfer.updatedAt),
+    };
+  }
+
+  private formatTransfers(transfers: any[]) {
+    return transfers.map((transfer) => this.formatTransfer(transfer));
+  }
+
   private parseSackType(type: SackType) {
     switch (type) {
       case 'FIFTY_KG':
@@ -33,7 +53,7 @@ export class TransferService {
 
     const cashierIds = cashiers.map((cashier) => cashier.id);
 
-    return this.prisma.transfer.findMany({
+    const transfers = await this.prisma.transfer.findMany({
       where: {
         cashierId: {
           in: cashierIds,
@@ -47,17 +67,20 @@ export class TransferService {
         },
       },
     });
+
+    return this.formatTransfers(transfers);
   }
 
   async deleteTransfer(id: string) {
-    return this.prisma.transfer.delete({
+    const result = await this.prisma.transfer.delete({
       where: { id },
     });
+    return this.formatTransfer(result);
   }
 
   async editTransfer(id: string, editTransferDto: EditTransferDto) {
     const { quantity, name, type } = editTransferDto;
-    return this.prisma.transfer.update({
+    const result = await this.prisma.transfer.update({
       where: { id },
       data: {
         quantity,
@@ -65,10 +88,11 @@ export class TransferService {
         type,
       },
     });
+    return this.formatTransfer(result);
   }
 
   async getTransfer(id: string) {
-    return this.prisma.transfer.findUnique({
+    const result = await this.prisma.transfer.findUnique({
       where: { id },
       include: {
         cashier: {
@@ -78,6 +102,7 @@ export class TransferService {
         },
       },
     });
+    return this.formatTransfer(result);
   }
 
   async transferDelivery(
@@ -477,7 +502,7 @@ export class TransferService {
 
     const cashierIds = cashiers.map((cashier) => cashier.id);
 
-    return this.prisma.transfer.findMany({
+    const transfers = await this.prisma.transfer.findMany({
       where: {
         AND: [
           {
@@ -504,10 +529,12 @@ export class TransferService {
         createdAt: 'desc',
       },
     });
+
+    return this.formatTransfers(transfers);
   }
 
   async getAllTransfersByCashier(cashierId: string) {
-    return this.prisma.transfer.findMany({
+    const transfers = await this.prisma.transfer.findMany({
       where: {
         cashierId,
       },
@@ -522,6 +549,8 @@ export class TransferService {
         createdAt: 'desc',
       },
     });
+
+    return this.formatTransfers(transfers);
   }
 
   async getAllTransfersWithFilterByCashier(
@@ -538,7 +567,7 @@ export class TransferService {
     const endOfDay = new Date(targetDate);
     endOfDay.setHours(23, 59, 59, 999);
 
-    return this.prisma.transfer.findMany({
+    const transfers = await this.prisma.transfer.findMany({
       where: {
         AND: [
           {
@@ -563,6 +592,8 @@ export class TransferService {
         createdAt: 'desc',
       },
     });
+
+    return this.formatTransfers(transfers);
   }
 
   async verifyCashierOwnership(userId: string, cashierId: string) {

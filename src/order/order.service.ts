@@ -6,8 +6,42 @@ import { CreateOrderDto } from './dto/createOrder.dto';
 export class OrderService {
   constructor(private prisma: PrismaService) {}
 
+  // Helper function to convert UTC to Philippine time (UTC+8)
+  private convertToPhilippineTime(utcDate: Date): Date {
+    if (!utcDate) return null;
+    const philippineTime = new Date(utcDate.getTime() + 8 * 60 * 60 * 1000);
+    return philippineTime;
+  }
+
+  private formatOrder(order: any) {
+    if (!order) return null;
+    return {
+      ...order,
+      createdAt: this.convertToPhilippineTime(order.createdAt),
+      updatedAt: this.convertToPhilippineTime(order.updatedAt),
+      customer: order.customer
+        ? {
+            ...order.customer,
+            createdAt: this.convertToPhilippineTime(order.customer.createdAt),
+            updatedAt: this.convertToPhilippineTime(order.customer.updatedAt),
+          }
+        : null,
+      OrderItem: order.OrderItem
+        ? order.OrderItem.map((item) => ({
+            ...item,
+            createdAt: this.convertToPhilippineTime(item.createdAt),
+            updatedAt: this.convertToPhilippineTime(item.updatedAt),
+          }))
+        : [],
+    };
+  }
+
+  private formatOrders(orders: any[]) {
+    return orders.map((order) => this.formatOrder(order));
+  }
+
   async getOrderById(id: string) {
-    return this.prisma.order.findUnique({
+    const result = await this.prisma.order.findUnique({
       where: { id },
       include: {
         customer: {
@@ -35,10 +69,11 @@ export class OrderService {
         },
       },
     });
+    return this.formatOrder(result);
   }
 
   async getAllOrders(customerId: string) {
-    return this.prisma.order.findMany({
+    const orders = await this.prisma.order.findMany({
       where: {
         customerId,
       },
@@ -68,11 +103,12 @@ export class OrderService {
         },
       },
     });
+    return this.formatOrders(orders);
   }
 
   // New method to get products available for orders from a specific cashier
   async getAvailableProductsForOrderByCashier(cashierId: string) {
-    return this.prisma.product.findMany({
+    const products = await this.prisma.product.findMany({
       where: {
         cashierId,
         OR: [
@@ -120,6 +156,12 @@ export class OrderService {
         },
       },
     });
+
+    return products.map((product) => ({
+      ...product,
+      createdAt: this.convertToPhilippineTime(product.createdAt),
+      updatedAt: this.convertToPhilippineTime(product.updatedAt),
+    }));
   }
 
   async createOrder(customerId: string, createOrderDto: CreateOrderDto) {
@@ -407,7 +449,7 @@ export class OrderService {
   }
 
   async getUserOrders(userId: string) {
-    return this.prisma.order.findMany({
+    const orders = await this.prisma.order.findMany({
       where: {
         userId,
         status: 'PENDING',
@@ -438,10 +480,11 @@ export class OrderService {
         },
       },
     });
+    return this.formatOrders(orders);
   }
 
   async getUserOrderById(userId: string, orderId: string) {
-    return this.prisma.order.findUnique({
+    const result = await this.prisma.order.findUnique({
       where: {
         id: orderId,
         userId,
@@ -472,11 +515,12 @@ export class OrderService {
         },
       },
     });
+    return this.formatOrder(result);
   }
 
   // New method to get orders for a specific cashier
   async getCashierOrders(cashierId: string) {
-    return this.prisma.order.findMany({
+    const orders = await this.prisma.order.findMany({
       where: {
         cashierId,
         status: 'PENDING',
@@ -507,11 +551,12 @@ export class OrderService {
         },
       },
     });
+    return this.formatOrders(orders);
   }
 
   // New method to get a specific order for a cashier
   async getCashierOrderById(cashierId: string, orderId: string) {
-    return this.prisma.order.findUnique({
+    const result = await this.prisma.order.findUnique({
       where: {
         id: orderId,
         cashierId,
@@ -542,5 +587,6 @@ export class OrderService {
         },
       },
     });
+    return this.formatOrder(result);
   }
 }

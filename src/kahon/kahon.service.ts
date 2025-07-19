@@ -6,12 +6,56 @@ import { EditKahonItemsDto } from './dto/editKahonItemsDto';
 export class KahonService {
   constructor(private prisma: PrismaService) {}
 
+  // Helper function to convert UTC to Philippine time (UTC+8)
+  private convertToPhilippineTime(utcDate: Date): Date {
+    if (!utcDate) return null;
+    const philippineTime = new Date(utcDate.getTime() + 8 * 60 * 60 * 1000);
+    return philippineTime;
+  }
+
+  private formatKahon(kahon: any) {
+    if (!kahon) return null;
+    return {
+      ...kahon,
+      createdAt: this.convertToPhilippineTime(kahon.createdAt),
+      updatedAt: this.convertToPhilippineTime(kahon.updatedAt),
+      KahonItems: kahon.KahonItems
+        ? kahon.KahonItems.map((item) => ({
+            ...item,
+            createdAt: this.convertToPhilippineTime(item.createdAt),
+            updatedAt: this.convertToPhilippineTime(item.updatedAt),
+          }))
+        : [],
+      Sheets: kahon.Sheets
+        ? kahon.Sheets.map((sheet) => ({
+            ...sheet,
+            createdAt: this.convertToPhilippineTime(sheet.createdAt),
+            updatedAt: this.convertToPhilippineTime(sheet.updatedAt),
+            Rows: sheet.Rows
+              ? sheet.Rows.map((row) => ({
+                  ...row,
+                  createdAt: this.convertToPhilippineTime(row.createdAt),
+                  updatedAt: this.convertToPhilippineTime(row.updatedAt),
+                  Cells: row.Cells
+                    ? row.Cells.map((cell) => ({
+                        ...cell,
+                        createdAt: this.convertToPhilippineTime(cell.createdAt),
+                        updatedAt: this.convertToPhilippineTime(cell.updatedAt),
+                      }))
+                    : [],
+                }))
+              : [],
+          }))
+        : [],
+    };
+  }
+
   async getKahonByCashier(cashierId: string, startDate?: Date, endDate?: Date) {
     const end = endDate || new Date();
     const start = startDate || new Date(end.getTime() - 24 * 60 * 60 * 1000);
 
     // Assuming a cashier has one primary "Kahon" named 'Kahon'
-    return await this.prisma.kahon.findFirst({
+    const result = await this.prisma.kahon.findFirst({
       where: {
         cashierId: cashierId, // Changed from userId
         name: 'Kahon', // Assuming we fetch the specific "Kahon"
@@ -47,6 +91,8 @@ export class KahonService {
         },
       },
     });
+
+    return this.formatKahon(result);
   }
 
   async getKahonsByUserId(userId: string, startDate?: Date, endDate?: Date) {
@@ -100,7 +146,7 @@ export class KahonService {
         kahonsWithCashierInfo.push({
           cashierName: cashier.name,
           cashierId: cashier.id,
-          ...kahon,
+          ...this.formatKahon(kahon),
         });
       }
     }
@@ -131,6 +177,11 @@ export class KahonService {
       });
     });
 
-    return Promise.all(updatePromises);
+    const results = await Promise.all(updatePromises);
+    return results.map((item) => ({
+      ...item,
+      createdAt: this.convertToPhilippineTime(item.createdAt),
+      updatedAt: this.convertToPhilippineTime(item.updatedAt),
+    }));
   }
 }

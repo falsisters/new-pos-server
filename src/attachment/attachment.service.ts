@@ -11,17 +11,35 @@ export class AttachmentService {
     private uploadService: UploadService,
   ) {}
 
+  // Helper function to convert UTC to Philippine time (UTC+8)
+  private convertToPhilippineTime(utcDate: Date): Date {
+    if (!utcDate) return null;
+    const philippineTime = new Date(utcDate.getTime() + 8 * 60 * 60 * 1000);
+    return philippineTime;
+  }
+
+  private formatAttachment(attachment: any) {
+    if (!attachment) return null;
+    return {
+      ...attachment,
+      createdAt: this.convertToPhilippineTime(attachment.createdAt),
+      updatedAt: this.convertToPhilippineTime(attachment.updatedAt),
+    };
+  }
+
   async getAttachments(userId: string) {
-    return this.prismaService.attachment.findMany({
+    const attachments = await this.prismaService.attachment.findMany({
       where: { userId },
       orderBy: { createdAt: 'desc' },
     });
+    return attachments.map((att) => this.formatAttachment(att));
   }
 
   async getAttachmentById(id: string) {
-    return this.prismaService.attachment.findUnique({
+    const attachment = await this.prismaService.attachment.findUnique({
       where: { id },
     });
+    return this.formatAttachment(attachment);
   }
 
   async createAttachment(userId: string, formData: CreateAttachmentFormData) {
@@ -32,7 +50,7 @@ export class AttachmentService {
       ? await this.uploadService.uploadSingleFile(file, 'attachments/')
       : null;
 
-    return this.prismaService.attachment.create({
+    const attachment = await this.prismaService.attachment.create({
       data: {
         name,
         url,
@@ -40,6 +58,7 @@ export class AttachmentService {
         type,
       },
     });
+    return this.formatAttachment(attachment);
   }
 
   async editAttachment(id: string, name?: string, type?: AttachmentType) {
@@ -55,10 +74,11 @@ export class AttachmentService {
       throw new Error('Attachment not found');
     }
 
-    return this.prismaService.attachment.update({
+    const updatedAttachment = await this.prismaService.attachment.update({
       where: { id },
       data: { name },
     });
+    return this.formatAttachment(updatedAttachment);
   }
 
   async deleteAttachment(id: string) {
@@ -70,8 +90,9 @@ export class AttachmentService {
       throw new Error('Attachment not found');
     }
 
-    return this.prismaService.attachment.delete({
+    const deletedAttachment = await this.prismaService.attachment.delete({
       where: { id },
     });
+    return this.formatAttachment(deletedAttachment);
   }
 }

@@ -7,6 +7,32 @@ import { EditShiftDto } from './dto/edit.dto';
 export class ShiftService {
   constructor(private prisma: PrismaService) {}
 
+  // Helper function to convert UTC to Philippine time (UTC+8)
+  private convertToPhilippineTime(utcDate: Date): Date {
+    if (!utcDate) return null;
+    const philippineTime = new Date(utcDate.getTime() + 8 * 60 * 60 * 1000);
+    return philippineTime;
+  }
+
+  private formatShift(shift: any) {
+    if (!shift) return null;
+    return {
+      ...shift,
+      createdAt: this.convertToPhilippineTime(shift.createdAt),
+      updatedAt: this.convertToPhilippineTime(shift.updatedAt),
+      startTime: this.convertToPhilippineTime(shift.startTime),
+      endTime: this.convertToPhilippineTime(shift.endTime),
+      employees: shift.employee
+        ? shift.employee.map((e) => ({
+            ...e.employee,
+            createdAt: this.convertToPhilippineTime(e.employee.createdAt),
+            updatedAt: this.convertToPhilippineTime(e.employee.updatedAt),
+          }))
+        : shift.employees,
+      employee: undefined,
+    };
+  }
+
   async createShift(cashierId: string, createShiftDto: CreateShiftDto) {
     const { employees } = createShiftDto;
     console.log(createShiftDto);
@@ -32,15 +58,11 @@ export class ShiftService {
       },
     });
 
-    return {
-      ...newShift,
-      employees: newShift.employee.map((e) => e.employee),
-      employee: undefined,
-    };
+    return this.formatShift(newShift);
   }
 
   async endShift(id: string) {
-    return this.prisma.shift.update({
+    const result = await this.prisma.shift.update({
       where: {
         id,
       },
@@ -48,6 +70,7 @@ export class ShiftService {
         endTime: new Date(),
       },
     });
+    return this.formatShift(result);
   }
 
   async getAllShiftsByCashierId(cashierId: string) {
@@ -64,16 +87,11 @@ export class ShiftService {
       },
     });
 
-    // Transform the data to flatten the employee structure
-    return shifts.map((shift) => ({
-      ...shift,
-      employees: shift.employee.map((e) => e.employee),
-      employee: undefined, // Remove the nested structure
-    }));
+    return shifts.map((shift) => this.formatShift(shift));
   }
 
   async getShiftById(id: string) {
-    return this.prisma.shift.findUnique({
+    const result = await this.prisma.shift.findUnique({
       where: {
         id,
       },
@@ -85,14 +103,16 @@ export class ShiftService {
         },
       },
     });
+    return this.formatShift(result);
   }
 
   async deleteShift(id: string) {
-    return this.prisma.shift.delete({
+    const result = await this.prisma.shift.delete({
       where: {
         id,
       },
     });
+    return this.formatShift(result);
   }
 
   async editShift(id: string, editShiftDto: EditShiftDto) {
@@ -118,11 +138,6 @@ export class ShiftService {
       },
     });
 
-    // Transform the data to match the expected frontend structure
-    return {
-      ...updatedShift,
-      employees: updatedShift.employee.map((e) => e.employee),
-      employee: undefined, // Remove the nested structure
-    };
+    return this.formatShift(updatedShift);
   }
 }
