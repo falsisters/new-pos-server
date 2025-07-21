@@ -22,8 +22,20 @@ export class AttachmentService {
   }
 
   async getAttachments(userId: string) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const endOfToday = new Date(today);
+    endOfToday.setHours(23, 59, 59, 999);
+
     const attachments = await this.prismaService.attachment.findMany({
-      where: { userId },
+      where: {
+        userId,
+        createdAt: {
+          gte: today,
+          lte: endOfToday,
+        },
+      },
       orderBy: { createdAt: 'desc' },
     });
     return attachments.map((att) => this.formatAttachment(att));
