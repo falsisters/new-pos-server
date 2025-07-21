@@ -1,4 +1,8 @@
-import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import {
+  PutObjectCommand,
+  S3Client,
+  DeleteObjectCommand,
+} from '@aws-sdk/client-s3';
 import { Injectable } from '@nestjs/common';
 import sharp from 'sharp';
 
@@ -241,5 +245,33 @@ export class UploadService {
       return this.uploadSingleFile(file, path);
     });
     return await Promise.all(promises);
+  }
+
+  async deleteFileFromStorage(fileUrl: string): Promise<void> {
+    try {
+      // Extract the key from the public URL
+      const urlPattern = new RegExp(
+        `${this.supabaseProjectUrl}/storage/v1/object/public/${this.defaultBucket}/(.+)`,
+      );
+      const match = fileUrl.match(urlPattern);
+
+      if (!match || !match[1]) {
+        console.warn(`Unable to extract key from URL: ${fileUrl}`);
+        return;
+      }
+
+      const key = match[1];
+
+      const command = new DeleteObjectCommand({
+        Bucket: this.defaultBucket,
+        Key: key,
+      });
+
+      await this.s3Client.send(command);
+      console.log(`Successfully deleted file: ${key}`);
+    } catch (error) {
+      console.error(`Failed to delete file from storage: ${error.message}`);
+      // Don't throw error to prevent blocking the deletion process
+    }
   }
 }

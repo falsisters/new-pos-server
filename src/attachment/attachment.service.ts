@@ -84,4 +84,72 @@ export class AttachmentService {
     });
     return this.formatAttachment(deletedAttachment);
   }
+
+  async getYesterdayAttachments() {
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    yesterday.setHours(0, 0, 0, 0);
+
+    const endOfYesterday = new Date(yesterday);
+    endOfYesterday.setHours(23, 59, 59, 999);
+
+    const attachments = await this.prismaService.attachment.findMany({
+      where: {
+        createdAt: {
+          gte: yesterday,
+          lte: endOfYesterday,
+        },
+      },
+    });
+
+    return attachments;
+  }
+
+  async deleteYesterdayAttachments() {
+    try {
+      const yesterdayAttachments = await this.getYesterdayAttachments();
+
+      if (yesterdayAttachments.length === 0) {
+        return {
+          message: 'No attachments found from yesterday',
+          deletedCount: 0,
+        };
+      }
+
+      // Delete files from storage first
+      const deletePromises = yesterdayAttachments.map(async (attachment) => {
+        if (attachment.url) {
+          await this.uploadService.deleteFileFromStorage(attachment.url);
+        }
+      });
+
+      await Promise.allSettled(deletePromises);
+
+      // Delete attachments from database
+      const deletedAttachments = await this.prismaService.attachment.deleteMany(
+        {
+          where: {
+            id: {
+              in: yesterdayAttachments.map((att) => att.id),
+            },
+          },
+        },
+      );
+
+      return {
+        message: `Successfully deleted ${deletedAttachments.count} attachments from yesterday`,
+        deletedCount: deletedAttachments.count,
+        deletedAttachments: yesterdayAttachments.map((att) => ({
+          id: att.id,
+          name: att.name,
+          url: att.url,
+        })),
+      };
+    } catch (error) {
+      console.error('Error deleting yesterday attachments:', error);
+      throw new Error(
+        `Failed to delete yesterday's attachments: ${error.message}`,
+      );
+    }
+  }
 }

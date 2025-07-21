@@ -12,6 +12,12 @@
       "destination": "src/lambda.ts"
     }
   ],
+  "crons": [
+    {
+      "path": "/attachment/delete/yesterday",
+      "schedule": "0 0 * * *"
+    }
+  ],
   "headers": [
     {
       "source": "/(.*)",

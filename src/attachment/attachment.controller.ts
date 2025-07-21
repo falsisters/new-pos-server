@@ -192,4 +192,10 @@ export class AttachmentController {
   async deleteUserAttachment(@Request() req, @Param('id') id: string) {
     return this.attachmentService.deleteAttachment(id);
   }
+
+  @UseGuards(JwtAuthGuard)
+  @Delete('delete/yesterday')
+  async deleteYesterdayAttachments(@Request() req) {
+    return this.attachmentService.deleteYesterdayAttachments();
+  }
 }
