@@ -63,6 +63,19 @@ export class TransferController {
     return this.transferService.getAllTransfersByCashier(cashierId);
   }
 
+  @UseGuards(JwtCashierAuthGuard)
+  @Get('cashier/date')
+  async getAllTransfersByCashierUsingDate(
+    @Request() req,
+    @Query() filters: TransferFilterDto,
+  ) {
+    const cashierId = req.user.id;
+    return this.transferService.getAllTransfersWithFilterByCashier(
+      cashierId,
+      filters,
+    );
+  }
+
   @UseGuards(JwtAuthGuard)
   @Get('cashier/:cashierId')
   async getAllTransfersByCashierId(
