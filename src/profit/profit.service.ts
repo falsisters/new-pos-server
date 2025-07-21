@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { ProfitFilterDto } from './dto/profit-filter.dto';
 import { PaymentMethod, SackType } from '@prisma/client';
+import { convertToManilaTime } from '../utils/date.util';
 
 interface ProfitSummary {
   id: string;
@@ -164,7 +165,7 @@ export class ProfitService {
           formattedPriceType,
           paymentMethod: sale.paymentMethod,
           isSpecialPrice: item.isSpecialPrice,
-          saleDate: sale.createdAt,
+          saleDate: convertToManilaTime(sale.createdAt), // Convert to Manila time
           isAsin: item.product?.name.toLowerCase().includes('asin') || false,
         };
       });
@@ -389,7 +390,7 @@ export class ProfitService {
           formattedPriceType,
           paymentMethod: sale.paymentMethod,
           isSpecialPrice: item.isSpecialPrice,
-          saleDate: sale.createdAt,
+          saleDate: convertToManilaTime(sale.createdAt), // Convert to Manila time
           isAsin: item.product?.name.toLowerCase().includes('asin') || false,
         };
       });

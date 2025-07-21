@@ -1,6 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { EditKahonItemsDto } from './dto/editKahonItemsDto';
+import {
+  convertObjectDatesToManilaTime,
+  convertArrayDatesToManilaTime,
+} from '../utils/date.util';
 
 @Injectable()
 export class KahonService {
@@ -8,29 +12,33 @@ export class KahonService {
 
   private formatKahon(kahon: any) {
     if (!kahon) return null;
-    return {
+    const formatted = {
       ...kahon,
+      cashier: kahon.cashier
+        ? convertObjectDatesToManilaTime(kahon.cashier)
+        : null,
       KahonItems: kahon.KahonItems
-        ? kahon.KahonItems.map((item) => ({
-            ...item,
-          }))
+        ? convertArrayDatesToManilaTime(kahon.KahonItems)
         : [],
       Sheets: kahon.Sheets
-        ? kahon.Sheets.map((sheet) => ({
-            ...sheet,
-            Rows: sheet.Rows
-              ? sheet.Rows.map((row) => ({
-                  ...row,
-                  Cells: row.Cells
-                    ? row.Cells.map((cell) => ({
-                        ...cell,
-                      }))
-                    : [],
-                }))
-              : [],
-          }))
+        ? convertArrayDatesToManilaTime(
+            kahon.Sheets.map((sheet) => ({
+              ...sheet,
+              Rows: sheet.Rows
+                ? convertArrayDatesToManilaTime(
+                    sheet.Rows.map((row) => ({
+                      ...row,
+                      Cells: row.Cells
+                        ? convertArrayDatesToManilaTime(row.Cells)
+                        : [],
+                    })),
+                  )
+                : [],
+            })),
+          )
         : [],
     };
+    return convertObjectDatesToManilaTime(formatted);
   }
 
   async getKahonByCashier(cashierId: string, startDate?: Date, endDate?: Date) {

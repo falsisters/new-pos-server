@@ -1,6 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateOrderDto } from './dto/createOrder.dto';
+import {
+  convertObjectDatesToManilaTime,
+  convertArrayDatesToManilaTime,
+} from '../utils/date.util';
 
 @Injectable()
 export class OrderService {
@@ -8,19 +12,32 @@ export class OrderService {
 
   private formatOrder(order: any) {
     if (!order) return null;
-    return {
+    const formatted = {
       ...order,
       customer: order.customer
-        ? {
-            ...order.customer,
-          }
+        ? convertObjectDatesToManilaTime(order.customer)
+        : null,
+      cashier: order.cashier
+        ? convertObjectDatesToManilaTime(order.cashier)
         : null,
       OrderItem: order.OrderItem
-        ? order.OrderItem.map((item) => ({
-            ...item,
-          }))
+        ? convertArrayDatesToManilaTime(
+            order.OrderItem.map((item) => ({
+              ...item,
+              product: item.product
+                ? convertObjectDatesToManilaTime(item.product)
+                : null,
+              SackPrice: item.SackPrice
+                ? convertObjectDatesToManilaTime(item.SackPrice)
+                : null,
+              perKiloPrice: item.perKiloPrice
+                ? convertObjectDatesToManilaTime(item.perKiloPrice)
+                : null,
+            })),
+          )
         : [],
     };
+    return convertObjectDatesToManilaTime(formatted);
   }
 
   private formatOrders(orders: any[]) {

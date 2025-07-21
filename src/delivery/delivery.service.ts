@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateDeliveryDto } from './dto/create.dto';
 import { TransferService } from 'src/transfer/transfer.service';
+import { convertToManilaTime } from 'src/utils/date.util';
 
 @Injectable()
 export class DeliveryService {
@@ -14,8 +15,15 @@ export class DeliveryService {
     if (!delivery) return null;
     return {
       ...delivery,
+      createdAt: convertToManilaTime(delivery.createdAt),
+      updatedAt: convertToManilaTime(delivery.updatedAt),
+      deliveryTimeStart: convertToManilaTime(delivery.deliveryTimeStart),
       DeliveryItem: delivery.DeliveryItem
-        ? delivery.DeliveryItem.map((item) => ({ ...item }))
+        ? delivery.DeliveryItem.map((item) => ({
+            ...item,
+            createdAt: convertToManilaTime(item.createdAt),
+            updatedAt: convertToManilaTime(item.updatedAt),
+          }))
         : [],
     };
   }

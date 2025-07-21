@@ -3,6 +3,7 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { UploadService } from 'src/upload/upload.service';
 import { CreateAttachmentFormData } from './types/createAttachment.type';
 import { AttachmentType } from '@prisma/client';
+import { convertToManilaTime } from 'src/utils/date.util';
 
 @Injectable()
 export class AttachmentService {
@@ -13,7 +14,11 @@ export class AttachmentService {
 
   private formatAttachment(attachment: any) {
     if (!attachment) return null;
-    return attachment;
+    return {
+      ...attachment,
+      createdAt: convertToManilaTime(attachment.createdAt),
+      updatedAt: convertToManilaTime(attachment.updatedAt),
+    };
   }
 
   async getAttachments(userId: string) {
@@ -65,7 +70,7 @@ export class AttachmentService {
 
     const updatedAttachment = await this.prismaService.attachment.update({
       where: { id },
-      data: { name },
+      data: { name, type },
     });
     return this.formatAttachment(updatedAttachment);
   }
@@ -143,6 +148,7 @@ export class AttachmentService {
           id: att.id,
           name: att.name,
           url: att.url,
+          createdAt: convertToManilaTime(att.createdAt),
         })),
       };
     } catch (error) {

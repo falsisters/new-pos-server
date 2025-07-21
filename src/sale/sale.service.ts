@@ -4,6 +4,10 @@ import { CreateSaleDto } from './dto/create.dto';
 import { EditSaleDto } from './dto/edit.dto';
 import { OrderService } from 'src/order/order.service';
 import { RecentSalesFilterDto } from './dto/recent-sales.dto';
+import {
+  convertObjectDatesToManilaTime,
+  convertArrayDatesToManilaTime,
+} from '../utils/date.util';
 
 @Injectable()
 export class SaleService {
@@ -14,7 +18,20 @@ export class SaleService {
 
   private formatSale(sale: any) {
     if (!sale) return null;
-    return sale;
+    const formatted = {
+      ...sale,
+      SaleItem: sale.SaleItem
+        ? convertArrayDatesToManilaTime(
+            sale.SaleItem.map((item) => ({
+              ...item,
+              product: item.product
+                ? convertObjectDatesToManilaTime(item.product)
+                : null,
+            })),
+          )
+        : [],
+    };
+    return convertObjectDatesToManilaTime(formatted);
   }
 
   private formatSales(sales: any[]) {

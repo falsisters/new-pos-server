@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateShiftDto } from './dto/create.dto';
 import { EditShiftDto } from './dto/edit.dto';
+import { convertObjectDatesToManilaTime } from '../utils/date.util';
 
 @Injectable()
 export class ShiftService {
@@ -9,13 +10,14 @@ export class ShiftService {
 
   private formatShift(shift: any) {
     if (!shift) return null;
-    return {
+    const formatted = {
       ...shift,
       employees: shift.employee
-        ? shift.employee.map((e) => e.employee)
+        ? shift.employee.map((e) => convertObjectDatesToManilaTime(e.employee))
         : shift.employees,
       employee: undefined,
     };
+    return convertObjectDatesToManilaTime(formatted);
   }
 
   async createShift(cashierId: string, createShiftDto: CreateShiftDto) {

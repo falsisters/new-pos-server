@@ -4,6 +4,7 @@ import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { RegisterCustomerDto } from './dto/register.dto';
 import * as bcrypt from 'bcrypt';
+import { convertToManilaTime } from 'src/utils/date.util';
 
 @Injectable()
 export class CustomerService {
@@ -16,7 +17,11 @@ export class CustomerService {
   private formatCustomer(customer: any) {
     if (!customer) return null;
     const { password, ...result } = customer;
-    return result;
+    return {
+      ...result,
+      createdAt: convertToManilaTime(result.createdAt),
+      updatedAt: convertToManilaTime(result.updatedAt),
+    };
   }
 
   private async findExistingCustomer(email: string) {

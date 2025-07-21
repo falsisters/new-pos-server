@@ -165,20 +165,20 @@ export class AttachmentController {
   @Patch(':id')
   async editAttachment(
     @Request() req,
-    @Body() name: string,
+    @Body() body: { name?: string; type?: any },
     @Param('id') id: string,
   ) {
-    return this.attachmentService.editAttachment(id, name);
+    return this.attachmentService.editAttachment(id, body.name, body.type);
   }
 
   @UseGuards(JwtAuthGuard)
   @Patch('user/:id')
   async editUserAttachment(
     @Request() req,
-    @Body() name: string,
+    @Body() body: { name?: string; type?: any },
     @Param('id') id: string,
   ) {
-    return this.attachmentService.editAttachment(id, name);
+    return this.attachmentService.editAttachment(id, body.name, body.type);
   }
 
   @UseGuards(JwtCashierAuthGuard)

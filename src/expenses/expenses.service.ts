@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateExpenseDto } from './dto/createExpense.dto';
 import { GetExpenseByDateDto } from './dto/getExpenseByDate.dto';
+import { convertToManilaTime } from 'src/utils/date.util';
 
 @Injectable()
 export class ExpensesService {
@@ -11,9 +12,13 @@ export class ExpensesService {
     if (!expenseList) return null;
     return {
       ...expenseList,
+      createdAt: convertToManilaTime(expenseList.createdAt),
+      updatedAt: convertToManilaTime(expenseList.updatedAt),
       ExpenseItems: expenseList.ExpenseItems
         ? expenseList.ExpenseItems.map((item) => ({
             ...item,
+            createdAt: convertToManilaTime(item.createdAt),
+            updatedAt: convertToManilaTime(item.updatedAt),
           }))
         : [],
     };

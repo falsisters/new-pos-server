@@ -3,6 +3,10 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { UploadService } from 'src/upload/upload.service';
 import { ProductFormData } from './types/productFormData.type';
 import { EditProductFormData } from './types/editProductFormData.type';
+import {
+  convertObjectDatesToManilaTime,
+  convertArrayDatesToManilaTime,
+} from '../utils/date.util';
 
 @Injectable()
 export class ProductService {
@@ -13,24 +17,26 @@ export class ProductService {
 
   private formatProduct(product: any) {
     if (!product) return null;
-    return {
+    const formatted = {
       ...product,
       SackPrice: product.SackPrice
-        ? product.SackPrice.map((price) => ({
-            ...price,
-            specialPrice: price.specialPrice
-              ? {
-                  ...price.specialPrice,
-                }
-              : null,
-          }))
+        ? convertArrayDatesToManilaTime(
+            product.SackPrice.map((price) => ({
+              ...price,
+              specialPrice: price.specialPrice
+                ? convertObjectDatesToManilaTime(price.specialPrice)
+                : null,
+            })),
+          )
         : [],
       perKiloPrice: product.perKiloPrice
-        ? {
-            ...product.perKiloPrice,
-          }
+        ? convertObjectDatesToManilaTime(product.perKiloPrice)
+        : null,
+      cashier: product.cashier
+        ? convertObjectDatesToManilaTime(product.cashier)
         : null,
     };
+    return convertObjectDatesToManilaTime(formatted);
   }
 
   private formatProducts(products: any[]) {

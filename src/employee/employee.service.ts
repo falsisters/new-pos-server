@@ -3,6 +3,7 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateEmployeeDto } from './dto/create.dto';
 import { EditEmployeeDto } from './dto/edit.dto';
 import { EmployeeAttendanceFilterDto } from './dto/employee-attendance.dto';
+import { convertToManilaTime } from 'src/utils/date.util';
 
 @Injectable()
 export class EmployeeService {
@@ -12,10 +13,22 @@ export class EmployeeService {
     if (!employee) return null;
     return {
       ...employee,
+      createdAt: convertToManilaTime(employee.createdAt),
+      updatedAt: convertToManilaTime(employee.updatedAt),
       ShiftEmployee: employee.ShiftEmployee
         ? employee.ShiftEmployee.map((se) => ({
             ...se,
-            shift: se.shift ? { ...se.shift } : null,
+            createdAt: convertToManilaTime(se.createdAt),
+            updatedAt: convertToManilaTime(se.updatedAt),
+            shift: se.shift
+              ? {
+                  ...se.shift,
+                  startTime: convertToManilaTime(se.shift.startTime),
+                  endTime: convertToManilaTime(se.shift.endTime),
+                  createdAt: convertToManilaTime(se.shift.createdAt),
+                  updatedAt: convertToManilaTime(se.shift.updatedAt),
+                }
+              : null,
           }))
         : [],
     };
@@ -129,14 +142,17 @@ export class EmployeeService {
 
     // Format the attendance data
     const attendanceData = shifts.map((shift) => {
-      const shiftDate = shift.startTime.toISOString().split('T')[0];
-      const shiftStartTime = shift.startTime.toLocaleTimeString('en-US', {
+      const manilaStartTime = convertToManilaTime(shift.startTime);
+      const manilaEndTime = convertToManilaTime(shift.endTime);
+
+      const shiftDate = manilaStartTime.toISOString().split('T')[0];
+      const shiftStartTime = manilaStartTime.toLocaleTimeString('en-US', {
         hour: '2-digit',
         minute: '2-digit',
         hour12: true,
       });
-      const shiftEndTime = shift.endTime
-        ? shift.endTime.toLocaleTimeString('en-US', {
+      const shiftEndTime = manilaEndTime
+        ? manilaEndTime.toLocaleTimeString('en-US', {
             hour: '2-digit',
             minute: '2-digit',
             hour12: true,
@@ -153,13 +169,13 @@ export class EmployeeService {
         employees: shift.employee.map((shiftEmployee) => ({
           id: shiftEmployee.employee.id,
           name: shiftEmployee.employee.name,
-          joinedAt: shiftEmployee.createdAt,
-          createdAt: shiftEmployee.createdAt,
-          updatedAt: shiftEmployee.updatedAt,
+          joinedAt: convertToManilaTime(shiftEmployee.createdAt),
+          createdAt: convertToManilaTime(shiftEmployee.createdAt),
+          updatedAt: convertToManilaTime(shiftEmployee.updatedAt),
         })),
         totalEmployees: shift.employee.length,
-        createdAt: shift.createdAt,
-        updatedAt: shift.updatedAt,
+        createdAt: convertToManilaTime(shift.createdAt),
+        updatedAt: convertToManilaTime(shift.updatedAt),
       };
     });
 

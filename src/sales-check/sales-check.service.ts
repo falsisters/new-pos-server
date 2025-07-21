@@ -3,6 +3,7 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { SalesCheckFilterDto } from './dto/sales-check.dto';
 import { TotalSalesFilterDto } from './dto/total-sales.dto';
 import { PaymentMethod } from '@prisma/client';
+import { convertToManilaTime } from '../utils/date.util';
 
 @Injectable()
 export class SalesCheckService {
@@ -57,7 +58,7 @@ export class SalesCheckService {
       },
     });
 
-    // First, generate all sale items with full details
+    // Process and calculate profits for each sale item
     const allSaleItems = sales.flatMap((sale) => {
       return sale.SaleItem.filter((item) => {
         // Filter by product ID if specified
@@ -158,7 +159,7 @@ export class SalesCheckService {
           isSpecialPrice: item.isSpecialPrice,
           isDiscounted: item.isDiscounted,
           discountedPrice: item.isDiscounted ? item.discountedPrice : null,
-          saleDate: sale.createdAt,
+          saleDate: convertToManilaTime(sale.createdAt), // Convert to Manila time
         };
       });
     });
@@ -272,7 +273,7 @@ export class SalesCheckService {
       },
     });
 
-    // First, generate all sale items with full details
+    // Process and calculate profits for each sale item
     const allSaleItems = sales.flatMap((sale) => {
       return sale.SaleItem.filter((item) => {
         // Filter by product ID if specified
@@ -373,7 +374,7 @@ export class SalesCheckService {
           isSpecialPrice: item.isSpecialPrice,
           isDiscounted: item.isDiscounted,
           discountedPrice: item.isDiscounted ? item.discountedPrice : null,
-          saleDate: sale.createdAt,
+          saleDate: convertToManilaTime(sale.createdAt), // Convert to Manila time
         };
       });
     });
@@ -567,7 +568,7 @@ export class SalesCheckService {
         }
 
         // Create a formatted sale item with time included
-        const saleDateTime = sale.createdAt;
+        const saleDateTime = convertToManilaTime(sale.createdAt); // Convert to Manila time
         const formattedTime = `${saleDateTime.getHours().toString().padStart(2, '0')}:${saleDateTime.getMinutes().toString().padStart(2, '0')}`;
 
         return {
@@ -765,7 +766,7 @@ export class SalesCheckService {
         }
 
         // Create a formatted sale item with time included
-        const saleDateTime = sale.createdAt;
+        const saleDateTime = convertToManilaTime(sale.createdAt); // Convert to Manila time
         const formattedTime = `${saleDateTime.getHours().toString().padStart(2, '0')}:${saleDateTime.getMinutes().toString().padStart(2, '0')}`;
 
         return {

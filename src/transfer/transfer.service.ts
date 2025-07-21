@@ -5,6 +5,10 @@ import { Kahon, KahonItem, SackType, Transfer } from '@prisma/client';
 import { TransferProductDto } from './dto/transferProduct.dto';
 import { EditTransferDto } from './dto/editTransfer.dto';
 import { TransferFilterDto } from './dto/transferWithFilter.dto';
+import {
+  convertObjectDatesToManilaTime,
+  convertArrayDatesToManilaTime,
+} from '../utils/date.util';
 
 @Injectable()
 export class TransferService {
@@ -12,11 +16,11 @@ export class TransferService {
 
   private formatTransfer(transfer: any) {
     if (!transfer) return null;
-    return transfer;
+    return convertObjectDatesToManilaTime(transfer);
   }
 
   private formatTransfers(transfers: any[]) {
-    return transfers.map((transfer) => this.formatTransfer(transfer));
+    return convertArrayDatesToManilaTime(transfers);
   }
 
   private parseSackType(type: SackType) {

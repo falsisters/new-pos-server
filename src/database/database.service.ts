@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { createObjectCsvStringifier } from 'csv-writer';
 import JSZip from 'jszip';
+import { convertToManilaTime } from 'src/utils/date.util';
 
 @Injectable()
 export class DatabaseService {
@@ -231,7 +232,7 @@ export class DatabaseService {
       sale.SaleItem.forEach((item) => {
         records.push({
           saleId: sale.id,
-          saleDate: sale.createdAt.toISOString(),
+          saleDate: convertToManilaTime(sale.createdAt).toISOString(),
           cashier: sale.cashier.name,
           totalAmount: sale.totalAmount,
           paymentMethod: sale.paymentMethod,
@@ -275,9 +276,11 @@ export class DatabaseService {
       delivery.DeliveryItem.forEach((item) => {
         records.push({
           deliveryId: delivery.id,
-          deliveryDate: delivery.createdAt.toISOString(),
+          deliveryDate: convertToManilaTime(delivery.createdAt).toISOString(),
           driverName: delivery.driverName,
-          deliveryTimeStart: delivery.deliveryTimeStart.toISOString(),
+          deliveryTimeStart: convertToManilaTime(
+            delivery.deliveryTimeStart,
+          ).toISOString(),
           cashier: delivery.cashier.name,
           itemId: item.id,
           productName: item.product.name,
@@ -320,7 +323,7 @@ export class DatabaseService {
         type: 'Bill Count',
         parentId: billCount.id,
         itemId: billCount.id,
-        date: billCount.createdAt.toISOString(),
+        date: convertToManilaTime(billCount.createdAt).toISOString(),
         name: 'Bill Count Session',
         amount: billCount.beginningBalance,
         billType: '',
@@ -333,7 +336,7 @@ export class DatabaseService {
           type: 'Bill',
           parentId: billCount.id,
           itemId: bill.id,
-          date: bill.createdAt.toISOString(),
+          date: convertToManilaTime(bill.createdAt).toISOString(),
           name: bill.type,
           amount: bill.amount,
           billType: bill.type,
@@ -349,7 +352,7 @@ export class DatabaseService {
         type: 'Expense List',
         parentId: expenseList.id,
         itemId: expenseList.id,
-        date: expenseList.createdAt.toISOString(),
+        date: convertToManilaTime(expenseList.createdAt).toISOString(),
         name: 'Expense List Session',
         amount: '',
         billType: '',
@@ -362,7 +365,7 @@ export class DatabaseService {
           type: 'Expense Item',
           parentId: expenseList.id,
           itemId: item.id,
-          date: item.createdAt.toISOString(),
+          date: convertToManilaTime(item.createdAt).toISOString(),
           name: item.name,
           amount: item.amount,
           billType: '',
@@ -519,8 +522,10 @@ export class DatabaseService {
       shift.employee.forEach((shiftEmployee) => {
         records.push({
           shiftId: shift.id,
-          startTime: shift.startTime.toISOString(),
-          endTime: shift.endTime?.toISOString() || 'Ongoing',
+          startTime: convertToManilaTime(shift.startTime).toISOString(),
+          endTime: shift.endTime
+            ? convertToManilaTime(shift.endTime).toISOString()
+            : 'Ongoing',
           cashier: shift.cashier.name,
           employeeId: shiftEmployee.employee.id,
           employeeName: shiftEmployee.employee.name,
@@ -560,7 +565,7 @@ export class DatabaseService {
       order.OrderItem.forEach((item) => {
         records.push({
           orderId: order.id,
-          orderDate: order.createdAt.toISOString(),
+          orderDate: convertToManilaTime(order.createdAt).toISOString(),
           customerName: order.customer.name,
           customerEmail: order.customer.email,
           customerAddress: order.customer.address,
@@ -597,7 +602,7 @@ export class DatabaseService {
 
     const records = transfers.map((transfer) => ({
       transferId: transfer.id,
-      transferDate: transfer.createdAt.toISOString(),
+      transferDate: convertToManilaTime(transfer.createdAt).toISOString(),
       name: transfer.name,
       quantity: transfer.quantity,
       type: transfer.type,
@@ -626,7 +631,7 @@ export class DatabaseService {
       name: attachment.name,
       url: attachment.url,
       type: attachment.type,
-      uploadDate: attachment.createdAt.toISOString(),
+      uploadDate: convertToManilaTime(attachment.createdAt).toISOString(),
     }));
 
     return (

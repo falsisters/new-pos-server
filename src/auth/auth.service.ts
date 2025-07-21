@@ -5,6 +5,7 @@ import { InvalidCredentialsException } from './auth.exception';
 import { User } from '@prisma/client';
 import { JwtService } from '@nestjs/jwt';
 import { RegisterDto } from './dto/register.dto';
+import { convertToManilaTime } from 'src/utils/date.util';
 
 @Injectable()
 export class AuthService {
@@ -16,7 +17,11 @@ export class AuthService {
   private formatUser(user: any) {
     if (!user) return null;
     const { password, ...result } = user;
-    return result;
+    return {
+      ...result,
+      createdAt: convertToManilaTime(result.createdAt),
+      updatedAt: convertToManilaTime(result.updatedAt),
+    };
   }
 
   private async findExistingUser(email: string) {

@@ -1,5 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
+import {
+  convertObjectDatesToManilaTime,
+  convertArrayDatesToManilaTime,
+} from '../utils/date.util';
 
 @Injectable()
 export class SheetService {
@@ -7,7 +11,18 @@ export class SheetService {
 
   private formatSheet(sheet: any) {
     if (!sheet) return null;
-    return sheet;
+    const formatted = {
+      ...sheet,
+      Rows: sheet.Rows
+        ? convertArrayDatesToManilaTime(
+            sheet.Rows.map((row) => ({
+              ...row,
+              Cells: row.Cells ? convertArrayDatesToManilaTime(row.Cells) : [],
+            })),
+          )
+        : [],
+    };
+    return convertObjectDatesToManilaTime(formatted);
   }
 
   async createSheet(kahonId: string, name: string, columns: number = 10) {

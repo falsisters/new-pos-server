@@ -1,5 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
+import {
+  convertObjectDatesToManilaTime,
+  convertArrayDatesToManilaTime,
+} from '../utils/date.util';
 
 @Injectable()
 export class InventoryService {
@@ -7,24 +11,23 @@ export class InventoryService {
 
   private formatInventorySheet(sheet: any) {
     if (!sheet) return null;
-    return {
+    const formatted = {
       ...sheet,
       Rows: sheet.Rows
-        ? sheet.Rows.map((row) => ({
-            ...row,
-            Cells: row.Cells
-              ? row.Cells.map((cell) => ({
-                  ...cell,
-                }))
-              : [],
-          }))
+        ? convertArrayDatesToManilaTime(
+            sheet.Rows.map((row) => ({
+              ...row,
+              Cells: row.Cells ? convertArrayDatesToManilaTime(row.Cells) : [],
+            })),
+          )
         : [],
     };
+    return convertObjectDatesToManilaTime(formatted);
   }
 
   private formatInventory(inventory: any) {
     if (!inventory) return null;
-    return {
+    const formatted = {
       ...inventory,
       InventorySheet: inventory.InventorySheet
         ? inventory.InventorySheet.map((sheet) =>
@@ -32,6 +35,7 @@ export class InventoryService {
           )
         : [],
     };
+    return convertObjectDatesToManilaTime(formatted);
   }
 
   async findInventoryByCashier(cashierId: string, name: string = 'Inventory') {

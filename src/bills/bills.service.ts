@@ -3,6 +3,7 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateBillCountDto } from './dto/create-bill-count.dto';
 import { UpdateBillCountDto } from './dto/update-bill-count.dto';
 import { BillType, PaymentMethod } from '@prisma/client';
+import { convertToManilaTime } from 'src/utils/date.util';
 
 @Injectable()
 export class BillsService {
@@ -516,8 +517,8 @@ export class BillsService {
 
     return {
       id: billCount.id,
-      date: billCount.createdAt,
-      updatedAt: billCount.updatedAt,
+      date: convertToManilaTime(billCount.createdAt),
+      updatedAt: convertToManilaTime(billCount.updatedAt),
       beginningBalance: billCount.beginningBalance,
       showBeginningBalance: billCount.showBeginningBalance,
       totalCash,
@@ -528,8 +529,8 @@ export class BillsService {
         type: bill.type,
         amount: bill.amount,
         value: bill.amount * this.getBillValue(bill.type),
-        createdAt: bill.createdAt,
-        updatedAt: bill.updatedAt,
+        createdAt: convertToManilaTime(bill.createdAt),
+        updatedAt: convertToManilaTime(bill.updatedAt),
       })),
       billsByType,
       billsTotal,
