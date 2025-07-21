@@ -5,29 +5,16 @@ import { PrismaService } from 'src/prisma/prisma.service';
 export class InventoryService {
   constructor(private prisma: PrismaService) {}
 
-  // Helper function to convert UTC to Philippine time (UTC+8)
-  private convertToPhilippineTime(utcDate: Date): Date {
-    if (!utcDate) return null;
-    const philippineTime = new Date(utcDate.getTime() + 8 * 60 * 60 * 1000);
-    return philippineTime;
-  }
-
   private formatInventorySheet(sheet: any) {
     if (!sheet) return null;
     return {
       ...sheet,
-      createdAt: this.convertToPhilippineTime(sheet.createdAt),
-      updatedAt: this.convertToPhilippineTime(sheet.updatedAt),
       Rows: sheet.Rows
         ? sheet.Rows.map((row) => ({
             ...row,
-            createdAt: this.convertToPhilippineTime(row.createdAt),
-            updatedAt: this.convertToPhilippineTime(row.updatedAt),
             Cells: row.Cells
               ? row.Cells.map((cell) => ({
                   ...cell,
-                  createdAt: this.convertToPhilippineTime(cell.createdAt),
-                  updatedAt: this.convertToPhilippineTime(cell.updatedAt),
                 }))
               : [],
           }))
@@ -39,8 +26,6 @@ export class InventoryService {
     if (!inventory) return null;
     return {
       ...inventory,
-      createdAt: this.convertToPhilippineTime(inventory.createdAt),
-      updatedAt: this.convertToPhilippineTime(inventory.updatedAt),
       InventorySheet: inventory.InventorySheet
         ? inventory.InventorySheet.map((sheet) =>
             this.formatInventorySheet(sheet),

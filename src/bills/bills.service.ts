@@ -8,13 +8,6 @@ import { BillType, PaymentMethod } from '@prisma/client';
 export class BillsService {
   constructor(private prisma: PrismaService) {}
 
-  // Helper function to convert UTC to Philippine time (UTC+8)
-  private convertToPhilippineTime(utcDate: Date): Date {
-    if (!utcDate) return null;
-    const philippineTime = new Date(utcDate.getTime() + 8 * 60 * 60 * 1000);
-    return philippineTime;
-  }
-
   async createOrUpdateBillCount(
     cashierId: string,
     createDto: CreateBillCountDto,
@@ -523,8 +516,8 @@ export class BillsService {
 
     return {
       id: billCount.id,
-      date: this.convertToPhilippineTime(billCount.createdAt),
-      updatedAt: this.convertToPhilippineTime(billCount.updatedAt),
+      date: billCount.createdAt,
+      updatedAt: billCount.updatedAt,
       beginningBalance: billCount.beginningBalance,
       showBeginningBalance: billCount.showBeginningBalance,
       totalCash,
@@ -535,8 +528,8 @@ export class BillsService {
         type: bill.type,
         amount: bill.amount,
         value: bill.amount * this.getBillValue(bill.type),
-        createdAt: this.convertToPhilippineTime(bill.createdAt),
-        updatedAt: this.convertToPhilippineTime(bill.updatedAt),
+        createdAt: bill.createdAt,
+        updatedAt: bill.updatedAt,
       })),
       billsByType,
       billsTotal,

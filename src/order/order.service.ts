@@ -6,31 +6,18 @@ import { CreateOrderDto } from './dto/createOrder.dto';
 export class OrderService {
   constructor(private prisma: PrismaService) {}
 
-  // Helper function to convert UTC to Philippine time (UTC+8)
-  private convertToPhilippineTime(utcDate: Date): Date {
-    if (!utcDate) return null;
-    const philippineTime = new Date(utcDate.getTime() + 8 * 60 * 60 * 1000);
-    return philippineTime;
-  }
-
   private formatOrder(order: any) {
     if (!order) return null;
     return {
       ...order,
-      createdAt: this.convertToPhilippineTime(order.createdAt),
-      updatedAt: this.convertToPhilippineTime(order.updatedAt),
       customer: order.customer
         ? {
             ...order.customer,
-            createdAt: this.convertToPhilippineTime(order.customer.createdAt),
-            updatedAt: this.convertToPhilippineTime(order.customer.updatedAt),
           }
         : null,
       OrderItem: order.OrderItem
         ? order.OrderItem.map((item) => ({
             ...item,
-            createdAt: this.convertToPhilippineTime(item.createdAt),
-            updatedAt: this.convertToPhilippineTime(item.updatedAt),
           }))
         : [],
     };
@@ -157,11 +144,7 @@ export class OrderService {
       },
     });
 
-    return products.map((product) => ({
-      ...product,
-      createdAt: this.convertToPhilippineTime(product.createdAt),
-      updatedAt: this.convertToPhilippineTime(product.updatedAt),
-    }));
+    return products;
   }
 
   async createOrder(customerId: string, createOrderDto: CreateOrderDto) {

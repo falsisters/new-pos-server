@@ -8,12 +8,6 @@ import { PaymentMethod } from '@prisma/client';
 export class SalesCheckService {
   constructor(private prisma: PrismaService) {}
 
-  // Helper function to convert UTC to Philippine time (UTC+8)
-  private convertToPhilippineTime(utcDate: Date): Date {
-    const philippineTime = new Date(utcDate.getTime() + 8 * 60 * 60 * 1000);
-    return philippineTime;
-  }
-
   async getSalesWithFilter(userId: string, filters: SalesCheckFilterDto) {
     // Set default date to today if not provided
     const targetDate = filters.date ? new Date(filters.date) : new Date();
@@ -162,9 +156,9 @@ export class SalesCheckService {
           totalAmount: Number(totalAmount.toFixed(2)),
           paymentMethod: sale.paymentMethod,
           isSpecialPrice: item.isSpecialPrice,
-          isDiscounted: item.isDiscounted, // Add this field
+          isDiscounted: item.isDiscounted,
           discountedPrice: item.isDiscounted ? item.discountedPrice : null,
-          saleDate: this.convertToPhilippineTime(sale.createdAt),
+          saleDate: sale.createdAt,
         };
       });
     });
@@ -377,9 +371,9 @@ export class SalesCheckService {
           totalAmount: Number(totalAmount.toFixed(2)),
           paymentMethod: sale.paymentMethod,
           isSpecialPrice: item.isSpecialPrice,
-          isDiscounted: item.isDiscounted, // Add this field
+          isDiscounted: item.isDiscounted,
           discountedPrice: item.isDiscounted ? item.discountedPrice : null,
-          saleDate: this.convertToPhilippineTime(sale.createdAt),
+          saleDate: sale.createdAt,
         };
       });
     });
@@ -573,7 +567,7 @@ export class SalesCheckService {
         }
 
         // Create a formatted sale item with time included
-        const saleDateTime = this.convertToPhilippineTime(sale.createdAt);
+        const saleDateTime = sale.createdAt;
         const formattedTime = `${saleDateTime.getHours().toString().padStart(2, '0')}:${saleDateTime.getMinutes().toString().padStart(2, '0')}`;
 
         return {
@@ -771,7 +765,7 @@ export class SalesCheckService {
         }
 
         // Create a formatted sale item with time included
-        const saleDateTime = this.convertToPhilippineTime(sale.createdAt);
+        const saleDateTime = sale.createdAt;
         const formattedTime = `${saleDateTime.getHours().toString().padStart(2, '0')}:${saleDateTime.getMinutes().toString().padStart(2, '0')}`;
 
         return {

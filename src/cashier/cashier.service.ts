@@ -14,20 +14,9 @@ export class CashierService {
     private configService: ConfigService,
   ) {}
 
-  // Helper function to convert UTC to Philippine time (UTC+8)
-  private convertToPhilippineTime(utcDate: Date): Date {
-    if (!utcDate) return null;
-    const philippineTime = new Date(utcDate.getTime() + 8 * 60 * 60 * 1000);
-    return philippineTime;
-  }
-
   private formatCashier(cashier: any) {
     if (!cashier) return null;
-    return {
-      ...cashier,
-      createdAt: this.convertToPhilippineTime(cashier.createdAt),
-      updatedAt: this.convertToPhilippineTime(cashier.updatedAt),
-    };
+    return cashier;
   }
 
   private async findExistingCashier(name: string) {

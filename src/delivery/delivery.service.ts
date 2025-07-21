@@ -10,28 +10,12 @@ export class DeliveryService {
     private transferService: TransferService,
   ) {}
 
-  // Helper function to convert UTC to Philippine time (UTC+8)
-  private convertToPhilippineTime(utcDate: Date): Date {
-    if (!utcDate) return null;
-    const philippineTime = new Date(utcDate.getTime() + 8 * 60 * 60 * 1000);
-    return philippineTime;
-  }
-
   private formatDelivery(delivery: any) {
     if (!delivery) return null;
     return {
       ...delivery,
-      createdAt: this.convertToPhilippineTime(delivery.createdAt),
-      updatedAt: this.convertToPhilippineTime(delivery.updatedAt),
-      deliveryTimeStart: this.convertToPhilippineTime(
-        delivery.deliveryTimeStart,
-      ),
       DeliveryItem: delivery.DeliveryItem
-        ? delivery.DeliveryItem.map((item) => ({
-            ...item,
-            createdAt: this.convertToPhilippineTime(item.createdAt),
-            updatedAt: this.convertToPhilippineTime(item.updatedAt),
-          }))
+        ? delivery.DeliveryItem.map((item) => ({ ...item }))
         : [],
     };
   }

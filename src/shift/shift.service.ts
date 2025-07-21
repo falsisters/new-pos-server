@@ -7,27 +7,12 @@ import { EditShiftDto } from './dto/edit.dto';
 export class ShiftService {
   constructor(private prisma: PrismaService) {}
 
-  // Helper function to convert UTC to Philippine time (UTC+8)
-  private convertToPhilippineTime(utcDate: Date): Date {
-    if (!utcDate) return null;
-    const philippineTime = new Date(utcDate.getTime() + 8 * 60 * 60 * 1000);
-    return philippineTime;
-  }
-
   private formatShift(shift: any) {
     if (!shift) return null;
     return {
       ...shift,
-      createdAt: this.convertToPhilippineTime(shift.createdAt),
-      updatedAt: this.convertToPhilippineTime(shift.updatedAt),
-      startTime: this.convertToPhilippineTime(shift.startTime),
-      endTime: this.convertToPhilippineTime(shift.endTime),
       employees: shift.employee
-        ? shift.employee.map((e) => ({
-            ...e.employee,
-            createdAt: this.convertToPhilippineTime(e.employee.createdAt),
-            updatedAt: this.convertToPhilippineTime(e.employee.updatedAt),
-          }))
+        ? shift.employee.map((e) => e.employee)
         : shift.employees,
       employee: undefined,
     };

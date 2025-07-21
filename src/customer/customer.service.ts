@@ -13,21 +13,10 @@ export class CustomerService {
     private configService: ConfigService,
   ) {}
 
-  // Helper function to convert UTC to Philippine time (UTC+8)
-  private convertToPhilippineTime(utcDate: Date): Date {
-    if (!utcDate) return null;
-    const philippineTime = new Date(utcDate.getTime() + 8 * 60 * 60 * 1000);
-    return philippineTime;
-  }
-
   private formatCustomer(customer: any) {
     if (!customer) return null;
     const { password, ...result } = customer;
-    return {
-      ...result,
-      createdAt: this.convertToPhilippineTime(customer.createdAt),
-      updatedAt: this.convertToPhilippineTime(customer.updatedAt),
-    };
+    return result;
   }
 
   private async findExistingCustomer(email: string) {

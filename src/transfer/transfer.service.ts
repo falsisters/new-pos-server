@@ -10,20 +10,9 @@ import { TransferFilterDto } from './dto/transferWithFilter.dto';
 export class TransferService {
   constructor(private prisma: PrismaService) {}
 
-  // Helper function to convert UTC to Philippine time (UTC+8)
-  private convertToPhilippineTime(utcDate: Date): Date {
-    if (!utcDate) return null;
-    const philippineTime = new Date(utcDate.getTime() + 8 * 60 * 60 * 1000);
-    return philippineTime;
-  }
-
   private formatTransfer(transfer: any) {
     if (!transfer) return null;
-    return {
-      ...transfer,
-      createdAt: this.convertToPhilippineTime(transfer.createdAt),
-      updatedAt: this.convertToPhilippineTime(transfer.updatedAt),
-    };
+    return transfer;
   }
 
   private formatTransfers(transfers: any[]) {

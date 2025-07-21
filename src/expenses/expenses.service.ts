@@ -7,24 +7,13 @@ import { GetExpenseByDateDto } from './dto/getExpenseByDate.dto';
 export class ExpensesService {
   constructor(private prisma: PrismaService) {}
 
-  // Helper function to convert UTC to Philippine time (UTC+8)
-  private convertToPhilippineTime(utcDate: Date): Date {
-    if (!utcDate) return null;
-    const philippineTime = new Date(utcDate.getTime() + 8 * 60 * 60 * 1000);
-    return philippineTime;
-  }
-
   private formatExpenseList(expenseList: any) {
     if (!expenseList) return null;
     return {
       ...expenseList,
-      createdAt: this.convertToPhilippineTime(expenseList.createdAt),
-      updatedAt: this.convertToPhilippineTime(expenseList.updatedAt),
       ExpenseItems: expenseList.ExpenseItems
         ? expenseList.ExpenseItems.map((item) => ({
             ...item,
-            createdAt: this.convertToPhilippineTime(item.createdAt),
-            updatedAt: this.convertToPhilippineTime(item.updatedAt),
           }))
         : [],
     };

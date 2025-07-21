@@ -11,33 +11,16 @@ export class ProductService {
     private uploadService: UploadService,
   ) {}
 
-  // Helper function to convert UTC to Philippine time (UTC+8)
-  private convertToPhilippineTime(utcDate: Date): Date {
-    if (!utcDate) return null;
-    const philippineTime = new Date(utcDate.getTime() + 8 * 60 * 60 * 1000);
-    return philippineTime;
-  }
-
   private formatProduct(product: any) {
     if (!product) return null;
     return {
       ...product,
-      createdAt: this.convertToPhilippineTime(product.createdAt),
-      updatedAt: this.convertToPhilippineTime(product.updatedAt),
       SackPrice: product.SackPrice
         ? product.SackPrice.map((price) => ({
             ...price,
-            createdAt: this.convertToPhilippineTime(price.createdAt),
-            updatedAt: this.convertToPhilippineTime(price.updatedAt),
             specialPrice: price.specialPrice
               ? {
                   ...price.specialPrice,
-                  createdAt: this.convertToPhilippineTime(
-                    price.specialPrice.createdAt,
-                  ),
-                  updatedAt: this.convertToPhilippineTime(
-                    price.specialPrice.updatedAt,
-                  ),
                 }
               : null,
           }))
@@ -45,12 +28,6 @@ export class ProductService {
       perKiloPrice: product.perKiloPrice
         ? {
             ...product.perKiloPrice,
-            createdAt: this.convertToPhilippineTime(
-              product.perKiloPrice.createdAt,
-            ),
-            updatedAt: this.convertToPhilippineTime(
-              product.perKiloPrice.updatedAt,
-            ),
           }
         : null,
     };
