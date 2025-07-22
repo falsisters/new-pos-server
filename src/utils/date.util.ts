@@ -23,15 +23,31 @@ export function convertObjectDatesToManilaTime<T extends Record<string, any>>(
 ): T {
   if (!obj) return obj;
 
-  const converted = { ...obj };
+  const converted = { ...obj } as Record<string, any>;
 
-  dateFields.forEach((field) => {
-    if (converted[field]) {
-      converted[field] = convertToManilaTime(converted[field] as any) as any;
+  // Process each property of the object
+  Object.keys(converted).forEach((key) => {
+    const value = converted[key];
+
+    // If it's a date field, convert it
+    if (dateFields.includes(key as keyof T) && value) {
+      converted[key] = convertToManilaTime(value as any);
+    }
+    // If it's an array, recursively process it
+    else if (Array.isArray(value)) {
+      converted[key] = convertArrayDatesToManilaTime(value, dateFields as any);
+    }
+    // If it's a nested object, recursively process it
+    else if (
+      value &&
+      typeof value === 'object' &&
+      value.constructor === Object
+    ) {
+      converted[key] = convertObjectDatesToManilaTime(value, dateFields as any);
     }
   });
 
-  return converted;
+  return converted as T;
 }
 
 export function convertArrayDatesToManilaTime<T extends Record<string, any>>(
