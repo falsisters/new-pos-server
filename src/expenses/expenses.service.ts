@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateExpenseDto } from './dto/createExpense.dto';
 import { GetExpenseByDateDto } from './dto/getExpenseByDate.dto';
-import { convertToManilaTime } from 'src/utils/date.util';
+import { convertToManilaTime, getManilaDateBounds } from 'src/utils/date.util';
 
 @Injectable()
 export class ExpensesService {
@@ -27,16 +27,14 @@ export class ExpensesService {
   async createExpense(cashierId: string, createExpenseDto: CreateExpenseDto) {
     const itemsToProcess = createExpenseDto.expenseItems || [];
 
-    // Use provided date or default to today
+    // Use provided date or default to today, handle Manila Time properly
+    const { startOfDay, endOfDay } = createExpenseDto.date
+      ? getManilaDateBounds(createExpenseDto.date)
+      : getManilaDateBounds();
+
     const targetDate = createExpenseDto.date
       ? new Date(createExpenseDto.date)
       : new Date();
-
-    // Set start and end of the target day
-    const startOfDay = new Date(targetDate);
-    startOfDay.setHours(0, 0, 0, 0);
-    const endOfDay = new Date(targetDate);
-    endOfDay.setHours(23, 59, 59, 999);
 
     const result = await this.prisma.$transaction(async (tx) => {
       // Check if there's already an expense list for the target date
@@ -104,6 +102,9 @@ export class ExpensesService {
             })),
           },
         },
+        include: {
+          ExpenseItems: true,
+        },
       });
 
       return expense;
@@ -135,22 +136,8 @@ export class ExpensesService {
     cashierId: string,
     expenseDate: GetExpenseByDateDto,
   ) {
-    // Use provided date or default to today
-    const { date } = expenseDate;
-
-    let targetDate: Date;
-    if (date) {
-      // Parse the string date in YYYY-MM-DD format
-      targetDate = new Date(date);
-    } else {
-      targetDate = new Date();
-    }
-
-    const startOfDay = new Date(targetDate);
-    startOfDay.setHours(0, 0, 0, 0);
-
-    const endOfDay = new Date(targetDate);
-    endOfDay.setHours(23, 59, 59, 999);
+    // Use provided date or default to today, handle Manila Time properly
+    const { startOfDay, endOfDay } = getManilaDateBounds(expenseDate.date);
 
     const expense = await this.prisma.expenseList.findFirst({
       where: {
@@ -181,16 +168,14 @@ export class ExpensesService {
   async createUserExpense(userId: string, createExpenseDto: CreateExpenseDto) {
     const itemsToProcess = createExpenseDto.expenseItems || [];
 
-    // Use provided date or default to today
+    // Use provided date or default to today, handle Manila Time properly
+    const { startOfDay, endOfDay } = createExpenseDto.date
+      ? getManilaDateBounds(createExpenseDto.date)
+      : getManilaDateBounds();
+
     const targetDate = createExpenseDto.date
       ? new Date(createExpenseDto.date)
       : new Date();
-
-    // Set start and end of the target day
-    const startOfDay = new Date(targetDate);
-    startOfDay.setHours(0, 0, 0, 0);
-    const endOfDay = new Date(targetDate);
-    endOfDay.setHours(23, 59, 59, 999);
 
     const result = await this.prisma.$transaction(async (tx) => {
       // Check if there's already an expense list for the target date
@@ -244,20 +229,8 @@ export class ExpensesService {
   }
 
   async getUserExpenseByDate(userId: string, expenseDate: GetExpenseByDateDto) {
-    const { date } = expenseDate;
-
-    let targetDate: Date;
-    if (date) {
-      targetDate = new Date(date);
-    } else {
-      targetDate = new Date();
-    }
-
-    const startOfDay = new Date(targetDate);
-    startOfDay.setHours(0, 0, 0, 0);
-
-    const endOfDay = new Date(targetDate);
-    endOfDay.setHours(23, 59, 59, 999);
+    // Use provided date or default to today, handle Manila Time properly
+    const { startOfDay, endOfDay } = getManilaDateBounds(expenseDate.date);
 
     const expense = await this.prisma.expenseList.findFirst({
       where: {
@@ -278,18 +251,8 @@ export class ExpensesService {
   }
 
   async getAllUserExpensesByDate(date?: string) {
-    let targetDate: Date;
-    if (date) {
-      targetDate = new Date(date);
-    } else {
-      targetDate = new Date();
-    }
-
-    const startOfDay = new Date(targetDate);
-    startOfDay.setHours(0, 0, 0, 0);
-
-    const endOfDay = new Date(targetDate);
-    endOfDay.setHours(23, 59, 59, 999);
+    // Handle Manila Time properly
+    const { startOfDay, endOfDay } = getManilaDateBounds(date);
 
     const expenses = await this.prisma.expenseList.findMany({
       where: {
@@ -317,18 +280,8 @@ export class ExpensesService {
   }
 
   async getAllCashierExpensesByDate(date?: string) {
-    let targetDate: Date;
-    if (date) {
-      targetDate = new Date(date);
-    } else {
-      targetDate = new Date();
-    }
-
-    const startOfDay = new Date(targetDate);
-    startOfDay.setHours(0, 0, 0, 0);
-
-    const endOfDay = new Date(targetDate);
-    endOfDay.setHours(23, 59, 59, 999);
+    // Handle Manila Time properly
+    const { startOfDay, endOfDay } = getManilaDateBounds(date);
 
     const expenses = await this.prisma.expenseList.findMany({
       where: {

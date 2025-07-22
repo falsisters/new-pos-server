@@ -154,6 +154,7 @@ export class CashierService {
     });
     return this.formatCashier(cashier);
   }
+
   async deleteCashier(id: string) {
     const cashier = await this.prisma.cashier.delete({
       where: { id },

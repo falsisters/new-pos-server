@@ -8,6 +8,7 @@ import { TransferFilterDto } from './dto/transferWithFilter.dto';
 import {
   convertObjectDatesToManilaTime,
   convertArrayDatesToManilaTime,
+  parseManilaDateToUTCRange,
 } from '../utils/date.util';
 
 @Injectable()
@@ -129,7 +130,7 @@ export class TransferService {
     }
 
     // Use transaction to ensure atomicity
-    return this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       // Create KahonItem
       const kahonItem = await tx.kahonItem.create({
         data: {
@@ -204,6 +205,9 @@ export class TransferService {
 
       return kahonItem;
     });
+
+    // Format the result to convert dates to Manila time
+    return convertObjectDatesToManilaTime(result);
   }
 
   async transferProduct(
@@ -262,7 +266,7 @@ export class TransferService {
         selectedKahon = currentKahon;
       }
 
-      return this.prisma.$transaction(async (tx) => {
+      const result = await this.prisma.$transaction(async (tx) => {
         // Update stock logic - products are now under the same cashier
         if (product.sackPrice) {
           await tx.sackPrice.update({
@@ -419,9 +423,12 @@ export class TransferService {
 
         return kahonItem;
       });
+
+      // Format the result to convert dates to Manila time
+      return convertObjectDatesToManilaTime(result);
     } else {
       // Non-KAHON transfer logic remains unchanged
-      return this.prisma.$transaction(async (tx) => {
+      const result = await this.prisma.$transaction(async (tx) => {
         // Existing non-KAHON transfer logic
         if (product.sackPrice) {
           await tx.sackPrice.update({
@@ -470,19 +477,15 @@ export class TransferService {
 
         return transfer;
       });
+
+      // Format the result to convert dates to Manila time
+      return this.formatTransfer(result);
     }
   }
 
   async getAllTransfersWithFilter(userId: string, filters: TransferFilterDto) {
-    // Set default date to today if not provided
-    const targetDate = filters.date ? new Date(filters.date) : new Date();
-
-    // Set start and end of the target day
-    const startOfDay = new Date(targetDate);
-    startOfDay.setHours(0, 0, 0, 0);
-
-    const endOfDay = new Date(targetDate);
-    endOfDay.setHours(23, 59, 59, 999);
+    // Use Manila Time date range conversion
+    const { startOfDay, endOfDay } = parseManilaDateToUTCRange(filters.date);
 
     const cashiers = await this.prisma.cashier.findMany({
       where: {
@@ -550,15 +553,8 @@ export class TransferService {
     cashierId: string,
     filters: TransferFilterDto,
   ) {
-    // Set default date to today if not provided
-    const targetDate = filters.date ? new Date(filters.date) : new Date();
-
-    // Set start and end of the target day
-    const startOfDay = new Date(targetDate);
-    startOfDay.setHours(0, 0, 0, 0);
-
-    const endOfDay = new Date(targetDate);
-    endOfDay.setHours(23, 59, 59, 999);
+    // Use Manila Time date range conversion
+    const { startOfDay, endOfDay } = parseManilaDateToUTCRange(filters.date);
 
     const transfers = await this.prisma.transfer.findMany({
       where: {

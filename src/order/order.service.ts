@@ -161,13 +161,15 @@ export class OrderService {
       },
     });
 
-    return products;
+    return products.map((product) => ({
+      ...this.formatOrder(product),
+    }));
   }
 
   async createOrder(customerId: string, createOrderDto: CreateOrderDto) {
     const { orderItem, cashierId } = createOrderDto;
 
-    return this.prisma.$transaction(
+    const result = await this.prisma.$transaction(
       async (tx) => {
         // Calculate total price based on order items
         let totalPrice = 0;
@@ -243,7 +245,7 @@ export class OrderService {
             totalPrice,
             customer: { connect: { id: customerId } },
             user: { connect: { id: createOrderDto.userId } },
-            ...(cashierId && { cashier: { connect: { id: cashierId } } }), // Add cashier if provided
+            ...(cashierId && { cashier: { connect: { id: cashierId } } }),
             OrderItem: {
               create: orderItem.map((item) => ({
                 quantity: item.quantity,
@@ -284,6 +286,8 @@ export class OrderService {
         timeout: 20000,
       },
     );
+
+    return this.formatOrder(result);
   }
 
   async editOrder(id: string, updateOrderDto: Partial<CreateOrderDto>) {
@@ -293,7 +297,7 @@ export class OrderService {
       throw new Error('Order items are required for update');
     }
 
-    return this.prisma.$transaction(
+    const result = await this.prisma.$transaction(
       async (tx) => {
         // Get the existing order
         const existingOrder = await tx.order.findUnique({
@@ -416,28 +420,32 @@ export class OrderService {
         timeout: 20000,
       },
     );
+
+    return this.formatOrder(result);
   }
 
   async cancelOrder(id: string) {
-    return this.prisma.order.update({
+    const result = await this.prisma.order.update({
       where: { id },
       data: {
         status: 'CANCELLED',
       },
     });
+    return this.formatOrder(result);
   }
 
   async rejectOrder(id: string) {
-    return this.prisma.order.update({
+    const result = await this.prisma.order.update({
       where: { id },
       data: {
         status: 'CANCELLED',
       },
     });
+    return this.formatOrder(result);
   }
 
   async completeOrder(orderId: string, saleId: string) {
-    return this.prisma.order.update({
+    const result = await this.prisma.order.update({
       where: { id: orderId },
       data: {
         status: 'COMPLETED',
@@ -446,6 +454,7 @@ export class OrderService {
         },
       },
     });
+    return this.formatOrder(result);
   }
 
   async getUserOrders(userId: string) {

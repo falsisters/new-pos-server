@@ -7,6 +7,7 @@ import { RecentSalesFilterDto } from './dto/recent-sales.dto';
 import {
   convertObjectDatesToManilaTime,
   convertArrayDatesToManilaTime,
+  parseManilaDateToUTCRange,
 } from '../utils/date.util';
 
 @Injectable()
@@ -42,7 +43,7 @@ export class SaleService {
     const { totalAmount, paymentMethod, saleItem, orderId, metadata } =
       products;
 
-    return this.prisma.$transaction(
+    const result = await this.prisma.$transaction(
       async (tx) => {
         // 1. Update stock for each item
         for (const item of saleItem) {
@@ -151,21 +152,26 @@ export class SaleService {
         }
 
         // 4. Return the sale with metadata attached (not saved to DB)
-        return {
+        const saleWithMetadata = {
           ...sale,
           ...(metadata && { metadata }),
         };
+
+        // Format the result to convert dates to Manila time
+        return this.formatSale(saleWithMetadata);
       },
       {
         timeout: 20000, // 20 seconds in milliseconds
       },
     );
+
+    return result;
   }
 
   async editSale(id: string, products: EditSaleDto) {
     const { totalAmount, paymentMethod, saleItem, orderId } = products;
 
-    return this.prisma.$transaction(
+    const result = await this.prisma.$transaction(
       async (tx) => {
         // Get the existing sale first
         const existingSale = await tx.sale.findUnique({
@@ -316,7 +322,7 @@ export class SaleService {
           updateData.Order = { disconnect: true };
         }
 
-        return tx.sale.update({
+        const updatedSale = await tx.sale.update({
           where: { id },
           data: updateData,
           include: {
@@ -337,11 +343,16 @@ export class SaleService {
             Order: true,
           },
         });
+
+        // Format the result to convert dates to Manila time
+        return this.formatSale(updatedSale);
       },
       {
         timeout: 20000, // 20 seconds in milliseconds
       },
     );
+
+    return result;
   }
 
   async deleteSale(id: string) {
@@ -433,15 +444,8 @@ export class SaleService {
 
   async getSalesByDate(cashierId: string, filters: RecentSalesFilterDto) {
     try {
-      // Set default date to today if not provided
-      const targetDate = filters.date ? new Date(filters.date) : new Date();
-
-      // Set start and end of the target day
-      const startOfDay = new Date(targetDate);
-      startOfDay.setHours(0, 0, 0, 0);
-
-      const endOfDay = new Date(targetDate);
-      endOfDay.setHours(23, 59, 59, 999);
+      // Use Manila Time date range conversion
+      const { startOfDay, endOfDay } = parseManilaDateToUTCRange(filters.date);
 
       const sales = await this.prisma.sale.findMany({
         where: {

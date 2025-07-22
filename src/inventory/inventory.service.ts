@@ -121,13 +121,14 @@ export class InventoryService {
     name: string,
     columns: number = 10,
   ) {
-    return await this.prisma.inventorySheet.create({
+    const result = await this.prisma.inventorySheet.create({
       data: {
         name,
         columns,
         inventory: { connect: { id: inventoryId } },
       },
     });
+    return convertObjectDatesToManilaTime(result);
   }
 
   async getInventorySheetWithData(sheetId: string) {
@@ -152,17 +153,18 @@ export class InventoryService {
     startDate?: Date,
     endDate?: Date,
   ) {
+    // Use provided dates or default to current day
     const end = endDate || new Date();
     const start = startDate || new Date(end.getTime() - 24 * 60 * 60 * 1000);
 
     let inventory = await this.prisma.inventory.findFirst({
-      where: { cashierId, name: 'Expenses' }, // Changed userId to cashierId
+      where: { cashierId, name: 'Expenses' },
     });
 
     if (!inventory) {
       inventory = await this.prisma.inventory.create({
         data: {
-          cashierId, // Changed userId to cashierId
+          cashierId,
           name: 'Expenses',
           InventorySheet: {
             create: {
@@ -202,20 +204,20 @@ export class InventoryService {
     startDate?: Date,
     endDate?: Date,
   ) {
-    // Set date range
+    // Use provided dates or default to current day
     const end = endDate || new Date();
     const start = startDate || new Date(end.getTime() - 24 * 60 * 60 * 1000);
 
     // Find the inventory for this cashier
     let inventory = await this.prisma.inventory.findFirst({
-      where: { cashierId, name: 'Inventory' }, // Changed userId to cashierId
+      where: { cashierId, name: 'Inventory' },
     });
 
     if (!inventory) {
       // Create a new inventory if it doesn't exist
       inventory = await this.prisma.inventory.create({
         data: {
-          cashierId, // Changed userId to cashierId
+          cashierId,
           name: 'Inventory',
           InventorySheet: {
             create: {
@@ -275,7 +277,7 @@ export class InventoryService {
       ],
     });
 
-    return row;
+    return convertObjectDatesToManilaTime(row);
   }
 
   async addCalculationRow(
@@ -348,7 +350,7 @@ export class InventoryService {
       data: cellsData,
     });
 
-    return row;
+    return convertObjectDatesToManilaTime(row);
   }
 
   async deleteRow(rowId: string) {
@@ -358,9 +360,11 @@ export class InventoryService {
     });
 
     // Then delete the row itself
-    return await this.prisma.inventoryRow.delete({
+    const result = await this.prisma.inventoryRow.delete({
       where: { id: rowId },
     });
+
+    return convertObjectDatesToManilaTime(result);
   }
 
   async updateCell(
@@ -422,7 +426,7 @@ export class InventoryService {
     });
 
     console.log('Inventory cell updated successfully:', result);
-    return result;
+    return convertObjectDatesToManilaTime(result);
   }
 
   async addCell(
@@ -470,7 +474,7 @@ export class InventoryService {
     });
 
     console.log('Inventory cell created successfully:', result);
-    return result;
+    return convertObjectDatesToManilaTime(result);
   }
 
   async addCells(
@@ -491,15 +495,18 @@ export class InventoryService {
       isCalculated: !!cell.formula,
     }));
 
-    return await this.prisma.inventoryCell.createMany({
+    const results = await this.prisma.inventoryCell.createMany({
       data: cellsData,
     });
+
+    return results; // createMany returns count, not actual records
   }
 
   async deleteCell(cellId: string) {
-    return await this.prisma.inventoryCell.delete({
+    const result = await this.prisma.inventoryCell.delete({
       where: { id: cellId },
     });
+    return convertObjectDatesToManilaTime(result);
   }
 
   // For batch updating all cells at once
@@ -518,34 +525,16 @@ export class InventoryService {
       });
     });
 
-    return Promise.all(updatePromises);
+    const results = await Promise.all(updatePromises);
+    return convertArrayDatesToManilaTime(results);
   }
 
-  async getInventorySheetsForUserByDateRange(
-    userId: string,
-    startDate?: Date,
-    endDate?: Date,
-  ) {
-    const cashiers = await this.prisma.cashier.findMany({
-      where: { userId },
-      select: { id: true, name: true },
+  async updateRowPosition(rowId: string, newRowIndex: number) {
+    const result = await this.prisma.inventoryRow.update({
+      where: { id: rowId },
+      data: { rowIndex: newRowIndex },
     });
-    const resultSheets = [];
-    for (const cashier of cashiers) {
-      const sheet = await this.getInventorySheetsByDateRange(
-        cashier.id,
-        startDate,
-        endDate,
-      );
-      if (sheet) {
-        resultSheets.push({
-          cashierName: cashier.name,
-          cashierId: cashier.id,
-          sheet,
-        });
-      }
-    }
-    return resultSheets;
+    return convertObjectDatesToManilaTime(result);
   }
 
   async getExpensesSheetsForUserByDateRange(
@@ -575,11 +564,31 @@ export class InventoryService {
     return resultSheets;
   }
 
-  async updateRowPosition(rowId: string, newRowIndex: number) {
-    return await this.prisma.inventoryRow.update({
-      where: { id: rowId },
-      data: { rowIndex: newRowIndex },
+  async getInventorySheetsForUserByDateRange(
+    userId: string,
+    startDate?: Date,
+    endDate?: Date,
+  ) {
+    const cashiers = await this.prisma.cashier.findMany({
+      where: { userId },
+      select: { id: true, name: true },
     });
+    const resultSheets = [];
+    for (const cashier of cashiers) {
+      const sheet = await this.getInventorySheetsByDateRange(
+        cashier.id,
+        startDate,
+        endDate,
+      );
+      if (sheet) {
+        resultSheets.push({
+          cashierName: cashier.name,
+          cashierId: cashier.id,
+          sheet,
+        });
+      }
+    }
+    return resultSheets;
   }
 
   async validateRowMappings(
@@ -638,6 +647,7 @@ export class InventoryService {
       });
     });
 
-    return Promise.all(updatePromises);
+    const results = await Promise.all(updatePromises);
+    return convertArrayDatesToManilaTime(results);
   }
 }

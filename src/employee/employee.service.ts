@@ -3,7 +3,7 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateEmployeeDto } from './dto/create.dto';
 import { EditEmployeeDto } from './dto/edit.dto';
 import { EmployeeAttendanceFilterDto } from './dto/employee-attendance.dto';
-import { convertToManilaTime } from 'src/utils/date.util';
+import { convertToManilaTime, parseManilaDateRange } from 'src/utils/date.util';
 
 @Injectable()
 export class EmployeeService {
@@ -40,6 +40,13 @@ export class EmployeeService {
         ...createEmployeeDto,
         userId,
       },
+      include: {
+        ShiftEmployee: {
+          include: {
+            shift: true,
+          },
+        },
+      },
     });
     return this.formatEmployee(employee);
   }
@@ -50,6 +57,13 @@ export class EmployeeService {
         id,
       },
       data: editEmployeeDto,
+      include: {
+        ShiftEmployee: {
+          include: {
+            shift: true,
+          },
+        },
+      },
     });
     return this.formatEmployee(employee);
   }
@@ -58,6 +72,13 @@ export class EmployeeService {
     const employee = await this.prisma.employee.delete({
       where: {
         id,
+      },
+      include: {
+        ShiftEmployee: {
+          include: {
+            shift: true,
+          },
+        },
       },
     });
     return this.formatEmployee(employee);
@@ -99,18 +120,16 @@ export class EmployeeService {
     userId: string,
     filters: EmployeeAttendanceFilterDto,
   ) {
-    // Set default date range - end date is today, start date is 30 days ago
-    const endDate = filters.endDate ? new Date(filters.endDate) : new Date();
-    const startDate = filters.startDate
-      ? new Date(filters.startDate)
-      : new Date(endDate.getTime() - 30 * 24 * 60 * 60 * 1000);
+    // Parse Manila Time date parameters properly
+    const { startDate, endDate } = parseManilaDateRange(
+      filters.startDate,
+      filters.endDate,
+    );
 
-    // Set time bounds for the date range
-    const start = new Date(startDate);
-    start.setHours(0, 0, 0, 0);
-
-    const end = new Date(endDate);
-    end.setHours(23, 59, 59, 999);
+    // Set default date range if no dates provided - end date is today, start date is 30 days ago
+    const end = endDate || new Date();
+    const start =
+      startDate || new Date(end.getTime() - 30 * 24 * 60 * 60 * 1000);
 
     // Get all shifts within the date range for this user
     const shifts = await this.prisma.shift.findMany({

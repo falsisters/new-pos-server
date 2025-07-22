@@ -413,11 +413,12 @@ export class ProductService {
   }
 
   async deleteProduct(id: string) {
-    return this.prisma.product.delete({
+    const result = await this.prisma.product.delete({
       where: {
         id,
       },
     });
+    return this.formatProduct(result);
   }
 
   async getAllProducts(userId: string) {

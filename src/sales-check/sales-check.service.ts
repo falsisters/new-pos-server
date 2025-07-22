@@ -3,22 +3,18 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { SalesCheckFilterDto } from './dto/sales-check.dto';
 import { TotalSalesFilterDto } from './dto/total-sales.dto';
 import { PaymentMethod } from '@prisma/client';
-import { convertToManilaTime } from '../utils/date.util';
+import {
+  convertToManilaTime,
+  parseManilaDateToUTCRange,
+} from '../utils/date.util';
 
 @Injectable()
 export class SalesCheckService {
   constructor(private prisma: PrismaService) {}
 
   async getSalesWithFilter(userId: string, filters: SalesCheckFilterDto) {
-    // Set default date to today if not provided
-    const targetDate = filters.date ? new Date(filters.date) : new Date();
-
-    // Set start and end of the target day
-    const startOfDay = new Date(targetDate);
-    startOfDay.setHours(0, 0, 0, 0);
-
-    const endOfDay = new Date(targetDate);
-    endOfDay.setHours(23, 59, 59, 999);
+    // Use Manila Time date range conversion
+    const { startOfDay, endOfDay } = parseManilaDateToUTCRange(filters.date);
 
     // Build the query conditions
     const whereConditions: any = {
@@ -227,15 +223,8 @@ export class SalesCheckService {
     cashierId: string,
     filters: SalesCheckFilterDto,
   ) {
-    // Set default date to today if not provided
-    const targetDate = filters.date ? new Date(filters.date) : new Date();
-
-    // Set start and end of the target day
-    const startOfDay = new Date(targetDate);
-    startOfDay.setHours(0, 0, 0, 0);
-
-    const endOfDay = new Date(targetDate);
-    endOfDay.setHours(23, 59, 59, 999);
+    // Use Manila Time date range conversion
+    const { startOfDay, endOfDay } = parseManilaDateToUTCRange(filters.date);
 
     // Build the query conditions for specific cashier
     const whereConditions: any = {
@@ -438,15 +427,8 @@ export class SalesCheckService {
   }
 
   async getTotalSales(userId: string, filters: TotalSalesFilterDto) {
-    // Set default date to today if not provided
-    const targetDate = filters.date ? new Date(filters.date) : new Date();
-
-    // Set start and end of the target day
-    const startOfDay = new Date(targetDate);
-    startOfDay.setHours(0, 0, 0, 0);
-
-    const endOfDay = new Date(targetDate);
-    endOfDay.setHours(23, 59, 59, 999);
+    // Use Manila Time date range conversion
+    const { startOfDay, endOfDay } = parseManilaDateToUTCRange(filters.date);
 
     // Build the query conditions
     const whereConditions: any = {
@@ -638,15 +620,8 @@ export class SalesCheckService {
 
   // New method for cashier-specific total sales using cashier ID
   async getCashierTotalSales(cashierId: string, filters: TotalSalesFilterDto) {
-    // Set default date to today if not provided
-    const targetDate = filters.date ? new Date(filters.date) : new Date();
-
-    // Set start and end of the target day
-    const startOfDay = new Date(targetDate);
-    startOfDay.setHours(0, 0, 0, 0);
-
-    const endOfDay = new Date(targetDate);
-    endOfDay.setHours(23, 59, 59, 999);
+    // Use Manila Time date range conversion
+    const { startOfDay, endOfDay } = parseManilaDateToUTCRange(filters.date);
 
     // Build the query conditions for specific cashier
     const whereConditions: any = {
@@ -836,13 +811,7 @@ export class SalesCheckService {
 
   // New method for getting all cashier sales under a user
   async getAllCashierSalesByDate(userId: string, date?: string) {
-    const targetDate = date ? new Date(date) : new Date();
-
-    const startOfDay = new Date(targetDate);
-    startOfDay.setHours(0, 0, 0, 0);
-
-    const endOfDay = new Date(targetDate);
-    endOfDay.setHours(23, 59, 59, 999);
+    const { startOfDay, endOfDay } = parseManilaDateToUTCRange(date);
 
     // Get all cashiers under this user
     const cashiers = await this.prisma.cashier.findMany({

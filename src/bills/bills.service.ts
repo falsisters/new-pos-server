@@ -3,7 +3,7 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateBillCountDto } from './dto/create-bill-count.dto';
 import { UpdateBillCountDto } from './dto/update-bill-count.dto';
 import { BillType, PaymentMethod } from '@prisma/client';
-import { convertToManilaTime } from 'src/utils/date.util';
+import { convertToManilaTime, getManilaDateBounds } from 'src/utils/date.util';
 
 @Injectable()
 export class BillsService {
@@ -13,14 +13,12 @@ export class BillsService {
     cashierId: string,
     createDto: CreateBillCountDto,
   ) {
+    // Handle Manila Time date properly
+    const { startOfDay, endOfDay } = createDto.date
+      ? getManilaDateBounds(createDto.date)
+      : getManilaDateBounds();
+
     const targetDate = createDto.date ? new Date(createDto.date) : new Date();
-
-    // Set start and end of the target day
-    const startOfDay = new Date(targetDate);
-    startOfDay.setHours(0, 0, 0, 0);
-
-    const endOfDay = new Date(targetDate);
-    endOfDay.setHours(23, 59, 59, 999);
 
     // Check if a bill count already exists for the specified day
     const existingBillCount = await this.prisma.billCount.findFirst({
@@ -143,15 +141,9 @@ export class BillsService {
   }
 
   async getBillCountForDate(cashierId: string, date?: string) {
-    // Set default date to today if not provided
+    // Handle Manila Time date properly
+    const { startOfDay, endOfDay } = getManilaDateBounds(date);
     const targetDate = date ? new Date(date) : new Date();
-
-    // Set start and end of the target day
-    const startOfDay = new Date(targetDate);
-    startOfDay.setHours(0, 0, 0, 0);
-
-    const endOfDay = new Date(targetDate);
-    endOfDay.setHours(23, 59, 59, 999);
 
     const billCount = await this.prisma.billCount.findFirst({
       where: {
@@ -190,13 +182,12 @@ export class BillsService {
     userId: string,
     createDto: CreateBillCountDto,
   ) {
+    // Handle Manila Time date properly
+    const { startOfDay, endOfDay } = createDto.date
+      ? getManilaDateBounds(createDto.date)
+      : getManilaDateBounds();
+
     const targetDate = createDto.date ? new Date(createDto.date) : new Date();
-
-    const startOfDay = new Date(targetDate);
-    startOfDay.setHours(0, 0, 0, 0);
-
-    const endOfDay = new Date(targetDate);
-    endOfDay.setHours(23, 59, 59, 999);
 
     const existingBillCount = await this.prisma.billCount.findFirst({
       where: {
@@ -242,13 +233,9 @@ export class BillsService {
   }
 
   async getUserBillCountForDate(userId: string, date?: string) {
+    // Handle Manila Time date properly
+    const { startOfDay, endOfDay } = getManilaDateBounds(date);
     const targetDate = date ? new Date(date) : new Date();
-
-    const startOfDay = new Date(targetDate);
-    startOfDay.setHours(0, 0, 0, 0);
-
-    const endOfDay = new Date(targetDate);
-    endOfDay.setHours(23, 59, 59, 999);
 
     const billCount = await this.prisma.billCount.findFirst({
       where: {
@@ -271,13 +258,9 @@ export class BillsService {
   }
 
   async getAllUserBillCountsByDate(date?: string) {
+    // Handle Manila Time date properly
+    const { startOfDay, endOfDay } = getManilaDateBounds(date);
     const targetDate = date ? new Date(date) : new Date();
-
-    const startOfDay = new Date(targetDate);
-    startOfDay.setHours(0, 0, 0, 0);
-
-    const endOfDay = new Date(targetDate);
-    endOfDay.setHours(23, 59, 59, 999);
 
     const billCounts = await this.prisma.billCount.findMany({
       where: {
@@ -316,13 +299,9 @@ export class BillsService {
   }
 
   async getAllCashierBillCountsByDate(date?: string) {
+    // Handle Manila Time date properly
+    const { startOfDay, endOfDay } = getManilaDateBounds(date);
     const targetDate = date ? new Date(date) : new Date();
-
-    const startOfDay = new Date(targetDate);
-    startOfDay.setHours(0, 0, 0, 0);
-
-    const endOfDay = new Date(targetDate);
-    endOfDay.setHours(23, 59, 59, 999);
 
     const billCounts = await this.prisma.billCount.findMany({
       where: {
@@ -372,11 +351,10 @@ export class BillsService {
     targetDate: Date,
     isUser: boolean,
   ): Promise<number> {
-    const startOfDay = new Date(targetDate);
-    startOfDay.setHours(0, 0, 0, 0);
-
-    const endOfDay = new Date(targetDate);
-    endOfDay.setHours(23, 59, 59, 999);
+    // Handle Manila Time date properly for cash calculation
+    const { startOfDay, endOfDay } = getManilaDateBounds(
+      targetDate.toISOString().split('T')[0],
+    );
 
     if (isUser) {
       // For users, get all cash sales from their cashiers
@@ -423,11 +401,10 @@ export class BillsService {
     targetDate: Date,
     isUser: boolean,
   ): Promise<number> {
-    const startOfDay = new Date(targetDate);
-    startOfDay.setHours(0, 0, 0, 0);
-
-    const endOfDay = new Date(targetDate);
-    endOfDay.setHours(23, 59, 59, 999);
+    // Handle Manila Time date properly for expenses calculation
+    const { startOfDay, endOfDay } = getManilaDateBounds(
+      targetDate.toISOString().split('T')[0],
+    );
 
     let expenseList;
 

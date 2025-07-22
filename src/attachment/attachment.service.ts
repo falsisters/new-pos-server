@@ -3,7 +3,10 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { UploadService } from 'src/upload/upload.service';
 import { CreateAttachmentFormData } from './types/createAttachment.type';
 import { AttachmentType } from '@prisma/client';
-import { convertToManilaTime } from 'src/utils/date.util';
+import {
+  convertToManilaTime,
+  parseManilaDateToUTCRange,
+} from 'src/utils/date.util';
 
 @Injectable()
 export class AttachmentService {
@@ -22,18 +25,15 @@ export class AttachmentService {
   }
 
   async getAttachments(userId: string) {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const endOfToday = new Date(today);
-    endOfToday.setHours(23, 59, 59, 999);
+    // Use Manila Time for "today" calculation
+    const { startOfDay, endOfDay } = parseManilaDateToUTCRange();
 
     const attachments = await this.prismaService.attachment.findMany({
       where: {
         userId,
         createdAt: {
-          gte: today,
-          lte: endOfToday,
+          gte: startOfDay,
+          lte: endOfDay,
         },
       },
       orderBy: { createdAt: 'desc' },
@@ -80,11 +80,7 @@ export class AttachmentService {
       throw new Error('Attachment not found');
     }
 
-    const updatedAttachment = await this.prismaService.attachment.update({
-      where: { id },
-      data: { name, type },
-    });
-    return this.formatAttachment(updatedAttachment);
+    return this.formatAttachment(attachment);
   }
 
   async deleteAttachment(id: string) {
@@ -103,18 +99,19 @@ export class AttachmentService {
   }
 
   async getYesterdayAttachments() {
+    // Get yesterday in Manila Time, then convert to UTC range
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
-    yesterday.setHours(0, 0, 0, 0);
+    const yesterdayDateString = yesterday.toISOString().split('T')[0];
 
-    const endOfYesterday = new Date(yesterday);
-    endOfYesterday.setHours(23, 59, 59, 999);
+    const { startOfDay, endOfDay } =
+      parseManilaDateToUTCRange(yesterdayDateString);
 
     const attachments = await this.prismaService.attachment.findMany({
       where: {
         createdAt: {
-          gte: yesterday,
-          lte: endOfYesterday,
+          gte: startOfDay,
+          lte: endOfDay,
         },
       },
     });

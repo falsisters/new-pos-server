@@ -3,6 +3,7 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import {
   convertObjectDatesToManilaTime,
   convertArrayDatesToManilaTime,
+  parseManilaDateRangeToUTC,
 } from '../utils/date.util';
 
 @Injectable()
@@ -33,7 +34,7 @@ export class SheetService {
         kahon: { connect: { id: kahonId } },
       },
     });
-    return result;
+    return convertObjectDatesToManilaTime(result);
   }
 
   async getSheetWithData(sheetId: string) {
@@ -58,9 +59,23 @@ export class SheetService {
     startDate?: Date,
     endDate?: Date,
   ) {
-    // Set date range
-    const end = endDate || new Date();
-    const start = startDate || new Date(end.getTime() - 24 * 60 * 60 * 1000);
+    // Convert the Manila Time dates to proper UTC range
+    let start: Date;
+    let end: Date;
+
+    if (startDate || endDate) {
+      const dateRange = parseManilaDateRangeToUTC(
+        startDate?.toISOString().split('T')[0],
+        endDate?.toISOString().split('T')[0],
+      );
+      start = dateRange.startDate;
+      end = dateRange.endDate;
+    } else {
+      // Default to today in Manila Time
+      const dateRange = parseManilaDateRangeToUTC();
+      start = dateRange.startDate;
+      end = dateRange.endDate;
+    }
 
     // Find the kahon for this cashier
     const kahon = await this.prisma.kahon.findFirst({
@@ -68,7 +83,7 @@ export class SheetService {
     });
 
     if (!kahon) {
-      return null; // Or throw an error, or return an empty structure
+      return null;
     }
 
     // Return sheets with rows filtered by date range
@@ -175,7 +190,7 @@ export class SheetService {
       data: cellsData,
     });
 
-    return row;
+    return convertObjectDatesToManilaTime(row);
   }
 
   async addCalculationRow(
@@ -220,7 +235,7 @@ export class SheetService {
       data: cellsData,
     });
 
-    return row;
+    return convertObjectDatesToManilaTime(row);
   }
 
   async deleteRow(rowId: string) {
@@ -230,9 +245,11 @@ export class SheetService {
     });
 
     // Then delete the row itself
-    return await this.prisma.row.delete({
+    const result = await this.prisma.row.delete({
       where: { id: rowId },
     });
+
+    return convertObjectDatesToManilaTime(result);
   }
 
   async updateCell(
@@ -294,38 +311,14 @@ export class SheetService {
     });
 
     console.log('Cell updated successfully:', result);
-    return result;
+    return convertObjectDatesToManilaTime(result);
   }
 
   async deleteCell(cellId: string) {
-    return await this.prisma.cell.delete({
+    const result = await this.prisma.cell.delete({
       where: { id: cellId },
     });
-  }
-
-  async addCells(
-    cells: {
-      rowId: string;
-      columnIndex: number;
-      value: string;
-      color?: string;
-      formula?: string;
-    }[],
-  ) {
-    const addCellsPromises = cells.map((cell) => {
-      return this.prisma.cell.create({
-        data: {
-          rowId: cell.rowId,
-          columnIndex: cell.columnIndex,
-          value: cell.value,
-          color: cell.color ? cell.color : undefined,
-          formula: cell.formula,
-          isCalculated: !!cell.formula,
-        },
-      });
-    });
-
-    return Promise.all(addCellsPromises);
+    return convertObjectDatesToManilaTime(result);
   }
 
   async addCell(
@@ -373,7 +366,7 @@ export class SheetService {
     });
 
     console.log('Cell created successfully:', result);
-    return result;
+    return convertObjectDatesToManilaTime(result);
   }
 
   // For batch updating all cells at once
@@ -392,14 +385,42 @@ export class SheetService {
       });
     });
 
-    return Promise.all(updatePromises);
+    const results = await Promise.all(updatePromises);
+    return convertArrayDatesToManilaTime(results);
+  }
+
+  async addCells(
+    cells: {
+      rowId: string;
+      columnIndex: number;
+      value: string;
+      color?: string;
+      formula?: string;
+    }[],
+  ) {
+    const addCellsPromises = cells.map((cell) => {
+      return this.prisma.cell.create({
+        data: {
+          rowId: cell.rowId,
+          columnIndex: cell.columnIndex,
+          value: cell.value,
+          color: cell.color ? cell.color : undefined,
+          formula: cell.formula,
+          isCalculated: !!cell.formula,
+        },
+      });
+    });
+
+    const results = await Promise.all(addCellsPromises);
+    return convertArrayDatesToManilaTime(results);
   }
 
   async updateRowPosition(rowId: string, newRowIndex: number) {
-    return await this.prisma.row.update({
+    const result = await this.prisma.row.update({
       where: { id: rowId },
       data: { rowIndex: newRowIndex },
     });
+    return convertObjectDatesToManilaTime(result);
   }
 
   // New method for batch row position updates with validation
@@ -419,7 +440,7 @@ export class SheetService {
     }
 
     // Use transaction to ensure atomicity
-    return await this.prisma.$transaction(
+    const results = await this.prisma.$transaction(
       updates.map((update) =>
         this.prisma.row.update({
           where: { id: update.rowId },
@@ -427,6 +448,8 @@ export class SheetService {
         }),
       ),
     );
+
+    return convertArrayDatesToManilaTime(results);
   }
 
   // New method for batch cell updates with formula reference updates
@@ -448,7 +471,7 @@ export class SheetService {
     }));
 
     // Use transaction for atomic updates
-    return await this.prisma.$transaction(
+    const results = await this.prisma.$transaction(
       updatedCellUpdates.map((cell) =>
         this.prisma.cell.update({
           where: { id: cell.id },
@@ -461,6 +484,8 @@ export class SheetService {
         }),
       ),
     );
+
+    return convertArrayDatesToManilaTime(results);
   }
 
   // Helper method to update formula references when rows are moved

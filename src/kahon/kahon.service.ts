@@ -4,6 +4,7 @@ import { EditKahonItemsDto } from './dto/editKahonItemsDto';
 import {
   convertObjectDatesToManilaTime,
   convertArrayDatesToManilaTime,
+  parseManilaDateRangeToUTC,
 } from '../utils/date.util';
 
 @Injectable()
@@ -42,14 +43,29 @@ export class KahonService {
   }
 
   async getKahonByCashier(cashierId: string, startDate?: Date, endDate?: Date) {
-    const end = endDate || new Date();
-    const start = startDate || new Date(end.getTime() - 24 * 60 * 60 * 1000);
+    // Convert Manila Time dates to proper UTC range
+    let start: Date;
+    let end: Date;
+
+    if (startDate || endDate) {
+      const dateRange = parseManilaDateRangeToUTC(
+        startDate?.toISOString().split('T')[0],
+        endDate?.toISOString().split('T')[0],
+      );
+      start = dateRange.startDate;
+      end = dateRange.endDate;
+    } else {
+      // Default to today in Manila Time
+      const dateRange = parseManilaDateRangeToUTC();
+      start = dateRange.startDate;
+      end = dateRange.endDate;
+    }
 
     // Assuming a cashier has one primary "Kahon" named 'Kahon'
     const result = await this.prisma.kahon.findFirst({
       where: {
-        cashierId: cashierId, // Changed from userId
-        name: 'Kahon', // Assuming we fetch the specific "Kahon"
+        cashierId: cashierId,
+        name: 'Kahon',
       },
       include: {
         cashier: {
@@ -87,8 +103,23 @@ export class KahonService {
   }
 
   async getKahonsByUserId(userId: string, startDate?: Date, endDate?: Date) {
-    const end = endDate || new Date();
-    const start = startDate || new Date(end.getTime() - 24 * 60 * 60 * 1000);
+    // Convert Manila Time dates to proper UTC range
+    let start: Date;
+    let end: Date;
+
+    if (startDate || endDate) {
+      const dateRange = parseManilaDateRangeToUTC(
+        startDate?.toISOString().split('T')[0],
+        endDate?.toISOString().split('T')[0],
+      );
+      start = dateRange.startDate;
+      end = dateRange.endDate;
+    } else {
+      // Default to today in Manila Time
+      const dateRange = parseManilaDateRangeToUTC();
+      start = dateRange.startDate;
+      end = dateRange.endDate;
+    }
 
     const cashiers = await this.prisma.cashier.findMany({
       where: { userId },
@@ -116,7 +147,6 @@ export class KahonService {
             include: {
               Rows: {
                 where: {
-                  // Filter rows by date if sheets are per day, or adjust as needed
                   createdAt: {
                     gte: start,
                     lte: end,
@@ -169,6 +199,6 @@ export class KahonService {
     });
 
     const results = await Promise.all(updatePromises);
-    return results;
+    return convertArrayDatesToManilaTime(results);
   }
 }

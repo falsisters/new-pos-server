@@ -20,6 +20,7 @@ import {
 } from './dto/addCalculationRow.dto';
 import { AddItemRowDto } from './dto/addItemRowDto.dto';
 import { JwtAuthGuard } from 'src/auth/guards/jwt.guard';
+import { parseManilaDateRange } from 'src/utils/date.util';
 
 @Controller('inventory')
 export class InventoryController {
@@ -28,17 +29,16 @@ export class InventoryController {
   @UseGuards(JwtCashierAuthGuard)
   @Get('expenses/date')
   async getExpensesSheetByDate(@Request() req) {
-    const cashierId = req.user.id; // Changed from userId to cashierId
+    const cashierId = req.user.id;
     const { startDate: startDateStr, endDate: endDateStr } = req.query;
 
-    // Handle null/undefined values for startDate and endDate
-    const startDate = startDateStr
-      ? new Date(startDateStr as string)
-      : undefined;
-    const endDate = endDateStr ? new Date(endDateStr as string) : undefined;
+    const { startDate, endDate } = parseManilaDateRange(
+      startDateStr,
+      endDateStr,
+    );
 
     return this.inventoryService.getExpensesSheetsByDateRange(
-      cashierId, // Changed from userId
+      cashierId,
       startDate,
       endDate,
     );
@@ -50,14 +50,12 @@ export class InventoryController {
     const userId = req.user.id;
     const { startDate: startDateStr, endDate: endDateStr } = req.query;
 
-    // Handle null/undefined values for startDate and endDate
-    const startDate = startDateStr
-      ? new Date(startDateStr as string)
-      : undefined;
-    const endDate = endDateStr ? new Date(endDateStr as string) : undefined;
+    const { startDate, endDate } = parseManilaDateRange(
+      startDateStr,
+      endDateStr,
+    );
 
     return this.inventoryService.getExpensesSheetsForUserByDateRange(
-      // New method
       userId,
       startDate,
       endDate,
@@ -67,17 +65,16 @@ export class InventoryController {
   @UseGuards(JwtCashierAuthGuard)
   @Get('date')
   async getSheetByDate(@Request() req) {
-    const cashierId = req.user.id; // Changed from userId to cashierId
+    const cashierId = req.user.id;
     const { startDate: startDateStr, endDate: endDateStr } = req.query;
 
-    // Handle null/undefined values for startDate and endDate
-    const startDate = startDateStr
-      ? new Date(startDateStr as string)
-      : undefined;
-    const endDate = endDateStr ? new Date(endDateStr as string) : undefined;
+    const { startDate, endDate } = parseManilaDateRange(
+      startDateStr,
+      endDateStr,
+    );
 
     return this.inventoryService.getInventorySheetsByDateRange(
-      cashierId, // Changed from userId
+      cashierId,
       startDate,
       endDate,
     );
@@ -89,14 +86,12 @@ export class InventoryController {
     const userId = req.user.id;
     const { startDate: startDateStr, endDate: endDateStr } = req.query;
 
-    // Handle null/undefined values for startDate and endDate
-    const startDate = startDateStr
-      ? new Date(startDateStr as string)
-      : undefined;
-    const endDate = endDateStr ? new Date(endDateStr as string) : undefined;
+    const { startDate, endDate } = parseManilaDateRange(
+      startDateStr,
+      endDateStr,
+    );
 
     return this.inventoryService.getInventorySheetsForUserByDateRange(
-      // New method
       userId,
       startDate,
       endDate,

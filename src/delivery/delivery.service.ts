@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateDeliveryDto } from './dto/create.dto';
 import { TransferService } from 'src/transfer/transfer.service';
-import { convertToManilaTime } from 'src/utils/date.util';
+import { convertToManilaTime, parseManilaDateToUTC } from 'src/utils/date.util';
 
 @Injectable()
 export class DeliveryService {
@@ -33,6 +33,11 @@ export class DeliveryService {
     createDeliveryDto: CreateDeliveryDto,
   ) {
     const { driverName, deliveryTimeStart, deliveryItem } = createDeliveryDto;
+
+    // Convert deliveryTimeStart from Manila Time to UTC if provided
+    const utcDeliveryTimeStart = deliveryTimeStart
+      ? parseManilaDateToUTC(deliveryTimeStart.toString())
+      : new Date();
 
     const result = await this.prisma.$transaction(
       async (tx) => {
@@ -83,7 +88,7 @@ export class DeliveryService {
         return tx.delivery.create({
           data: {
             driverName,
-            deliveryTimeStart,
+            deliveryTimeStart: utcDeliveryTimeStart,
             cashier: { connect: { id: cashierId } },
             DeliveryItem: {
               create: deliveryItem.map((item) => {
@@ -131,6 +136,11 @@ export class DeliveryService {
     editDeliveryDto: CreateDeliveryDto, // Assuming CreateDeliveryDto is also used for edit
   ) {
     const { driverName, deliveryTimeStart, deliveryItem } = editDeliveryDto;
+
+    // Convert deliveryTimeStart from Manila Time to UTC if provided
+    const utcDeliveryTimeStart = deliveryTimeStart
+      ? parseManilaDateToUTC(deliveryTimeStart.toString())
+      : undefined;
 
     const result = await this.prisma.$transaction(
       async (tx) => {
@@ -185,12 +195,14 @@ export class DeliveryService {
         });
 
         // 3. Update delivery basic info
+        const updateData: any = { driverName };
+        if (utcDeliveryTimeStart) {
+          updateData.deliveryTimeStart = utcDeliveryTimeStart;
+        }
+
         await tx.delivery.update({
           where: { id: deliveryId },
-          data: {
-            driverName,
-            deliveryTimeStart,
-          },
+          data: updateData,
         });
 
         // 4. Create new delivery items and increment stock
