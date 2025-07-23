@@ -4,7 +4,7 @@ import { ProfitFilterDto } from './dto/profit-filter.dto';
 import { PaymentMethod, SackType } from '@prisma/client';
 import {
   convertToManilaTime,
-  parseManilaDateToUTCRange,
+  getManilaDateRangeForQuery,
 } from '../utils/date.util';
 
 interface ProfitSummary {
@@ -33,8 +33,8 @@ export class ProfitService {
   constructor(private prisma: PrismaService) {}
 
   async getProfitsWithFilter(userId: string, filters: ProfitFilterDto) {
-    // Use Manila Time date range conversion
-    const { startOfDay, endOfDay } = parseManilaDateToUTCRange(filters.date);
+    // Use consistent date range conversion
+    const { startOfDay, endOfDay } = getManilaDateRangeForQuery(filters.date);
 
     // Build the query conditions
     const whereConditions: any = {
@@ -253,8 +253,8 @@ export class ProfitService {
     cashierId: string,
     filters: ProfitFilterDto,
   ) {
-    // Use Manila Time date range conversion
-    const { startOfDay, endOfDay } = parseManilaDateToUTCRange(filters.date);
+    // Use consistent date range conversion
+    const { startOfDay, endOfDay } = getManilaDateRangeForQuery(filters.date);
 
     // Build the query conditions for specific cashier
     const whereConditions: any = {
@@ -468,7 +468,7 @@ export class ProfitService {
 
   // New method for getting all cashier profits under a user
   async getAllCashierProfitsByDate(userId: string, date?: string) {
-    const { startOfDay, endOfDay } = parseManilaDateToUTCRange(date);
+    const { startOfDay, endOfDay } = getManilaDateRangeForQuery(date);
 
     // Get all cashiers under this user
     const cashiers = await this.prisma.cashier.findMany({

@@ -7,7 +7,7 @@ import { RecentSalesFilterDto } from './dto/recent-sales.dto';
 import {
   convertObjectDatesToManilaTime,
   convertArrayDatesToManilaTime,
-  parseManilaDateToUTCRange,
+  getManilaDateRangeForQuery,
 } from '../utils/date.util';
 
 @Injectable()
@@ -444,8 +444,8 @@ export class SaleService {
 
   async getSalesByDate(cashierId: string, filters: RecentSalesFilterDto) {
     try {
-      // Use Manila Time date range conversion
-      const { startOfDay, endOfDay } = parseManilaDateToUTCRange(filters.date);
+      // Use standardized date range query utility
+      const { startOfDay, endOfDay } = getManilaDateRangeForQuery(filters.date);
 
       const sales = await this.prisma.sale.findMany({
         where: {

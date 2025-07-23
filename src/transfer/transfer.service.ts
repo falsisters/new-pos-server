@@ -8,7 +8,7 @@ import { TransferFilterDto } from './dto/transferWithFilter.dto';
 import {
   convertObjectDatesToManilaTime,
   convertArrayDatesToManilaTime,
-  parseManilaDateToUTCRange,
+  getManilaDateRangeForQuery,
 } from '../utils/date.util';
 
 @Injectable()
@@ -484,8 +484,8 @@ export class TransferService {
   }
 
   async getAllTransfersWithFilter(userId: string, filters: TransferFilterDto) {
-    // Use Manila Time date range conversion
-    const { startOfDay, endOfDay } = parseManilaDateToUTCRange(filters.date);
+    // Use standardized date range query utility
+    const { startOfDay, endOfDay } = getManilaDateRangeForQuery(filters.date);
 
     const cashiers = await this.prisma.cashier.findMany({
       where: {
@@ -553,8 +553,8 @@ export class TransferService {
     cashierId: string,
     filters: TransferFilterDto,
   ) {
-    // Use Manila Time date range conversion
-    const { startOfDay, endOfDay } = parseManilaDateToUTCRange(filters.date);
+    // Use standardized date range query utility
+    const { startOfDay, endOfDay } = getManilaDateRangeForQuery(filters.date);
 
     const transfers = await this.prisma.transfer.findMany({
       where: {

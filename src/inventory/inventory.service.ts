@@ -3,6 +3,7 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import {
   convertObjectDatesToManilaTime,
   convertArrayDatesToManilaTime,
+  getManilaDateRangeForQuery,
 } from '../utils/date.util';
 
 @Injectable()
@@ -153,9 +154,25 @@ export class InventoryService {
     startDate?: Date,
     endDate?: Date,
   ) {
-    // Use provided dates or default to current day
-    const end = endDate || new Date();
-    const start = startDate || new Date(end.getTime() - 24 * 60 * 60 * 1000);
+    // Use standardized date range query utility
+    let startOfDay: Date, endOfDay: Date;
+
+    if (startDate && endDate) {
+      // Convert provided dates to proper query range
+      const startRange = getManilaDateRangeForQuery(
+        startDate.toISOString().split('T')[0],
+      );
+      const endRange = getManilaDateRangeForQuery(
+        endDate.toISOString().split('T')[0],
+      );
+      startOfDay = startRange.startOfDay;
+      endOfDay = endRange.endOfDay;
+    } else {
+      // Default to current day
+      const currentRange = getManilaDateRangeForQuery();
+      startOfDay = currentRange.startOfDay;
+      endOfDay = currentRange.endOfDay;
+    }
 
     let inventory = await this.prisma.inventory.findFirst({
       where: { cashierId, name: 'Expenses' },
@@ -182,8 +199,8 @@ export class InventoryService {
         Rows: {
           where: {
             createdAt: {
-              gte: start,
-              lte: end,
+              gte: startOfDay,
+              lte: endOfDay,
             },
           },
           orderBy: { rowIndex: 'asc' },
@@ -204,9 +221,25 @@ export class InventoryService {
     startDate?: Date,
     endDate?: Date,
   ) {
-    // Use provided dates or default to current day
-    const end = endDate || new Date();
-    const start = startDate || new Date(end.getTime() - 24 * 60 * 60 * 1000);
+    // Use standardized date range query utility
+    let startOfDay: Date, endOfDay: Date;
+
+    if (startDate && endDate) {
+      // Convert provided dates to proper query range
+      const startRange = getManilaDateRangeForQuery(
+        startDate.toISOString().split('T')[0],
+      );
+      const endRange = getManilaDateRangeForQuery(
+        endDate.toISOString().split('T')[0],
+      );
+      startOfDay = startRange.startOfDay;
+      endOfDay = endRange.endOfDay;
+    } else {
+      // Default to current day
+      const currentRange = getManilaDateRangeForQuery();
+      startOfDay = currentRange.startOfDay;
+      endOfDay = currentRange.endOfDay;
+    }
 
     // Find the inventory for this cashier
     let inventory = await this.prisma.inventory.findFirst({
@@ -235,8 +268,8 @@ export class InventoryService {
         Rows: {
           where: {
             createdAt: {
-              gte: start,
-              lte: end,
+              gte: startOfDay,
+              lte: endOfDay,
             },
           },
           orderBy: { rowIndex: 'asc' },

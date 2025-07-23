@@ -2,7 +2,10 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateDeliveryDto } from './dto/create.dto';
 import { TransferService } from 'src/transfer/transfer.service';
-import { convertToManilaTime, parseManilaDateToUTC } from 'src/utils/date.util';
+import {
+  convertToManilaTime,
+  parseManilaDateForStorage,
+} from 'src/utils/date.util';
 
 @Injectable()
 export class DeliveryService {
@@ -34,10 +37,10 @@ export class DeliveryService {
   ) {
     const { driverName, deliveryTimeStart, deliveryItem } = createDeliveryDto;
 
-    // Convert deliveryTimeStart from Manila Time to UTC if provided
+    // Convert deliveryTimeStart from Manila Time to UTC for storage
     const utcDeliveryTimeStart = deliveryTimeStart
-      ? parseManilaDateToUTC(deliveryTimeStart.toString())
-      : new Date();
+      ? parseManilaDateForStorage(deliveryTimeStart.toString())
+      : parseManilaDateForStorage(); // Current time in UTC
 
     const result = await this.prisma.$transaction(
       async (tx) => {
@@ -137,9 +140,9 @@ export class DeliveryService {
   ) {
     const { driverName, deliveryTimeStart, deliveryItem } = editDeliveryDto;
 
-    // Convert deliveryTimeStart from Manila Time to UTC if provided
+    // Convert deliveryTimeStart from Manila Time to UTC for storage
     const utcDeliveryTimeStart = deliveryTimeStart
-      ? parseManilaDateToUTC(deliveryTimeStart.toString())
+      ? parseManilaDateForStorage(deliveryTimeStart.toString())
       : undefined;
 
     const result = await this.prisma.$transaction(

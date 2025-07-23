@@ -180,3 +180,40 @@ export function parseManilaDateRangeToUTC(
 
   return { startDate, endDate };
 }
+
+export function parseManilaDateForStorage(dateString?: string): Date {
+  if (!dateString) {
+    // Current Manila time converted to UTC for storage
+    const now = new Date();
+    return new Date(now.getTime() - 8 * 60 * 60 * 1000);
+  }
+
+  // Parse the date string as Manila time and convert to UTC for storage
+  const manilaDate = new Date(dateString);
+  return new Date(manilaDate.getTime() - 8 * 60 * 60 * 1000);
+}
+
+export function getManilaDateRangeForQuery(dateString?: string): {
+  startOfDay: Date;
+  endOfDay: Date;
+} {
+  const targetDate = dateString ? new Date(dateString) : new Date();
+
+  // Create start and end of day in Manila time
+  const startOfDayManila = new Date(targetDate);
+  startOfDayManila.setHours(0, 0, 0, 0);
+
+  const endOfDayManila = new Date(targetDate);
+  endOfDayManila.setHours(23, 59, 59, 999);
+
+  // Convert to UTC for database queries
+  const startOfDayUTC = new Date(
+    startOfDayManila.getTime() - 8 * 60 * 60 * 1000,
+  );
+  const endOfDayUTC = new Date(endOfDayManila.getTime() - 8 * 60 * 60 * 1000);
+
+  return {
+    startOfDay: startOfDayUTC,
+    endOfDay: endOfDayUTC,
+  };
+}

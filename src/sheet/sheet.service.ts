@@ -3,7 +3,7 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import {
   convertObjectDatesToManilaTime,
   convertArrayDatesToManilaTime,
-  parseManilaDateRangeToUTC,
+  getManilaDateRangeForQuery,
 } from '../utils/date.util';
 
 @Injectable()
@@ -59,22 +59,24 @@ export class SheetService {
     startDate?: Date,
     endDate?: Date,
   ) {
-    // Convert the Manila Time dates to proper UTC range
-    let start: Date;
-    let end: Date;
+    // Use standardized date range query utility
+    let startOfDay: Date, endOfDay: Date;
 
-    if (startDate || endDate) {
-      const dateRange = parseManilaDateRangeToUTC(
-        startDate?.toISOString().split('T')[0],
-        endDate?.toISOString().split('T')[0],
+    if (startDate && endDate) {
+      // Convert provided dates to proper query range
+      const startRange = getManilaDateRangeForQuery(
+        startDate.toISOString().split('T')[0],
       );
-      start = dateRange.startDate;
-      end = dateRange.endDate;
+      const endRange = getManilaDateRangeForQuery(
+        endDate.toISOString().split('T')[0],
+      );
+      startOfDay = startRange.startOfDay;
+      endOfDay = endRange.endOfDay;
     } else {
-      // Default to today in Manila Time
-      const dateRange = parseManilaDateRangeToUTC();
-      start = dateRange.startDate;
-      end = dateRange.endDate;
+      // Default to current day
+      const currentRange = getManilaDateRangeForQuery();
+      startOfDay = currentRange.startOfDay;
+      endOfDay = currentRange.endOfDay;
     }
 
     // Find the kahon for this cashier
@@ -93,8 +95,8 @@ export class SheetService {
         Rows: {
           where: {
             createdAt: {
-              gte: start,
-              lte: end,
+              gte: startOfDay,
+              lte: endOfDay,
             },
           },
           orderBy: { rowIndex: 'asc' },

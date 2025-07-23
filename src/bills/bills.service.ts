@@ -3,7 +3,11 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateBillCountDto } from './dto/create-bill-count.dto';
 import { UpdateBillCountDto } from './dto/update-bill-count.dto';
 import { BillType, PaymentMethod } from '@prisma/client';
-import { convertToManilaTime, getManilaDateBounds } from 'src/utils/date.util';
+import {
+  convertToManilaTime,
+  getManilaDateRangeForQuery,
+  parseManilaDateForStorage,
+} from 'src/utils/date.util';
 
 @Injectable()
 export class BillsService {
@@ -13,12 +17,8 @@ export class BillsService {
     cashierId: string,
     createDto: CreateBillCountDto,
   ) {
-    // Handle Manila Time date properly
-    const { startOfDay, endOfDay } = createDto.date
-      ? getManilaDateBounds(createDto.date)
-      : getManilaDateBounds();
-
-    const targetDate = createDto.date ? new Date(createDto.date) : new Date();
+    // Get UTC date range for querying
+    const { startOfDay, endOfDay } = getManilaDateRangeForQuery(createDto.date);
 
     // Check if a bill count already exists for the specified day
     const existingBillCount = await this.prisma.billCount.findFirst({
@@ -36,15 +36,21 @@ export class BillsService {
 
     if (existingBillCount) {
       // Update existing bill count
-      return this.updateBillCount(existingBillCount.id, createDto);
+      const updated = await this.updateBillCount(
+        existingBillCount.id,
+        createDto,
+      );
+      return updated;
     } else {
-      // Create new bill count with the target date
+      // Create new bill count with UTC time for storage
+      const targetDateUTC = parseManilaDateForStorage(createDto.date);
+
       const billCount = await this.prisma.billCount.create({
         data: {
           cashierId,
           beginningBalance: createDto.beginningBalance || 0,
           showBeginningBalance: createDto.showBeginningBalance || false,
-          createdAt: targetDate, // Set the creation date to the target date
+          createdAt: targetDateUTC,
         },
       });
 
@@ -141,9 +147,8 @@ export class BillsService {
   }
 
   async getBillCountForDate(cashierId: string, date?: string) {
-    // Handle Manila Time date properly
-    const { startOfDay, endOfDay } = getManilaDateBounds(date);
-    const targetDate = date ? new Date(date) : new Date();
+    // Get UTC date range for querying
+    const { startOfDay, endOfDay } = getManilaDateRangeForQuery(date);
 
     const billCount = await this.prisma.billCount.findFirst({
       where: {
@@ -165,14 +170,14 @@ export class BillsService {
     });
 
     if (!billCount) {
-      return null; // Return null for non-existing bill count
+      return null;
     }
 
-    // Use the cashierId directly for calculations
+    // Use the original stored date for calculations
     return this.formatBillCountResponse(
       billCount,
       cashierId,
-      targetDate,
+      billCount.createdAt,
       false,
     );
   }
@@ -182,12 +187,8 @@ export class BillsService {
     userId: string,
     createDto: CreateBillCountDto,
   ) {
-    // Handle Manila Time date properly
-    const { startOfDay, endOfDay } = createDto.date
-      ? getManilaDateBounds(createDto.date)
-      : getManilaDateBounds();
-
-    const targetDate = createDto.date ? new Date(createDto.date) : new Date();
+    // Get UTC date range for querying
+    const { startOfDay, endOfDay } = getManilaDateRangeForQuery(createDto.date);
 
     const existingBillCount = await this.prisma.billCount.findFirst({
       where: {
@@ -205,12 +206,15 @@ export class BillsService {
     if (existingBillCount) {
       return this.updateBillCount(existingBillCount.id, createDto);
     } else {
+      // Create new bill count with UTC time for storage
+      const targetDateUTC = parseManilaDateForStorage(createDto.date);
+
       const billCount = await this.prisma.billCount.create({
         data: {
           userId,
           beginningBalance: createDto.beginningBalance || 0,
           showBeginningBalance: createDto.showBeginningBalance || false,
-          createdAt: targetDate, // Set the creation date to the target date
+          createdAt: targetDateUTC,
         },
       });
 
@@ -233,9 +237,8 @@ export class BillsService {
   }
 
   async getUserBillCountForDate(userId: string, date?: string) {
-    // Handle Manila Time date properly
-    const { startOfDay, endOfDay } = getManilaDateBounds(date);
-    const targetDate = date ? new Date(date) : new Date();
+    // Get UTC date range for querying
+    const { startOfDay, endOfDay } = getManilaDateRangeForQuery(date);
 
     const billCount = await this.prisma.billCount.findFirst({
       where: {
@@ -254,13 +257,17 @@ export class BillsService {
       return null;
     }
 
-    return this.formatBillCountResponse(billCount, userId, targetDate, true);
+    return this.formatBillCountResponse(
+      billCount,
+      userId,
+      billCount.createdAt,
+      true,
+    );
   }
 
   async getAllUserBillCountsByDate(date?: string) {
-    // Handle Manila Time date properly
-    const { startOfDay, endOfDay } = getManilaDateBounds(date);
-    const targetDate = date ? new Date(date) : new Date();
+    // Get UTC date range for querying
+    const { startOfDay, endOfDay } = getManilaDateRangeForQuery(date);
 
     const billCounts = await this.prisma.billCount.findMany({
       where: {
@@ -290,7 +297,7 @@ export class BillsService {
         ...(await this.formatBillCountResponse(
           billCount,
           billCount.userId,
-          targetDate,
+          billCount.createdAt,
           true,
         )),
         user: billCount.user,
@@ -299,9 +306,8 @@ export class BillsService {
   }
 
   async getAllCashierBillCountsByDate(date?: string) {
-    // Handle Manila Time date properly
-    const { startOfDay, endOfDay } = getManilaDateBounds(date);
-    const targetDate = date ? new Date(date) : new Date();
+    // Get UTC date range for querying
+    const { startOfDay, endOfDay } = getManilaDateRangeForQuery(date);
 
     const billCounts = await this.prisma.billCount.findMany({
       where: {
@@ -337,7 +343,7 @@ export class BillsService {
         ...(await this.formatBillCountResponse(
           billCount,
           billCount.cashier.user.id,
-          targetDate,
+          billCount.createdAt,
           false,
         )),
         cashier: billCount.cashier,
@@ -345,19 +351,20 @@ export class BillsService {
     );
   }
 
-  // Helper method to calculate total cash sales for a given date
   private async calculateTotalCash(
     ownerId: string,
-    targetDate: Date,
+    targetDateUTC: Date,
     isUser: boolean,
   ): Promise<number> {
-    // Handle Manila Time date properly for cash calculation
-    const { startOfDay, endOfDay } = getManilaDateBounds(
-      targetDate.toISOString().split('T')[0],
-    );
+    // Convert the stored UTC date back to Manila time to get the correct date
+    const manilaDate = convertToManilaTime(targetDateUTC);
+    const manilaDateString = manilaDate.toISOString().split('T')[0];
+
+    // Get the proper UTC range for that Manila date
+    const { startOfDay, endOfDay } =
+      getManilaDateRangeForQuery(manilaDateString);
 
     if (isUser) {
-      // For users, get all cash sales from their cashiers
       const cashSales = await this.prisma.sale.findMany({
         where: {
           paymentMethod: PaymentMethod.CASH,
@@ -376,7 +383,6 @@ export class BillsService {
 
       return cashSales.reduce((sum, sale) => sum + sale.totalAmount, 0);
     } else {
-      // For cashiers, use the cashierId directly
       const cashSales = await this.prisma.sale.findMany({
         where: {
           paymentMethod: PaymentMethod.CASH,
@@ -395,16 +401,18 @@ export class BillsService {
     }
   }
 
-  // Helper method to calculate total expenses for a given date
   private async calculateTotalExpenses(
     ownerId: string,
-    targetDate: Date,
+    targetDateUTC: Date,
     isUser: boolean,
   ): Promise<number> {
-    // Handle Manila Time date properly for expenses calculation
-    const { startOfDay, endOfDay } = getManilaDateBounds(
-      targetDate.toISOString().split('T')[0],
-    );
+    // Convert the stored UTC date back to Manila time to get the correct date
+    const manilaDate = convertToManilaTime(targetDateUTC);
+    const manilaDateString = manilaDate.toISOString().split('T')[0];
+
+    // Get the proper UTC range for that Manila date
+    const { startOfDay, endOfDay } =
+      getManilaDateRangeForQuery(manilaDateString);
 
     let expenseList;
 
@@ -422,7 +430,6 @@ export class BillsService {
         },
       });
     } else {
-      // For cashiers, use the cashierId directly
       expenseList = await this.prisma.expenseList.findFirst({
         where: {
           cashierId: ownerId,
@@ -442,11 +449,10 @@ export class BillsService {
     return expenseList.ExpenseItems.reduce((sum, item) => sum + item.amount, 0);
   }
 
-  // Helper method to format bill count response
   private async formatBillCountResponse(
     billCount: any,
     ownerId: string,
-    targetDate?: Date,
+    targetDateUTC: Date,
     isUser: boolean = false,
   ) {
     // Calculate total amount from all bills
@@ -455,18 +461,16 @@ export class BillsService {
       0,
     );
 
-    // Calculate total cash sales for the target date
-    const dateForCashCalculation = targetDate || billCount.createdAt;
+    // Calculate totals using the UTC date directly
     const totalCash = await this.calculateTotalCash(
       ownerId,
-      dateForCashCalculation,
+      targetDateUTC,
       isUser,
     );
 
-    // Calculate total expenses for the target date
     const totalExpenses = await this.calculateTotalExpenses(
       ownerId,
-      dateForCashCalculation,
+      targetDateUTC,
       isUser,
     );
 
