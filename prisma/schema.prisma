@@ -112,12 +112,12 @@ model Product {
 
 model SackPrice {
   id             String         @id @default(cuid())
-  price          Float
+  price          Decimal
   stock          Int
   type           SackType
   product        Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
   productId      String
-  profit         Float?
+  profit         Decimal?
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
   specialPrice   SpecialPrice?
@@ -135,9 +135,9 @@ enum SackType {
 
 model SpecialPrice {
   id          String    @id @default(cuid())
-  price       Float
+  price       Decimal
   minimumQty  Int
-  profit      Float?
+  profit      Decimal?
   sackPrice   SackPrice @relation(fields: [sackPriceId], references: [id], onDelete: Cascade)
   sackPriceId String    @unique
   createdAt   DateTime  @default(now())
@@ -146,9 +146,9 @@ model SpecialPrice {
 
 model PerKiloPrice {
   id           String         @id @default(cuid())
-  price        Float
-  stock        Float
-  profit       Float?
+  price        Decimal
+  stock        Decimal
+  profit       Decimal?
   product      Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
   productId    String         @unique
   createdAt    DateTime       @default(now())
@@ -162,7 +162,7 @@ model Sale {
   id            String        @id @default(cuid())
   cashier       Cashier       @relation(fields: [cashierId], references: [id], onDelete: Cascade)
   cashierId     String
-  totalAmount   Float
+  totalAmount   Decimal
   paymentMethod PaymentMethod
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
@@ -178,8 +178,8 @@ enum PaymentMethod {
 
 model SaleItem {
   id              String        @id @default(cuid())
-  quantity        Float
-  discountedPrice Float?
+  quantity        Decimal
+  discountedPrice Decimal?
   isDiscounted    Boolean       @default(false)
   product         Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
   productId       String
@@ -209,7 +209,7 @@ model Delivery {
 
 model DeliveryItem {
   id             String        @id @default(cuid())
-  quantity       Float
+  quantity       Decimal
   product        Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
   productId      String
   SackPrice      SackPrice?    @relation(fields: [sackPriceId], references: [id], onDelete: Cascade)
@@ -225,7 +225,7 @@ model DeliveryItem {
 
 model Transfer {
   id        String       @id @default(cuid())
-  quantity  Float
+  quantity  Decimal
   name      String
   type      TransferType
   cashier   Cashier      @relation(fields: [cashierId], references: [id], onDelete: Cascade)
@@ -265,7 +265,7 @@ model Inventory {
 model KahonItem {
   id        String   @id @default(cuid())
   name      String
-  quantity  Float
+  quantity  Decimal
   kahon     Kahon    @relation(fields: [kahonId], references: [id], onDelete: Cascade)
   kahonId   String
   createdAt DateTime @default(now())
@@ -370,7 +370,7 @@ model BillCount {
   Bills                Bills[]
   userId               String? // Optional for user oversight
   cashierId            String? // Optional for cashier operations
-  beginningBalance     Float
+  beginningBalance     Decimal
   showBeginningBalance Boolean  @default(false)
   user                 User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
   cashier              Cashier? @relation(fields: [cashierId], references: [id], onDelete: Cascade)
@@ -411,7 +411,7 @@ model Customer {
 
 model Order {
   id         String      @id @default(cuid())
-  totalPrice Float
+  totalPrice Decimal
   userId     String
   user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   cashierId  String? // Add cashier relationship
@@ -428,7 +428,7 @@ model Order {
 
 model OrderItem {
   id             String        @id @default(cuid())
-  quantity       Float
+  quantity       Decimal
   product        Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
   productId      String
   SackPrice      SackPrice?    @relation(fields: [sackPriceId], references: [id], onDelete: Cascade)
@@ -463,7 +463,7 @@ model ExpenseList {
 model ExpenseItems {
   id            String      @id @default(cuid())
   name          String
-  amount        Float
+  amount        Decimal
   expenseList   ExpenseList @relation(fields: [expenseListId], references: [id], onDelete: Cascade)
   expenseListId String
   createdAt     DateTime    @default(now())

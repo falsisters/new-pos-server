@@ -4,6 +4,7 @@ import { CreateSaleDto } from './dto/create.dto';
 import { EditSaleDto } from './dto/edit.dto';
 import { OrderService } from 'src/order/order.service';
 import { RecentSalesFilterDto } from './dto/recent-sales.dto';
+import { Decimal } from '@prisma/client/runtime/library';
 import {
   convertObjectDatesToManilaTime,
   convertArrayDatesToManilaTime,
@@ -17,22 +18,80 @@ export class SaleService {
     private order: OrderService,
   ) {}
 
+  private convertDecimalToString(
+    value: Decimal | null | undefined,
+  ): string | null {
+    if (value === null || value === undefined) return null;
+    return value.toString();
+  }
+
+  private convertDecimalFieldsToString(obj: any): any {
+    if (!obj) return obj;
+
+    const converted = { ...obj };
+
+    // Convert known decimal fields to strings
+    if (converted.totalAmount !== undefined) {
+      converted.totalAmount = this.convertDecimalToString(
+        converted.totalAmount,
+      );
+    }
+    if (converted.changeAmount !== undefined) {
+      converted.changeAmount = this.convertDecimalToString(
+        converted.changeAmount,
+      );
+    }
+    if (converted.discountedPrice !== undefined) {
+      converted.discountedPrice = this.convertDecimalToString(
+        converted.discountedPrice,
+      );
+    }
+    if (converted.quantity !== undefined) {
+      converted.quantity = this.convertDecimalToString(converted.quantity);
+    }
+    if (converted.price !== undefined) {
+      converted.price = this.convertDecimalToString(converted.price);
+    }
+    if (converted.profit !== undefined) {
+      converted.profit = this.convertDecimalToString(converted.profit);
+    }
+    if (converted.stock !== undefined) {
+      converted.stock = this.convertDecimalToString(converted.stock);
+    }
+
+    return converted;
+  }
+
   private formatSale(sale: any) {
     if (!sale) return null;
+
     const formatted = {
       ...sale,
       SaleItem: sale.SaleItem
         ? convertArrayDatesToManilaTime(
-            sale.SaleItem.map((item) => ({
-              ...item,
-              product: item.product
-                ? convertObjectDatesToManilaTime(item.product)
-                : null,
-            })),
+            sale.SaleItem.map((item) => {
+              const convertedItem = this.convertDecimalFieldsToString(item);
+              return {
+                ...convertedItem,
+                product: item.product
+                  ? this.convertDecimalFieldsToString(
+                      convertObjectDatesToManilaTime(item.product),
+                    )
+                  : null,
+                perKiloPrice: item.perKiloPrice
+                  ? this.convertDecimalFieldsToString(item.perKiloPrice)
+                  : null,
+                SackPrice: item.SackPrice
+                  ? this.convertDecimalFieldsToString(item.SackPrice)
+                  : null,
+              };
+            }),
           )
         : [],
     };
-    return convertObjectDatesToManilaTime(formatted);
+
+    const convertedFormatted = this.convertDecimalFieldsToString(formatted);
+    return convertObjectDatesToManilaTime(convertedFormatted);
   }
 
   private formatSales(sales: any[]) {
@@ -52,17 +111,17 @@ export class SaleService {
             await tx.perKiloPrice.update({
               where: { id: item.perKiloPrice.id },
               data: {
-                stock: { decrement: item.perKiloPrice.quantity },
+                stock: { decrement: new Decimal(item.perKiloPrice.quantity) },
               },
             });
           }
 
           if (item.sackPrice) {
-            // Update sack price stock
+            // Update sack price stock - convert to number for integer stock
             await tx.sackPrice.update({
               where: { id: item.sackPrice.id },
               data: {
-                stock: { decrement: item.sackPrice.quantity },
+                stock: { decrement: Number(item.sackPrice.quantity) },
               },
             });
           }
@@ -71,7 +130,7 @@ export class SaleService {
         // 2. Create the sale with items
         const sale = await tx.sale.create({
           data: {
-            totalAmount,
+            totalAmount: new Decimal(totalAmount),
             paymentMethod,
             cashier: {
               connect: { id: cashierId },
@@ -85,8 +144,10 @@ export class SaleService {
             SaleItem: {
               create: saleItem.map((item) => {
                 const quantity = item.perKiloPrice
-                  ? item.perKiloPrice.quantity
-                  : item.sackPrice?.quantity || 0;
+                  ? new Decimal(item.perKiloPrice.quantity)
+                  : item.sackPrice?.quantity
+                    ? new Decimal(item.sackPrice.quantity)
+                    : new Decimal(0);
 
                 // Base item data
                 const saleItemData = {
@@ -97,7 +158,7 @@ export class SaleService {
                   isDiscounted: item.isDiscounted ?? false,
                   // Only add discountedPrice if it's defined
                   ...(item.discountedPrice !== undefined && {
-                    discountedPrice: item.discountedPrice,
+                    discountedPrice: new Decimal(item.discountedPrice),
                   }),
                   product: {
                     connect: { id: item.id },
@@ -141,6 +202,8 @@ export class SaleService {
                     },
                   },
                 },
+                perKiloPrice: true,
+                SackPrice: true,
               },
             },
           },
@@ -157,7 +220,7 @@ export class SaleService {
           ...(metadata && { metadata }),
         };
 
-        // Format the result to convert dates to Manila time
+        // Format the result to convert dates to Manila time and decimals to strings
         return this.formatSale(saleWithMetadata);
       },
       {
@@ -220,7 +283,7 @@ export class SaleService {
             await tx.sackPrice.update({
               where: { id: item.product.SackPrice[0].id },
               data: {
-                stock: { increment: item.quantity },
+                stock: { increment: Number(item.quantity) },
               },
             });
           }
@@ -234,25 +297,27 @@ export class SaleService {
         // Decrement with new stock and create the new sale items
         for (const item of saleItem) {
           const quantity = item.perKiloPrice
-            ? item.perKiloPrice.quantity
-            : item.sackPrice?.quantity || 0;
+            ? new Decimal(item.perKiloPrice.quantity)
+            : item.sackPrice?.quantity
+              ? new Decimal(item.sackPrice.quantity)
+              : new Decimal(0);
 
           if (item.perKiloPrice) {
             // Update per kilo stock
             await tx.perKiloPrice.update({
               where: { id: item.perKiloPrice.id },
               data: {
-                stock: { decrement: item.perKiloPrice.quantity },
+                stock: { decrement: new Decimal(item.perKiloPrice.quantity) },
               },
             });
           }
 
           if (item.sackPrice) {
-            // Update sack price stock
+            // Update sack price stock - convert to number for integer stock
             await tx.sackPrice.update({
               where: { id: item.sackPrice.id },
               data: {
-                stock: { decrement: item.sackPrice.quantity },
+                stock: { decrement: Number(item.sackPrice.quantity) },
               },
             });
           }
@@ -266,7 +331,7 @@ export class SaleService {
             isDiscounted: item.isDiscounted ?? false,
             // Only add discountedPrice if it's defined
             ...(item.discountedPrice !== undefined && {
-              discountedPrice: item.discountedPrice,
+              discountedPrice: new Decimal(item.discountedPrice),
             }),
             product: {
               connect: { id: item.id },
@@ -305,8 +370,8 @@ export class SaleService {
 
         // Update the sale with new data and connect/disconnect order if needed
         const updateData: any = {
-          totalAmount,
-          paymentMethod,
+          ...(totalAmount && { totalAmount: new Decimal(totalAmount) }),
+          ...(paymentMethod && { paymentMethod }),
         };
 
         // Handle order connection/disconnection
@@ -338,13 +403,15 @@ export class SaleService {
                     },
                   },
                 },
+                perKiloPrice: true,
+                SackPrice: true,
               },
             },
             Order: true,
           },
         });
 
-        // Format the result to convert dates to Manila time
+        // Format the result to convert dates to Manila time and decimals to strings
         return this.formatSale(updatedSale);
       },
       {
@@ -394,7 +461,7 @@ export class SaleService {
             await tx.sackPrice.update({
               where: { id: item.sackPriceId },
               data: {
-                stock: { increment: item.quantity },
+                stock: { increment: Number(item.quantity) },
               },
             });
           }
@@ -435,6 +502,8 @@ export class SaleService {
                 },
               },
             },
+            perKiloPrice: true,
+            SackPrice: true,
           },
         },
       },

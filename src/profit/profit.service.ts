@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { ProfitFilterDto } from './dto/profit-filter.dto';
-import { PaymentMethod, SackType } from '@prisma/client';
+import { PaymentMethod, Prisma, SackType } from '@prisma/client';
 import {
   convertToManilaTime,
   getManilaDateRangeForQuery,
@@ -11,8 +11,8 @@ interface ProfitSummary {
   id: string;
   productId: string;
   productName: string;
-  totalQuantitySold: number;
-  totalProfit: number;
+  totalQuantitySold: string; // Changed to string for Decimal
+  totalProfit: string; // Changed to string for Decimal
   priceType: string;
   paymentMethod: PaymentMethod;
   isSpecialPrice: boolean;
@@ -22,15 +22,30 @@ interface ProfitSummary {
 interface GroupedProfit {
   productName: string;
   priceType: string;
-  profitPerUnit: number;
-  totalQuantity: number;
-  totalProfit: number;
+  profitPerUnit: string; // Changed to string for Decimal
+  totalQuantity: string; // Changed to string for Decimal
+  totalProfit: string; // Changed to string for Decimal
   orders: number;
 }
 
 @Injectable()
 export class ProfitService {
   constructor(private prisma: PrismaService) {}
+
+  // Helper method to convert Decimal to string
+  private decimalToString(value: Prisma.Decimal | null | undefined): string {
+    return value ? value.toString() : '0';
+  }
+
+  // Helper method to add decimal strings
+  private addDecimalStrings(a: string, b: string): string {
+    return (parseFloat(a) + parseFloat(b)).toString();
+  }
+
+  // Helper method to multiply decimal strings
+  private multiplyDecimalStrings(a: string, b: string): string {
+    return (parseFloat(a) * parseFloat(b)).toString();
+  }
 
   async getProfitsWithFilter(userId: string, filters: ProfitFilterDto) {
     // Use consistent date range conversion
@@ -118,8 +133,8 @@ export class ProfitService {
 
         return true;
       }).map((item) => {
-        let totalProfit = 0;
-        let profitPerUnit = 0;
+        let totalProfit = '0';
+        let profitPerUnit = '0';
         let priceType: SackType | null = null; // This will store the SackType enum
         let formattedPriceType = '';
 
@@ -129,11 +144,16 @@ export class ProfitService {
           priceType = item.sackType; // Store the enum value
 
           if (item.isSpecialPrice && sackPriceInfo.specialPrice) {
-            profitPerUnit = sackPriceInfo.specialPrice.profit ?? 0;
+            profitPerUnit = this.decimalToString(
+              sackPriceInfo.specialPrice.profit,
+            );
           } else {
-            profitPerUnit = sackPriceInfo.profit ?? 0;
+            profitPerUnit = this.decimalToString(sackPriceInfo.profit);
           }
-          totalProfit = profitPerUnit * item.quantity;
+          totalProfit = this.multiplyDecimalStrings(
+            profitPerUnit,
+            this.decimalToString(item.quantity),
+          );
 
           switch (item.sackType) {
             case 'FIFTY_KG':
@@ -154,7 +174,7 @@ export class ProfitService {
           id: item.id,
           productId: item.productId,
           productName: item.product?.name || 'Unknown Product',
-          quantity: item.quantity,
+          quantity: this.decimalToString(item.quantity),
           profitPerUnit,
           totalProfit,
           priceType: priceType || '', // Ensure it's a string or the enum, handle null if no sackType
@@ -171,10 +191,10 @@ export class ProfitService {
     const groupedProfits: Record<string, GroupedProfit> = {};
 
     profitItems.forEach((item) => {
-      if (item.totalProfit <= 0) return; // Skip items with no profit
+      if (parseFloat(item.totalProfit) <= 0) return; // Skip items with no profit
 
       // Skip items where profit is null, undefined, or zero
-      if (item.profitPerUnit == null || item.profitPerUnit === 0) return;
+      if (parseFloat(item.profitPerUnit) === 0) return;
 
       const key = item.isAsin
         ? `ASIN_${item.productName}`
@@ -185,14 +205,20 @@ export class ProfitService {
           productName: item.productName,
           priceType: item.formattedPriceType,
           profitPerUnit: item.profitPerUnit,
-          totalQuantity: 0,
-          totalProfit: 0,
+          totalQuantity: '0',
+          totalProfit: '0',
           orders: 0,
         };
       }
 
-      groupedProfits[key].totalQuantity += item.quantity;
-      groupedProfits[key].totalProfit += item.totalProfit;
+      groupedProfits[key].totalQuantity = this.addDecimalStrings(
+        groupedProfits[key].totalQuantity,
+        item.quantity,
+      );
+      groupedProfits[key].totalProfit = this.addDecimalStrings(
+        groupedProfits[key].totalProfit,
+        item.totalProfit,
+      );
       groupedProfits[key].orders += 1;
     });
 
@@ -210,14 +236,14 @@ export class ProfitService {
 
     // Calculate totals
     const sackTotal = sackProducts.reduce(
-      (sum, item) => sum + item.totalProfit,
-      0,
+      (sum, item) => this.addDecimalStrings(sum, item.totalProfit),
+      '0',
     );
     const asinTotal = asinProducts.reduce(
-      (sum, item) => sum + item.totalProfit,
-      0,
+      (sum, item) => this.addDecimalStrings(sum, item.totalProfit),
+      '0',
     );
-    const overallTotal = sackTotal + asinTotal;
+    const overallTotal = this.addDecimalStrings(sackTotal, asinTotal);
 
     // Format the response
     return {
@@ -336,8 +362,8 @@ export class ProfitService {
 
         return true;
       }).map((item) => {
-        let totalProfit = 0;
-        let profitPerUnit = 0;
+        let totalProfit = '0';
+        let profitPerUnit = '0';
         let priceType: SackType | null = null;
         let formattedPriceType = '';
 
@@ -347,11 +373,16 @@ export class ProfitService {
           priceType = item.sackType;
 
           if (item.isSpecialPrice && sackPriceInfo.specialPrice) {
-            profitPerUnit = sackPriceInfo.specialPrice.profit ?? 0;
+            profitPerUnit = this.decimalToString(
+              sackPriceInfo.specialPrice.profit,
+            );
           } else {
-            profitPerUnit = sackPriceInfo.profit ?? 0;
+            profitPerUnit = this.decimalToString(sackPriceInfo.profit);
           }
-          totalProfit = profitPerUnit * item.quantity;
+          totalProfit = this.multiplyDecimalStrings(
+            profitPerUnit,
+            this.decimalToString(item.quantity),
+          );
 
           switch (item.sackType) {
             case 'FIFTY_KG':
@@ -372,14 +403,14 @@ export class ProfitService {
           id: item.id,
           productId: item.productId,
           productName: item.product?.name || 'Unknown Product',
-          quantity: item.quantity,
+          quantity: this.decimalToString(item.quantity),
           profitPerUnit,
           totalProfit,
           priceType: priceType || '',
           formattedPriceType,
           paymentMethod: sale.paymentMethod,
           isSpecialPrice: item.isSpecialPrice,
-          saleDate: convertToManilaTime(sale.createdAt), // Convert to Manila time
+          saleDate: convertToManilaTime(sale.createdAt),
           isAsin: item.product?.name.toLowerCase().includes('asin') || false,
         };
       });
@@ -389,10 +420,10 @@ export class ProfitService {
     const groupedProfits: Record<string, GroupedProfit> = {};
 
     profitItems.forEach((item) => {
-      if (item.totalProfit <= 0) return;
+      if (parseFloat(item.totalProfit) <= 0) return;
 
       // Skip items where profit is null, undefined, or zero
-      if (item.profitPerUnit == null || item.profitPerUnit === 0) return;
+      if (parseFloat(item.profitPerUnit) === 0) return;
 
       const key = item.isAsin
         ? `ASIN_${item.productName}`
@@ -403,14 +434,20 @@ export class ProfitService {
           productName: item.productName,
           priceType: item.formattedPriceType,
           profitPerUnit: item.profitPerUnit,
-          totalQuantity: 0,
-          totalProfit: 0,
+          totalQuantity: '0',
+          totalProfit: '0',
           orders: 0,
         };
       }
 
-      groupedProfits[key].totalQuantity += item.quantity;
-      groupedProfits[key].totalProfit += item.totalProfit;
+      groupedProfits[key].totalQuantity = this.addDecimalStrings(
+        groupedProfits[key].totalQuantity,
+        item.quantity,
+      );
+      groupedProfits[key].totalProfit = this.addDecimalStrings(
+        groupedProfits[key].totalProfit,
+        item.totalProfit,
+      );
       groupedProfits[key].orders += 1;
     });
 
@@ -428,14 +465,14 @@ export class ProfitService {
 
     // Calculate totals
     const sackTotal = sackProducts.reduce(
-      (sum, item) => sum + item.totalProfit,
-      0,
+      (sum, item) => this.addDecimalStrings(sum, item.totalProfit),
+      '0',
     );
     const asinTotal = asinProducts.reduce(
-      (sum, item) => sum + item.totalProfit,
-      0,
+      (sum, item) => this.addDecimalStrings(sum, item.totalProfit),
+      '0',
     );
-    const overallTotal = sackTotal + asinTotal;
+    const overallTotal = this.addDecimalStrings(sackTotal, asinTotal);
 
     // Format the response
     return {

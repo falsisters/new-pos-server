@@ -5,24 +5,34 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  IsNumberString,
 } from 'class-validator';
 
 class PerKiloPriceDto {
+  @IsString()
   id: string;
-  quantity: number;
+
+  @IsNumberString()
+  quantity: string;
 }
 
 class SackPriceDto {
+  @IsString()
   id: string;
-  quantity: number;
+
+  @IsNumberString()
+  quantity: string;
+
   type: SackType;
 }
 
 class ProductDto {
+  @IsString()
   id: string;
 
   @IsOptional()
-  discountedPrice: number;
+  @IsNumberString()
+  discountedPrice?: string;
 
   @IsOptional()
   @IsBoolean()
@@ -42,25 +52,29 @@ class ProductDto {
 }
 
 export class CreateSaleDto {
-  @IsNumber()
-  totalAmount: number;
+  @IsNumberString()
+  totalAmount: string;
 
   @IsString()
   paymentMethod: PaymentMethod;
 
   @IsOptional()
+  @IsString()
   orderId: string;
 
   @IsNotEmpty()
   saleItem: ProductDto[];
 
   @IsOptional()
-  changeAmount: number;
+  @IsNumberString()
+  changeAmount?: string;
 
   @IsOptional()
+  @IsString()
   cashierId: string;
 
   @IsOptional()
+  @IsString()
   cashierName: string;
 
   @IsOptional()
