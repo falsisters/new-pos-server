@@ -7,6 +7,7 @@ import {
   convertObjectDatesToManilaTime,
   convertArrayDatesToManilaTime,
 } from '../utils/date.util';
+import { Decimal } from '@prisma/client/runtime/library';
 
 @Injectable()
 export class ProductService {
@@ -15,22 +16,54 @@ export class ProductService {
     private uploadService: UploadService,
   ) {}
 
+  private convertDecimalToString(
+    value: Decimal | null | undefined,
+  ): string | null {
+    if (value === null || value === undefined) return null;
+    return value.toString();
+  }
+
+  private convertDecimalFieldsToString(obj: any): any {
+    if (!obj) return obj;
+
+    const converted = { ...obj };
+
+    if (converted.price !== undefined) {
+      converted.price = this.convertDecimalToString(converted.price);
+    }
+    if (converted.profit !== undefined) {
+      converted.profit = this.convertDecimalToString(converted.profit);
+    }
+    if (converted.stock !== undefined) {
+      converted.stock = this.convertDecimalToString(converted.stock);
+    }
+
+    return converted;
+  }
+
   private formatProduct(product: any) {
     if (!product) return null;
     const formatted = {
       ...product,
       SackPrice: product.SackPrice
         ? convertArrayDatesToManilaTime(
-            product.SackPrice.map((price) => ({
-              ...price,
-              specialPrice: price.specialPrice
-                ? convertObjectDatesToManilaTime(price.specialPrice)
-                : null,
-            })),
+            product.SackPrice.map((price) => {
+              const convertedPrice = this.convertDecimalFieldsToString(price);
+              return {
+                ...convertedPrice,
+                specialPrice: price.specialPrice
+                  ? this.convertDecimalFieldsToString(
+                      convertObjectDatesToManilaTime(price.specialPrice),
+                    )
+                  : null,
+              };
+            }),
           )
         : [],
       perKiloPrice: product.perKiloPrice
-        ? convertObjectDatesToManilaTime(product.perKiloPrice)
+        ? this.convertDecimalFieldsToString(
+            convertObjectDatesToManilaTime(product.perKiloPrice),
+          )
         : null,
       cashier: product.cashier
         ? convertObjectDatesToManilaTime(product.cashier)
@@ -120,7 +153,7 @@ export class ProductService {
               create: sackPrice.map((price) => ({
                 price: price.price,
                 type: price.type,
-                stock: price.stock,
+                stock: new Decimal(price.stock),
                 ...(price.profit !== undefined &&
                   price.profit !== null && { profit: price.profit }),
                 specialPrice: price.specialPrice
@@ -142,7 +175,7 @@ export class ProductService {
           ? {
               create: {
                 price: perKiloPrice.price,
-                stock: perKiloPrice.stock,
+                stock: new Decimal(perKiloPrice.stock),
                 ...(perKiloPrice.profit !== undefined &&
                   perKiloPrice.profit !== null && {
                     profit: perKiloPrice.profit,
@@ -257,7 +290,7 @@ export class ProductService {
               data: {
                 price: price.price,
                 type: price.type,
-                stock: price.stock,
+                stock: new Decimal(price.stock),
                 ...(price.profit !== undefined &&
                   price.profit !== null && { profit: price.profit }),
               },
@@ -301,7 +334,7 @@ export class ProductService {
             const createData: any = {
               price: price.price,
               type: price.type,
-              stock: price.stock,
+              stock: new Decimal(price.stock),
               ...(price.profit !== undefined &&
                 price.profit !== null && { profit: price.profit }),
             };
@@ -333,7 +366,7 @@ export class ProductService {
         perKiloPriceOperation = {
           update: {
             price: perKiloPrice.price,
-            stock: perKiloPrice.stock,
+            stock: new Decimal(perKiloPrice.stock),
             ...(perKiloPrice.profit !== undefined &&
               perKiloPrice.profit !== null && { profit: perKiloPrice.profit }),
           },
@@ -343,7 +376,7 @@ export class ProductService {
         perKiloPriceOperation = {
           create: {
             price: perKiloPrice.price,
-            stock: perKiloPrice.stock,
+            stock: new Decimal(perKiloPrice.stock),
             ...(perKiloPrice.profit !== undefined &&
               perKiloPrice.profit !== null && { profit: perKiloPrice.profit }),
           },
