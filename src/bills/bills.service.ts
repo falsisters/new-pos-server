@@ -8,10 +8,25 @@ import {
   getManilaDateRangeForQuery,
   parseManilaDateForStorage,
 } from 'src/utils/date.util';
+import { Decimal } from '@prisma/client/runtime/library';
 
 @Injectable()
 export class BillsService {
   constructor(private prisma: PrismaService) {}
+
+  private convertDecimalToString(value: Decimal | number): string {
+    if (value instanceof Decimal) {
+      return Math.ceil(value.toNumber()).toFixed(2);
+    }
+    return Math.ceil(Number(value)).toFixed(2);
+  }
+
+  private convertDecimalToNumber(value: Decimal | number): number {
+    if (value instanceof Decimal) {
+      return Math.ceil(value.toNumber());
+    }
+    return Math.ceil(Number(value));
+  }
 
   async createOrUpdateBillCount(
     cashierId: string,
@@ -381,7 +396,10 @@ export class BillsService {
         },
       });
 
-      return cashSales.reduce((sum, sale) => sum + sale.totalAmount, 0);
+      return cashSales.reduce(
+        (sum, sale) => sum + this.convertDecimalToNumber(sale.totalAmount),
+        0,
+      );
     } else {
       const cashSales = await this.prisma.sale.findMany({
         where: {
@@ -397,7 +415,10 @@ export class BillsService {
         },
       });
 
-      return cashSales.reduce((sum, sale) => sum + sale.totalAmount, 0);
+      return cashSales.reduce(
+        (sum, sale) => sum + this.convertDecimalToNumber(sale.totalAmount),
+        0,
+      );
     }
   }
 
@@ -446,7 +467,10 @@ export class BillsService {
 
     if (!expenseList) return 0;
 
-    return expenseList.ExpenseItems.reduce((sum, item) => sum + item.amount, 0);
+    return expenseList.ExpenseItems.reduce(
+      (sum, item) => sum + this.convertDecimalToNumber(item.amount),
+      0,
+    );
   }
 
   private async formatBillCountResponse(
@@ -493,14 +517,16 @@ export class BillsService {
     // Calculate summary values
     const summaryStep1 =
       billsTotal -
-      (billCount.showBeginningBalance ? billCount.beginningBalance : 0);
+      (billCount.showBeginningBalance
+        ? this.convertDecimalToNumber(billCount.beginningBalance)
+        : 0);
     const summaryFinal = summaryStep1 + totalExpenses;
 
     return {
       id: billCount.id,
       date: convertToManilaTime(billCount.createdAt),
       updatedAt: convertToManilaTime(billCount.updatedAt),
-      beginningBalance: billCount.beginningBalance,
+      beginningBalance: this.convertDecimalToNumber(billCount.beginningBalance),
       showBeginningBalance: billCount.showBeginningBalance,
       totalCash,
       totalExpenses,

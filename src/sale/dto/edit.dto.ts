@@ -32,7 +32,7 @@ class ProductDto {
 
   @IsOptional()
   @IsNumberString()
-  discountedPrice?: string;
+  discountedPrice?: string | null;
 
   @IsOptional()
   @IsBoolean()
@@ -69,7 +69,7 @@ export class EditSaleDto {
 
   @IsOptional()
   @IsNumberString()
-  changeAmount?: string;
+  changeAmount?: string | null;
 
   @IsOptional()
   @IsString()

@@ -15,9 +15,9 @@ export class SalesCheckService {
 
   private convertDecimalToString(value: Decimal | number): string {
     if (value instanceof Decimal) {
-      return value.toFixed(2);
+      return Math.ceil(value.toNumber()).toFixed(2);
     }
-    return Number(value).toFixed(2);
+    return Math.ceil(Number(value)).toFixed(2);
   }
 
   async getSalesWithFilter(userId: string, filters: SalesCheckFilterDto) {

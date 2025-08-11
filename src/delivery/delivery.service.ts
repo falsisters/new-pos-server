@@ -6,6 +6,7 @@ import {
   convertToManilaTime,
   parseManilaDateForStorage,
 } from 'src/utils/date.util';
+import { Decimal } from '@prisma/client/runtime/library';
 
 @Injectable()
 export class DeliveryService {
@@ -174,7 +175,7 @@ export class DeliveryService {
             await tx.sackPrice.update({
               where: { id: sackPrice.id },
               data: {
-                stock: { decrement: item.quantity },
+                stock: { decrement: Number(item.quantity) },
               },
             });
           }
@@ -186,8 +187,8 @@ export class DeliveryService {
           if (perKiloPrice) {
             await this.transferService.transferDelivery(cashierId, {
               // Use cashierId here
-              name: `${item.product.name} ${item.quantity}KG`,
-              quantity: item.quantity,
+              name: `${item.product.name} ${Number(item.quantity)}KG`,
+              quantity: Number(item.quantity),
             });
           }
         }

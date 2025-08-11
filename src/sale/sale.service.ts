@@ -156,10 +156,11 @@ export class SaleService {
                   isSpecialPrice: item.isSpecialPrice,
                   // Ensure isDiscounted is always a boolean
                   isDiscounted: item.isDiscounted ?? false,
-                  // Only add discountedPrice if it's defined
-                  ...(item.discountedPrice !== undefined && {
-                    discountedPrice: new Decimal(item.discountedPrice),
-                  }),
+                  // Only add discountedPrice if it's defined AND not null
+                  ...(item.discountedPrice !== undefined &&
+                    item.discountedPrice !== null && {
+                      discountedPrice: new Decimal(item.discountedPrice),
+                    }),
                   product: {
                     connect: { id: item.id },
                   },
@@ -329,10 +330,11 @@ export class SaleService {
             isSpecialPrice: item.isSpecialPrice,
             // Ensure isDiscounted is always a boolean
             isDiscounted: item.isDiscounted ?? false,
-            // Only add discountedPrice if it's defined
-            ...(item.discountedPrice !== undefined && {
-              discountedPrice: new Decimal(item.discountedPrice),
-            }),
+            // Only add discountedPrice if it's defined AND not null
+            ...(item.discountedPrice !== undefined &&
+              item.discountedPrice !== null && {
+                discountedPrice: new Decimal(item.discountedPrice),
+              }),
             product: {
               connect: { id: item.id },
             },
