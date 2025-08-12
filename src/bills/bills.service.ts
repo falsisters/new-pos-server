@@ -372,11 +372,12 @@ export class BillsService {
     targetDateUTC: Date,
     isUser: boolean,
   ): Promise<number> {
-    // Convert the stored UTC date back to Manila time to get the correct date
+    // Use the same date range logic as other services
+    // Convert the UTC date to Manila time to get the date string, then back to UTC range
     const manilaDate = convertToManilaTime(targetDateUTC);
     const manilaDateString = manilaDate.toISOString().split('T')[0];
 
-    // Get the proper UTC range for that Manila date using consistent utility
+    // Use the exact same utility function as sales-check and sales services
     const { startOfDay, endOfDay } =
       getManilaDateRangeForQuery(manilaDateString);
 
@@ -397,9 +398,9 @@ export class BillsService {
         },
       });
 
-      // Sum exact values, then round at the end for consistency
+      // Use the exact same calculation logic as sale.service.ts
       const total = cashSales.reduce(
-        (sum, sale) => sum + this.convertDecimalToNumber(sale.totalAmount),
+        (sum, sale) => sum + Number(sale.totalAmount),
         0,
       );
       return Math.round(total);
@@ -418,9 +419,9 @@ export class BillsService {
         },
       });
 
-      // Sum exact values, then round at the end for consistency
+      // Use the exact same calculation logic as sale.service.ts
       const total = cashSales.reduce(
-        (sum, sale) => sum + this.convertDecimalToNumber(sale.totalAmount),
+        (sum, sale) => sum + Number(sale.totalAmount),
         0,
       );
       return Math.round(total);
@@ -432,11 +433,11 @@ export class BillsService {
     targetDateUTC: Date,
     isUser: boolean,
   ): Promise<number> {
-    // Convert the stored UTC date back to Manila time to get the correct date
+    // Use the same date range logic as other services
     const manilaDate = convertToManilaTime(targetDateUTC);
     const manilaDateString = manilaDate.toISOString().split('T')[0];
 
-    // Get the proper UTC range for that Manila date using consistent utility
+    // Use the exact same utility function as other services
     const { startOfDay, endOfDay } =
       getManilaDateRangeForQuery(manilaDateString);
 
@@ -473,7 +474,7 @@ export class BillsService {
     if (!expenseList) return 0;
 
     const total = expenseList.ExpenseItems.reduce(
-      (sum, item) => sum + this.convertDecimalToNumber(item.amount),
+      (sum, item) => sum + Number(item.amount),
       0,
     );
     return Math.round(total);
