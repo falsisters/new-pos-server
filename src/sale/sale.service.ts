@@ -654,4 +654,36 @@ export class SaleService {
     });
     return this.formatSales(sales);
   }
+
+  async getTotalCashForDate(cashierId: string, date?: string) {
+    const { startOfDay, endOfDay } = getManilaDateRangeForQuery(date);
+
+    const cashSales = await this.prisma.sale.findMany({
+      where: {
+        paymentMethod: 'CASH',
+        cashierId,
+        createdAt: {
+          gte: startOfDay,
+          lte: endOfDay,
+        },
+      },
+      select: {
+        totalAmount: true,
+      },
+    });
+
+    // Use exact decimal values for calculation, then round at the end
+    const total = cashSales.reduce(
+      (sum, sale) => sum + Number(sale.totalAmount),
+      0,
+    );
+
+    return {
+      totalCash: Math.round(total),
+      salesCount: cashSales.length,
+      breakdown: cashSales.map((sale) => ({
+        amount: Math.round(Number(sale.totalAmount)),
+      })),
+    };
+  }
 }

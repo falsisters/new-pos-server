@@ -217,3 +217,18 @@ export function getManilaDateRangeForQuery(dateString?: string): {
     endOfDay: endOfDayUTC,
   };
 }
+
+export function formatManilaDateTime(
+  date: Date | string | null | undefined,
+): Date | null {
+  // Alias for convertToManilaTime to maintain compatibility
+  return convertToManilaTime(date);
+}
+
+export function getConsistentDateRange(dateString?: string): {
+  startOfDay: Date;
+  endOfDay: Date;
+} {
+  // Alias for getManilaDateRangeForQuery to maintain compatibility
+  return getManilaDateRangeForQuery(dateString);
+}

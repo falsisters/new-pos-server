@@ -76,4 +76,20 @@ export class SaleController {
     const userId = req.user.id;
     return this.saleService.getSalesByCashierId(userId, cashierId);
   }
+
+  @UseGuards(JwtCashierAuthGuard)
+  @Get('total-cash')
+  async getTotalCashForDate(@Request() req, @Query('date') date?: string) {
+    const cashierId = req.user.id;
+    return this.saleService.getTotalCashForDate(cashierId, date);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('cashier/:cashierId/total-cash')
+  async getCashierTotalCashForDate(
+    @Param('cashierId') cashierId: string,
+    @Query('date') date?: string,
+  ) {
+    return this.saleService.getTotalCashForDate(cashierId, date);
+  }
 }

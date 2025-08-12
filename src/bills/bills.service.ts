@@ -23,9 +23,10 @@ export class BillsService {
 
   private convertDecimalToNumber(value: Decimal | number): number {
     if (value instanceof Decimal) {
-      return Math.ceil(value.toNumber());
+      // Use exact value for calculations, not rounded
+      return value.toNumber();
     }
-    return Math.ceil(Number(value));
+    return Number(value);
   }
 
   async createOrUpdateBillCount(
@@ -375,7 +376,7 @@ export class BillsService {
     const manilaDate = convertToManilaTime(targetDateUTC);
     const manilaDateString = manilaDate.toISOString().split('T')[0];
 
-    // Get the proper UTC range for that Manila date
+    // Get the proper UTC range for that Manila date using consistent utility
     const { startOfDay, endOfDay } =
       getManilaDateRangeForQuery(manilaDateString);
 
@@ -396,10 +397,12 @@ export class BillsService {
         },
       });
 
-      return cashSales.reduce(
+      // Sum exact values, then round at the end for consistency
+      const total = cashSales.reduce(
         (sum, sale) => sum + this.convertDecimalToNumber(sale.totalAmount),
         0,
       );
+      return Math.round(total);
     } else {
       const cashSales = await this.prisma.sale.findMany({
         where: {
@@ -415,10 +418,12 @@ export class BillsService {
         },
       });
 
-      return cashSales.reduce(
+      // Sum exact values, then round at the end for consistency
+      const total = cashSales.reduce(
         (sum, sale) => sum + this.convertDecimalToNumber(sale.totalAmount),
         0,
       );
+      return Math.round(total);
     }
   }
 
@@ -431,7 +436,7 @@ export class BillsService {
     const manilaDate = convertToManilaTime(targetDateUTC);
     const manilaDateString = manilaDate.toISOString().split('T')[0];
 
-    // Get the proper UTC range for that Manila date
+    // Get the proper UTC range for that Manila date using consistent utility
     const { startOfDay, endOfDay } =
       getManilaDateRangeForQuery(manilaDateString);
 
@@ -467,10 +472,11 @@ export class BillsService {
 
     if (!expenseList) return 0;
 
-    return expenseList.ExpenseItems.reduce(
+    const total = expenseList.ExpenseItems.reduce(
       (sum, item) => sum + this.convertDecimalToNumber(item.amount),
       0,
     );
+    return Math.round(total);
   }
 
   private async formatBillCountResponse(

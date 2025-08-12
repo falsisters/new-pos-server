@@ -165,7 +165,7 @@ export class SalesCheckService {
           discountedPrice: item.isDiscounted
             ? this.convertDecimalToString(item.discountedPrice)
             : null,
-          saleDate: convertToManilaTime(sale.createdAt), // Convert to Manila time
+          saleDate: convertToManilaTime(sale.createdAt), // Consistent conversion
         };
       });
     });
@@ -379,7 +379,7 @@ export class SalesCheckService {
           discountedPrice: item.isDiscounted
             ? this.convertDecimalToString(item.discountedPrice)
             : null,
-          saleDate: convertToManilaTime(sale.createdAt), // Convert to Manila time
+          saleDate: convertToManilaTime(sale.createdAt), // Consistent conversion
         };
       });
     });
@@ -488,7 +488,7 @@ export class SalesCheckService {
       },
     });
 
-    // Filter and map sale items
+    // Filter and map sale items with consistent date conversion
     const allSaleItems = sales.flatMap((sale) => {
       return sale.SaleItem.filter((item) => {
         // Filter by product name if specified
@@ -570,7 +570,7 @@ export class SalesCheckService {
         }
 
         // Create a formatted sale item with time included
-        const saleDateTime = convertToManilaTime(sale.createdAt); // Convert to Manila time
+        const saleDateTime = convertToManilaTime(sale.createdAt); // Consistent conversion
         const formattedTime = `${saleDateTime.getHours().toString().padStart(2, '0')}:${saleDateTime.getMinutes().toString().padStart(2, '0')}`;
 
         return {
@@ -586,7 +586,7 @@ export class SalesCheckService {
           totalAmount: this.convertDecimalToString(totalAmount),
           paymentMethod: sale.paymentMethod,
           isSpecialPrice: item.isSpecialPrice,
-          isDiscounted: item.isDiscounted, // Add this field
+          isDiscounted: item.isDiscounted,
           discountedPrice: item.isDiscounted
             ? this.convertDecimalToString(item.discountedPrice)
             : null,
@@ -685,7 +685,7 @@ export class SalesCheckService {
       },
     });
 
-    // Filter and map sale items
+    // Filter and map sale items with consistent date conversion
     const allSaleItems = sales.flatMap((sale) => {
       return sale.SaleItem.filter((item) => {
         // Filter by product name if specified
@@ -767,7 +767,7 @@ export class SalesCheckService {
         }
 
         // Create a formatted sale item with time included
-        const saleDateTime = convertToManilaTime(sale.createdAt); // Convert to Manila time
+        const saleDateTime = convertToManilaTime(sale.createdAt); // Consistent conversion
         const formattedTime = `${saleDateTime.getHours().toString().padStart(2, '0')}:${saleDateTime.getMinutes().toString().padStart(2, '0')}`;
 
         return {
@@ -783,7 +783,7 @@ export class SalesCheckService {
           totalAmount: this.convertDecimalToString(totalAmount),
           paymentMethod: sale.paymentMethod,
           isSpecialPrice: item.isSpecialPrice,
-          isDiscounted: item.isDiscounted, // Add this field
+          isDiscounted: item.isDiscounted,
           discountedPrice: item.isDiscounted
             ? this.convertDecimalToString(item.discountedPrice)
             : null,
