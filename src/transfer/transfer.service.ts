@@ -17,11 +17,21 @@ export class TransferService {
 
   private formatTransfer(transfer: any) {
     if (!transfer) return null;
-    return convertObjectDatesToManilaTime(transfer);
+    const formatted = convertObjectDatesToManilaTime(transfer);
+    // Ensure quantity is returned as a number
+    if (formatted.quantity !== undefined) {
+      formatted.quantity = Number(formatted.quantity);
+    }
+    return formatted;
   }
 
   private formatTransfers(transfers: any[]) {
-    return convertArrayDatesToManilaTime(transfers);
+    const formatted = convertArrayDatesToManilaTime(transfers);
+    // Ensure quantities are returned as numbers
+    return formatted.map((transfer) => ({
+      ...transfer,
+      quantity: Number(transfer.quantity),
+    }));
   }
 
   private parseSackType(type: SackType) {
