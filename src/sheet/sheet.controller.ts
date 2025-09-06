@@ -400,12 +400,24 @@ export class SheetController {
   @UseGuards(JwtAuthGuard)
   @Get('user/one-date')
   async getUserSheetByOneDate(@Request() req) {
-    const userId = req.user.id;
-    const { date: dateStr } = req.query;
+    try {
+      const userId = req.user.id;
+      const { date: dateStr } = req.query;
 
-    // Handle null/undefined values for date
-    const date = dateStr ? new Date(dateStr as string) : undefined;
+      // Handle null/undefined values for date
+      const date = dateStr ? new Date(dateStr as string) : undefined;
 
-    return this.sheetService.getSheetsForUserByOneDate(userId, date);
+      const result = await this.sheetService.getSheetsForUserByOneDate(
+        userId,
+        date,
+      );
+
+      // Ensure we always return a valid response
+      return result || [];
+    } catch (error) {
+      console.error('Error in getUserSheetByOneDate:', error);
+      // Return empty array instead of letting the error bubble up
+      return [];
+    }
   }
 }

@@ -648,6 +648,8 @@ export class SheetService {
         });
       }
     }
-    return resultSheets;
+
+    // Ensure we always return a valid array, even if empty
+    return resultSheets.length > 0 ? resultSheets : [];
   }
 }
