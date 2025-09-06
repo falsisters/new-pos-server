@@ -199,6 +199,7 @@ export class SheetService {
     sheetId: string,
     rowIndex: number,
     description: string = '',
+    date?: Date,
   ) {
     // Get the sheet to determine the number of columns
     const sheet = await this.prisma.sheet.findUnique({
@@ -206,13 +207,21 @@ export class SheetService {
       select: { columns: true },
     });
 
+    // Prepare creation data with optional date
+    const createData: any = {
+      rowIndex,
+      isItemRow: false,
+      sheet: { connect: { id: sheetId } },
+    };
+
+    // Set createdAt if date is provided
+    if (date) {
+      createData.createdAt = date;
+    }
+
     // Create a calculation row (totals, etc.)
     const row = await this.prisma.row.create({
-      data: {
-        rowIndex,
-        isItemRow: false,
-        sheet: { connect: { id: sheetId } },
-      },
+      data: createData,
     });
 
     // Create cells for all columns
@@ -569,5 +578,76 @@ export class SheetService {
         });
       }
     });
+  }
+
+  async getSheetsByOneDate(cashierId: string, date?: Date) {
+    // Use standardized date range query utility for single date
+    let startOfDay: Date, endOfDay: Date;
+
+    if (date) {
+      // Convert provided date to proper query range
+      const dateRange = getManilaDateRangeForQuery(
+        date.toISOString().split('T')[0],
+      );
+      startOfDay = dateRange.startOfDay;
+      endOfDay = dateRange.endOfDay;
+    } else {
+      // Default to current day
+      const currentRange = getManilaDateRangeForQuery();
+      startOfDay = currentRange.startOfDay;
+      endOfDay = currentRange.endOfDay;
+    }
+
+    // Find the kahon for this cashier
+    const kahon = await this.prisma.kahon.findFirst({
+      where: { cashierId, name: 'Kahon' },
+    });
+
+    if (!kahon) {
+      return null;
+    }
+
+    // Return sheets with rows filtered by date range
+    const result = await this.prisma.sheet.findFirst({
+      where: { kahonId: kahon.id },
+      include: {
+        Rows: {
+          where: {
+            createdAt: {
+              gte: startOfDay,
+              lte: endOfDay,
+            },
+          },
+          orderBy: { rowIndex: 'asc' },
+          include: {
+            Cells: {
+              orderBy: { columnIndex: 'asc' },
+            },
+          },
+        },
+      },
+    });
+
+    return this.formatSheet(result);
+  }
+
+  async getSheetsForUserByOneDate(userId: string, date?: Date) {
+    const cashiers = await this.prisma.cashier.findMany({
+      where: { userId },
+      select: { id: true, name: true },
+    });
+
+    const resultSheets = [];
+    for (const cashier of cashiers) {
+      const sheet = await this.getSheetsByOneDate(cashier.id, date);
+      if (sheet) {
+        resultSheets.push({
+          cashierName: cashier.name,
+          cashierId: cashier.id,
+          sheet,
+        });
+      }
+    }
+    return resultSheets;
   }
 }

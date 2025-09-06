@@ -318,6 +318,7 @@ export class InventoryService {
     rowIndex?: number,
     description: string = '',
     inventoryId?: string,
+    date?: Date,
   ) {
     let targetSheetId = sheetId;
 
@@ -362,13 +363,21 @@ export class InventoryService {
       throw new Error('Inventory sheet not found');
     }
 
+    // Prepare creation data with optional date
+    const createData: any = {
+      rowIndex,
+      isItemRow: false,
+      inventorySheet: { connect: { id: targetSheetId } },
+    };
+
+    // Set createdAt if date is provided
+    if (date) {
+      createData.createdAt = date;
+    }
+
     // Create a calculation row (totals, etc.)
     const row = await this.prisma.inventoryRow.create({
-      data: {
-        rowIndex,
-        isItemRow: false,
-        inventorySheet: { connect: { id: targetSheetId } },
-      },
+      data: createData,
     });
 
     // Create cells for all columns in the sheet
@@ -613,6 +622,168 @@ export class InventoryService {
         startDate,
         endDate,
       );
+      if (sheet) {
+        resultSheets.push({
+          cashierName: cashier.name,
+          cashierId: cashier.id,
+          sheet,
+        });
+      }
+    }
+    return resultSheets;
+  }
+
+  async getExpensesSheetsByOneDate(cashierId: string, date?: Date) {
+    // Use standardized date range query utility for single date
+    let startOfDay: Date, endOfDay: Date;
+
+    if (date) {
+      // Convert provided date to proper query range
+      const dateRange = getManilaDateRangeForQuery(
+        date.toISOString().split('T')[0],
+      );
+      startOfDay = dateRange.startOfDay;
+      endOfDay = dateRange.endOfDay;
+    } else {
+      // Default to current day
+      const currentRange = getManilaDateRangeForQuery();
+      startOfDay = currentRange.startOfDay;
+      endOfDay = currentRange.endOfDay;
+    }
+
+    let inventory = await this.prisma.inventory.findFirst({
+      where: { cashierId, name: 'Expenses' },
+    });
+
+    if (!inventory) {
+      inventory = await this.prisma.inventory.create({
+        data: {
+          cashierId,
+          name: 'Expenses',
+          InventorySheet: {
+            create: {
+              name: 'Expenses Sheet',
+              columns: 20,
+            },
+          },
+        },
+      });
+    }
+
+    const result = await this.prisma.inventorySheet.findFirst({
+      where: { inventoryId: inventory.id },
+      include: {
+        Rows: {
+          where: {
+            createdAt: {
+              gte: startOfDay,
+              lte: endOfDay,
+            },
+          },
+          orderBy: { rowIndex: 'asc' },
+          include: {
+            Cells: {
+              orderBy: { columnIndex: 'asc' },
+            },
+          },
+        },
+      },
+    });
+
+    return this.formatInventorySheet(result);
+  }
+
+  async getInventorySheetsByOneDate(cashierId: string, date?: Date) {
+    // Use standardized date range query utility for single date
+    let startOfDay: Date, endOfDay: Date;
+
+    if (date) {
+      // Convert provided date to proper query range
+      const dateRange = getManilaDateRangeForQuery(
+        date.toISOString().split('T')[0],
+      );
+      startOfDay = dateRange.startOfDay;
+      endOfDay = dateRange.endOfDay;
+    } else {
+      // Default to current day
+      const currentRange = getManilaDateRangeForQuery();
+      startOfDay = currentRange.startOfDay;
+      endOfDay = currentRange.endOfDay;
+    }
+
+    // Find the inventory for this cashier
+    let inventory = await this.prisma.inventory.findFirst({
+      where: { cashierId, name: 'Inventory' },
+    });
+
+    if (!inventory) {
+      // Create a new inventory if it doesn't exist
+      inventory = await this.prisma.inventory.create({
+        data: {
+          cashierId,
+          name: 'Inventory',
+          InventorySheet: {
+            create: {
+              name: 'Inventory Sheet',
+              columns: 20,
+            },
+          },
+        },
+      });
+    }
+
+    const result = await this.prisma.inventorySheet.findFirst({
+      where: { inventoryId: inventory.id },
+      include: {
+        Rows: {
+          where: {
+            createdAt: {
+              gte: startOfDay,
+              lte: endOfDay,
+            },
+          },
+          orderBy: { rowIndex: 'asc' },
+          include: {
+            Cells: {
+              orderBy: { columnIndex: 'asc' },
+            },
+          },
+        },
+      },
+    });
+
+    return this.formatInventorySheet(result);
+  }
+
+  async getExpensesSheetsForUserByOneDate(userId: string, date?: Date) {
+    const cashiers = await this.prisma.cashier.findMany({
+      where: { userId },
+      select: { id: true, name: true },
+    });
+
+    const resultSheets = [];
+    for (const cashier of cashiers) {
+      const sheet = await this.getExpensesSheetsByOneDate(cashier.id, date);
+      if (sheet) {
+        resultSheets.push({
+          cashierName: cashier.name,
+          cashierId: cashier.id,
+          sheet,
+        });
+      }
+    }
+    return resultSheets;
+  }
+
+  async getInventorySheetsForUserByOneDate(userId: string, date?: Date) {
+    const cashiers = await this.prisma.cashier.findMany({
+      where: { userId },
+      select: { id: true, name: true },
+    });
+
+    const resultSheets = [];
+    for (const cashier of cashiers) {
+      const sheet = await this.getInventorySheetsByOneDate(cashier.id, date);
       if (sheet) {
         resultSheets.push({
           cashierName: cashier.name,
