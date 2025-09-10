@@ -2,12 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateShiftDto } from './dto/create.dto';
 import { EditShiftDto } from './dto/edit.dto';
-import {
-  formatObjectDatesForClient,
-  // Legacy functions for backward compatibility
-  convertObjectDatesToManilaTime,
-  parseManilaDateForStorage,
-} from '../utils/date.util';
+import { formatDateForClient } from '../utils/date.util';
 
 @Injectable()
 export class ShiftService {
@@ -17,24 +12,27 @@ export class ShiftService {
     if (!shift) return null;
     const formatted = {
       ...shift,
+      createdAt: formatDateForClient(shift.createdAt),
+      updatedAt: formatDateForClient(shift.updatedAt),
+      endTime: shift.endTime ? formatDateForClient(shift.endTime) : null,
       employees: shift.employee
-        ? shift.employee.map((e) => convertObjectDatesToManilaTime(e.employee))
+        ? shift.employee.map((e) => ({
+            ...e.employee,
+            createdAt: formatDateForClient(e.employee.createdAt),
+            updatedAt: formatDateForClient(e.employee.updatedAt),
+          }))
         : shift.employees,
       employee: undefined,
     };
-    return convertObjectDatesToManilaTime(formatted);
+    return formatted;
   }
 
   async createShift(cashierId: string, createShiftDto: CreateShiftDto) {
     const { employees } = createShiftDto;
     console.log(createShiftDto);
 
-    // Store shift creation time in UTC
-    const currentTimeUTC = parseManilaDateForStorage();
-
     const newShift = await this.prisma.shift.create({
       data: {
-        createdAt: currentTimeUTC,
         cashier: {
           connect: {
             id: cashierId,
@@ -59,15 +57,12 @@ export class ShiftService {
   }
 
   async endShift(id: string) {
-    // Store end time in UTC
-    const endTimeUTC = parseManilaDateForStorage();
-
     const result = await this.prisma.shift.update({
       where: {
         id,
       },
       data: {
-        endTime: endTimeUTC,
+        endTime: new Date(),
       },
     });
     return this.formatShift(result);

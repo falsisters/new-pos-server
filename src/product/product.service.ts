@@ -3,13 +3,7 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { UploadService } from 'src/upload/upload.service';
 import { ProductFormData } from './types/productFormData.type';
 import { EditProductFormData } from './types/editProductFormData.type';
-import {
-  formatObjectDatesForClient,
-  formatArrayDatesForClient,
-  // Legacy functions for backward compatibility
-  convertObjectDatesToManilaTime,
-  convertArrayDatesToManilaTime,
-} from '../utils/date.util';
+import { formatDateForClient } from '../utils/date.util';
 import { Decimal } from '@prisma/client/runtime/library';
 
 @Injectable()
@@ -46,33 +40,42 @@ export class ProductService {
 
   private formatProduct(product: any) {
     if (!product) return null;
+
+    const formatObjectDates = (obj: any) => {
+      if (!obj) return obj;
+      const formatted = { ...obj };
+      if (formatted.createdAt)
+        formatted.createdAt = formatDateForClient(formatted.createdAt);
+      if (formatted.updatedAt)
+        formatted.updatedAt = formatDateForClient(formatted.updatedAt);
+      return formatted;
+    };
+
     const formatted = {
       ...product,
+      createdAt: formatDateForClient(product.createdAt),
+      updatedAt: formatDateForClient(product.updatedAt),
       SackPrice: product.SackPrice
-        ? convertArrayDatesToManilaTime(
-            product.SackPrice.map((price) => {
-              const convertedPrice = this.convertDecimalFieldsToString(price);
-              return {
-                ...convertedPrice,
-                specialPrice: price.specialPrice
-                  ? this.convertDecimalFieldsToString(
-                      convertObjectDatesToManilaTime(price.specialPrice),
-                    )
-                  : null,
-              };
-            }),
-          )
+        ? product.SackPrice.map((price) => {
+            const convertedPrice = this.convertDecimalFieldsToString(price);
+            return {
+              ...formatObjectDates(convertedPrice),
+              specialPrice: price.specialPrice
+                ? this.convertDecimalFieldsToString(
+                    formatObjectDates(price.specialPrice),
+                  )
+                : null,
+            };
+          })
         : [],
       perKiloPrice: product.perKiloPrice
         ? this.convertDecimalFieldsToString(
-            convertObjectDatesToManilaTime(product.perKiloPrice),
+            formatObjectDates(product.perKiloPrice),
           )
         : null,
-      cashier: product.cashier
-        ? convertObjectDatesToManilaTime(product.cashier)
-        : null,
+      cashier: product.cashier ? formatObjectDates(product.cashier) : null,
     };
-    return convertObjectDatesToManilaTime(formatted);
+    return formatted;
   }
 
   private formatProducts(products: any[]) {

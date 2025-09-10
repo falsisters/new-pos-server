@@ -5,9 +5,6 @@ import { PaymentMethod, Prisma, SackType } from '@prisma/client';
 import {
   formatDateForClient,
   createManilaDateFilter,
-  // Legacy functions for backward compatibility
-  convertToManilaTime,
-  getManilaDateRangeForQuery,
 } from '../utils/date.util';
 
 interface ProfitSummary {
@@ -51,8 +48,8 @@ export class ProfitService {
   }
 
   async getProfitsWithFilter(userId: string, filters: ProfitFilterDto) {
-    // Use consistent date range conversion
-    const { startOfDay, endOfDay } = getManilaDateRangeForQuery(filters.date);
+    // Use timezone-aware date filtering
+    const dateFilter = createManilaDateFilter(filters.date);
 
     // Build the query conditions
     const whereConditions: any = {
@@ -62,12 +59,7 @@ export class ProfitService {
             userId,
           },
         },
-        {
-          createdAt: {
-            gte: startOfDay,
-            lte: endOfDay,
-          },
-        },
+        dateFilter,
       ],
     };
 
@@ -184,7 +176,7 @@ export class ProfitService {
           formattedPriceType,
           paymentMethod: sale.paymentMethod,
           isSpecialPrice: item.isSpecialPrice,
-          saleDate: convertToManilaTime(sale.createdAt), // Convert to Manila time
+          saleDate: formatDateForClient(sale.createdAt),
           isAsin: item.product?.name.toLowerCase().includes('asin') || false,
         };
       });
@@ -282,8 +274,8 @@ export class ProfitService {
     cashierId: string,
     filters: ProfitFilterDto,
   ) {
-    // Use consistent date range conversion
-    const { startOfDay, endOfDay } = getManilaDateRangeForQuery(filters.date);
+    // Use timezone-aware date filtering
+    const dateFilter = createManilaDateFilter(filters.date);
 
     // Build the query conditions for specific cashier
     const whereConditions: any = {
@@ -291,12 +283,7 @@ export class ProfitService {
         {
           cashierId,
         },
-        {
-          createdAt: {
-            gte: startOfDay,
-            lte: endOfDay,
-          },
-        },
+        dateFilter,
       ],
     };
 
@@ -413,7 +400,7 @@ export class ProfitService {
           formattedPriceType,
           paymentMethod: sale.paymentMethod,
           isSpecialPrice: item.isSpecialPrice,
-          saleDate: convertToManilaTime(sale.createdAt),
+          saleDate: formatDateForClient(sale.createdAt),
           isAsin: item.product?.name.toLowerCase().includes('asin') || false,
         };
       });
@@ -508,8 +495,6 @@ export class ProfitService {
 
   // New method for getting all cashier profits under a user
   async getAllCashierProfitsByDate(userId: string, date?: string) {
-    const { startOfDay, endOfDay } = getManilaDateRangeForQuery(date);
-
     // Get all cashiers under this user
     const cashiers = await this.prisma.cashier.findMany({
       where: { userId },

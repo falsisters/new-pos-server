@@ -517,11 +517,15 @@ export class BillsService {
     targetDateUTC: Date,
     isUser: boolean,
   ): Promise<number> {
-    // Use the same date range logic as other services
+    // The targetDateUTC is the billCount.createdAt. Since billCount was created with a specific date
+    // (e.g., "2025-09-10T00:00:00+08:00" which becomes "2025-09-09T16:00:00.000Z" in UTC storage),
+    // we need to convert it back to Manila time to get the original intended date
     const manilaDate = formatDateForClient(targetDateUTC);
-    const manilaDateString = manilaDate.toISOString().split('T')[0];
 
-    // Use timezone-aware date filtering
+    // Extract the date string in Manila timezone
+    // Using the same approach as formatDateForClient but getting just the date part
+    const manilaDateString = `${manilaDate.getFullYear()}-${(manilaDate.getMonth() + 1).toString().padStart(2, '0')}-${manilaDate.getDate().toString().padStart(2, '0')}`;
+
     const dateFilter = createManilaDateFilter(manilaDateString);
 
     let expenseList;

@@ -713,7 +713,6 @@ export class SalesCheckService {
   // New method for cashier-specific total sales using cashier ID
   async getCashierTotalSales(cashierId: string, filters: TotalSalesFilterDto) {
     // Use timezone-aware date filtering
-    console.log(filters.date);
     const dateFilter = filters.date ? createManilaDateFilter(filters.date) : {};
 
     // Build the query conditions for specific cashier
@@ -727,8 +726,6 @@ export class SalesCheckService {
           : []),
       ],
     };
-
-    console.log(dateFilter);
 
     // Get all sales for the day
     const sales = await this.prisma.sale.findMany({

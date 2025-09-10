@@ -6,13 +6,8 @@ import { OrderService } from 'src/order/order.service';
 import { RecentSalesFilterDto } from './dto/recent-sales.dto';
 import { Decimal } from '@prisma/client/runtime/library';
 import {
-  formatObjectDatesForClient,
-  formatArrayDatesForClient,
+  formatDateForClient,
   createManilaDateFilter,
-  // Legacy functions for backward compatibility
-  convertObjectDatesToManilaTime,
-  convertArrayDatesToManilaTime,
-  getManilaDateRangeForQuery,
 } from '../utils/date.util';
 
 @Injectable()
@@ -71,31 +66,42 @@ export class SaleService {
 
     const formatted = {
       ...sale,
+      createdAt: formatDateForClient(sale.createdAt),
+      updatedAt: formatDateForClient(sale.updatedAt),
       SaleItem: sale.SaleItem
-        ? convertArrayDatesToManilaTime(
-            sale.SaleItem.map((item) => {
-              const convertedItem = this.convertDecimalFieldsToString(item);
-              return {
-                ...convertedItem,
-                product: item.product
-                  ? this.convertDecimalFieldsToString(
-                      convertObjectDatesToManilaTime(item.product),
-                    )
-                  : null,
-                perKiloPrice: item.perKiloPrice
-                  ? this.convertDecimalFieldsToString(item.perKiloPrice)
-                  : null,
-                SackPrice: item.SackPrice
-                  ? this.convertDecimalFieldsToString(item.SackPrice)
-                  : null,
-              };
-            }),
-          )
+        ? sale.SaleItem.map((item) => {
+            const convertedItem = this.convertDecimalFieldsToString(item);
+            return {
+              ...convertedItem,
+              createdAt: formatDateForClient(item.createdAt),
+              updatedAt: formatDateForClient(item.updatedAt),
+              product: item.product
+                ? {
+                    ...this.convertDecimalFieldsToString(item.product),
+                    createdAt: formatDateForClient(item.product.createdAt),
+                    updatedAt: formatDateForClient(item.product.updatedAt),
+                  }
+                : null,
+              perKiloPrice: item.perKiloPrice
+                ? {
+                    ...this.convertDecimalFieldsToString(item.perKiloPrice),
+                    createdAt: formatDateForClient(item.perKiloPrice.createdAt),
+                    updatedAt: formatDateForClient(item.perKiloPrice.updatedAt),
+                  }
+                : null,
+              SackPrice: item.SackPrice
+                ? {
+                    ...this.convertDecimalFieldsToString(item.SackPrice),
+                    createdAt: formatDateForClient(item.SackPrice.createdAt),
+                    updatedAt: formatDateForClient(item.SackPrice.updatedAt),
+                  }
+                : null,
+            };
+          })
         : [],
     };
 
-    const convertedFormatted = this.convertDecimalFieldsToString(formatted);
-    return convertObjectDatesToManilaTime(convertedFormatted);
+    return this.convertDecimalFieldsToString(formatted);
   }
 
   private formatSales(sales: any[]) {
@@ -529,8 +535,8 @@ export class SaleService {
 
   async getSalesByDate(cashierId: string, filters: RecentSalesFilterDto) {
     try {
-      // Use standardized date range query utility
-      const { startOfDay, endOfDay } = getManilaDateRangeForQuery(filters.date);
+      // Use timezone-aware date filtering
+      const dateFilter = createManilaDateFilter(filters.date);
 
       const sales = await this.prisma.sale.findMany({
         where: {
@@ -539,10 +545,7 @@ export class SaleService {
               cashierId,
             },
             {
-              createdAt: {
-                gte: startOfDay,
-                lte: endOfDay,
-              },
+              createdAt: dateFilter,
             },
           ],
         },
@@ -670,16 +673,14 @@ export class SaleService {
   }
 
   async getTotalCashForDate(cashierId: string, date?: string) {
-    const { startOfDay, endOfDay } = getManilaDateRangeForQuery(date);
+    // Use timezone-aware date filtering
+    const dateFilter = createManilaDateFilter(date);
 
     const cashSales = await this.prisma.sale.findMany({
       where: {
         paymentMethod: 'CASH',
         cashierId,
-        createdAt: {
-          gte: startOfDay,
-          lte: endOfDay,
-        },
+        createdAt: dateFilter,
       },
       select: {
         totalAmount: true,

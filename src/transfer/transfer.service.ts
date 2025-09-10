@@ -6,13 +6,8 @@ import { TransferProductDto } from './dto/transferProduct.dto';
 import { EditTransferDto } from './dto/editTransfer.dto';
 import { TransferFilterDto } from './dto/transferWithFilter.dto';
 import {
-  formatObjectDatesForClient,
-  formatArrayDatesForClient,
+  formatDateForClient,
   createManilaDateFilter,
-  // Legacy functions for backward compatibility
-  convertObjectDatesToManilaTime,
-  convertArrayDatesToManilaTime,
-  getManilaDateRangeForQuery,
 } from '../utils/date.util';
 
 @Injectable()
@@ -21,7 +16,11 @@ export class TransferService {
 
   private formatTransfer(transfer: any) {
     if (!transfer) return null;
-    const formatted = convertObjectDatesToManilaTime(transfer);
+    const formatted = {
+      ...transfer,
+      createdAt: formatDateForClient(transfer.createdAt),
+      updatedAt: formatDateForClient(transfer.updatedAt),
+    };
     // Ensure quantity is returned as a number
     if (formatted.quantity !== undefined) {
       formatted.quantity = Number(formatted.quantity);
@@ -30,10 +29,11 @@ export class TransferService {
   }
 
   private formatTransfers(transfers: any[]) {
-    const formatted = convertArrayDatesToManilaTime(transfers);
     // Ensure quantities are returned as numbers
-    return formatted.map((transfer) => ({
+    return transfers.map((transfer) => ({
       ...transfer,
+      createdAt: formatDateForClient(transfer.createdAt),
+      updatedAt: formatDateForClient(transfer.updatedAt),
       quantity: Number(transfer.quantity),
     }));
   }
@@ -221,7 +221,11 @@ export class TransferService {
     });
 
     // Format the result to convert dates to Manila time
-    return convertObjectDatesToManilaTime(result);
+    return {
+      ...result,
+      createdAt: formatDateForClient(result.createdAt),
+      updatedAt: formatDateForClient(result.updatedAt),
+    };
   }
 
   async transferProduct(
@@ -439,7 +443,11 @@ export class TransferService {
       });
 
       // Format the result to convert dates to Manila time
-      return convertObjectDatesToManilaTime(result);
+      return {
+        ...result,
+        createdAt: formatDateForClient(result.createdAt),
+        updatedAt: formatDateForClient(result.updatedAt),
+      };
     } else {
       // Non-KAHON transfer logic remains unchanged
       const result = await this.prisma.$transaction(async (tx) => {
@@ -498,8 +506,8 @@ export class TransferService {
   }
 
   async getAllTransfersWithFilter(userId: string, filters: TransferFilterDto) {
-    // Use standardized date range query utility
-    const { startOfDay, endOfDay } = getManilaDateRangeForQuery(filters.date);
+    // Use timezone-aware date filtering
+    const dateFilter = createManilaDateFilter(filters.date);
 
     const cashiers = await this.prisma.cashier.findMany({
       where: {
@@ -521,10 +529,7 @@ export class TransferService {
             },
           },
           {
-            createdAt: {
-              gte: startOfDay,
-              lte: endOfDay,
-            },
+            createdAt: dateFilter,
           },
         ],
       },
@@ -567,8 +572,8 @@ export class TransferService {
     cashierId: string,
     filters: TransferFilterDto,
   ) {
-    // Use standardized date range query utility
-    const { startOfDay, endOfDay } = getManilaDateRangeForQuery(filters.date);
+    // Use timezone-aware date filtering
+    const dateFilter = createManilaDateFilter(filters.date);
 
     const transfers = await this.prisma.transfer.findMany({
       where: {
@@ -577,10 +582,7 @@ export class TransferService {
             cashierId,
           },
           {
-            createdAt: {
-              gte: startOfDay,
-              lte: endOfDay,
-            },
+            createdAt: dateFilter,
           },
         ],
       },

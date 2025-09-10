@@ -2,13 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { EditKahonItemsDto } from './dto/editKahonItemsDto';
 import {
-  formatObjectDatesForClient,
-  formatArrayDatesForClient,
+  formatDateForClient,
   createManilaDateFilter,
-  // Legacy functions for backward compatibility
-  convertObjectDatesToManilaTime,
-  convertArrayDatesToManilaTime,
-  getManilaDateRangeForQuery,
 } from '../utils/date.util';
 
 @Injectable()
@@ -17,54 +12,67 @@ export class KahonService {
 
   private formatKahon(kahon: any) {
     if (!kahon) return null;
-    const formatted = {
+    return {
       ...kahon,
+      createdAt: formatDateForClient(kahon.createdAt),
+      updatedAt: formatDateForClient(kahon.updatedAt),
       cashier: kahon.cashier
-        ? convertObjectDatesToManilaTime(kahon.cashier)
+        ? {
+            ...kahon.cashier,
+            createdAt: formatDateForClient(kahon.cashier.createdAt),
+            updatedAt: formatDateForClient(kahon.cashier.updatedAt),
+          }
         : null,
       KahonItems: kahon.KahonItems
-        ? convertArrayDatesToManilaTime(kahon.KahonItems)
+        ? kahon.KahonItems.map((item) => ({
+            ...item,
+            createdAt: formatDateForClient(item.createdAt),
+            updatedAt: formatDateForClient(item.updatedAt),
+          }))
         : [],
       Sheets: kahon.Sheets
-        ? convertArrayDatesToManilaTime(
-            kahon.Sheets.map((sheet) => ({
-              ...sheet,
-              Rows: sheet.Rows
-                ? convertArrayDatesToManilaTime(
-                    sheet.Rows.map((row) => ({
-                      ...row,
-                      Cells: row.Cells
-                        ? convertArrayDatesToManilaTime(row.Cells)
-                        : [],
-                    })),
-                  )
-                : [],
-            })),
-          )
+        ? kahon.Sheets.map((sheet) => ({
+            ...sheet,
+            createdAt: formatDateForClient(sheet.createdAt),
+            updatedAt: formatDateForClient(sheet.updatedAt),
+            Rows: sheet.Rows
+              ? sheet.Rows.map((row) => ({
+                  ...row,
+                  createdAt: formatDateForClient(row.createdAt),
+                  updatedAt: formatDateForClient(row.updatedAt),
+                  Cells: row.Cells
+                    ? row.Cells.map((cell) => ({
+                        ...cell,
+                        createdAt: formatDateForClient(cell.createdAt),
+                        updatedAt: formatDateForClient(cell.updatedAt),
+                      }))
+                    : [],
+                }))
+              : [],
+          }))
         : [],
     };
-    return convertObjectDatesToManilaTime(formatted);
   }
 
   async getKahonByCashier(cashierId: string, startDate?: Date, endDate?: Date) {
-    // Use standardized date range query utility
-    let startOfDay: Date, endOfDay: Date;
+    // Use createManilaDateFilter for date filtering
+    let dateFilter: any = {};
 
     if (startDate && endDate) {
-      // Convert provided dates to proper query range
-      const startRange = getManilaDateRangeForQuery(
-        startDate.toISOString().split('T')[0],
-      );
-      const endRange = getManilaDateRangeForQuery(
-        endDate.toISOString().split('T')[0],
-      );
-      startOfDay = startRange.startOfDay;
-      endOfDay = endRange.endOfDay;
+      // Create date range filter for multiple days
+      const startDateStr = startDate.toISOString().split('T')[0];
+      const endDateStr = endDate.toISOString().split('T')[0];
+
+      const startFilter = createManilaDateFilter(startDateStr);
+      const endFilter = createManilaDateFilter(endDateStr);
+
+      dateFilter = {
+        gte: startFilter.gte,
+        lte: endFilter.lte,
+      };
     } else {
       // Default to current day
-      const currentRange = getManilaDateRangeForQuery();
-      startOfDay = currentRange.startOfDay;
-      endOfDay = currentRange.endOfDay;
+      dateFilter = createManilaDateFilter();
     }
 
     // Assuming a cashier has one primary "Kahon" named 'Kahon'
@@ -83,10 +91,7 @@ export class KahonService {
         },
         KahonItems: {
           where: {
-            createdAt: {
-              gte: startOfDay,
-              lte: endOfDay,
-            },
+            createdAt: dateFilter,
           },
         },
         Sheets: {
@@ -109,24 +114,24 @@ export class KahonService {
   }
 
   async getKahonsByUserId(userId: string, startDate?: Date, endDate?: Date) {
-    // Use standardized date range query utility
-    let startOfDay: Date, endOfDay: Date;
+    // Use createManilaDateFilter for date filtering
+    let dateFilter: any = {};
 
     if (startDate && endDate) {
-      // Convert provided dates to proper query range
-      const startRange = getManilaDateRangeForQuery(
-        startDate.toISOString().split('T')[0],
-      );
-      const endRange = getManilaDateRangeForQuery(
-        endDate.toISOString().split('T')[0],
-      );
-      startOfDay = startRange.startOfDay;
-      endOfDay = endRange.endOfDay;
+      // Create date range filter for multiple days
+      const startDateStr = startDate.toISOString().split('T')[0];
+      const endDateStr = endDate.toISOString().split('T')[0];
+
+      const startFilter = createManilaDateFilter(startDateStr);
+      const endFilter = createManilaDateFilter(endDateStr);
+
+      dateFilter = {
+        gte: startFilter.gte,
+        lte: endFilter.lte,
+      };
     } else {
       // Default to current day
-      const currentRange = getManilaDateRangeForQuery();
-      startOfDay = currentRange.startOfDay;
-      endOfDay = currentRange.endOfDay;
+      dateFilter = createManilaDateFilter();
     }
 
     const cashiers = await this.prisma.cashier.findMany({
@@ -145,20 +150,14 @@ export class KahonService {
         include: {
           KahonItems: {
             where: {
-              createdAt: {
-                gte: startOfDay,
-                lte: endOfDay,
-              },
+              createdAt: dateFilter,
             },
           },
           Sheets: {
             include: {
               Rows: {
                 where: {
-                  createdAt: {
-                    gte: startOfDay,
-                    lte: endOfDay,
-                  },
+                  createdAt: dateFilter,
                 },
                 orderBy: { rowIndex: 'asc' },
                 include: {
@@ -207,6 +206,10 @@ export class KahonService {
     });
 
     const results = await Promise.all(updatePromises);
-    return convertArrayDatesToManilaTime(results);
+    return results.map((result) => ({
+      ...result,
+      createdAt: formatDateForClient(result.createdAt),
+      updatedAt: formatDateForClient(result.updatedAt),
+    }));
   }
 }
