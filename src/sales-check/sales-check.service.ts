@@ -7,9 +7,6 @@ import { Decimal } from '@prisma/client/runtime/library';
 import {
   formatDateForClient,
   createManilaDateFilter,
-  // Legacy functions for backward compatibility
-  convertToManilaTime,
-  getManilaDateRangeForQuery,
 } from '../utils/date.util';
 
 @Injectable()
@@ -190,7 +187,7 @@ export class SalesCheckService {
           discountedPrice: item.isDiscounted
             ? this.convertDecimalToString(item.discountedPrice)
             : null,
-          saleDate: convertToManilaTime(sale.createdAt), // Consistent conversion
+          saleDate: formatDateForClient(sale.createdAt),
         };
       });
     });
@@ -426,7 +423,7 @@ export class SalesCheckService {
           discountedPrice: item.isDiscounted
             ? this.convertDecimalToString(item.discountedPrice)
             : null,
-          saleDate: convertToManilaTime(sale.createdAt), // Consistent conversion
+          saleDate: formatDateForClient(sale.createdAt),
         };
       });
     });
@@ -639,7 +636,7 @@ export class SalesCheckService {
         }
 
         // Create a formatted sale item with time included
-        const saleDateTime = convertToManilaTime(sale.createdAt); // Consistent conversion
+        const saleDateTime = formatDateForClient(sale.createdAt);
         const formattedTime = `${saleDateTime.getHours().toString().padStart(2, '0')}:${saleDateTime.getMinutes().toString().padStart(2, '0')}`;
 
         return {
@@ -716,6 +713,7 @@ export class SalesCheckService {
   // New method for cashier-specific total sales using cashier ID
   async getCashierTotalSales(cashierId: string, filters: TotalSalesFilterDto) {
     // Use timezone-aware date filtering
+    console.log(filters.date);
     const dateFilter = filters.date ? createManilaDateFilter(filters.date) : {};
 
     // Build the query conditions for specific cashier
@@ -729,6 +727,8 @@ export class SalesCheckService {
           : []),
       ],
     };
+
+    console.log(dateFilter);
 
     // Get all sales for the day
     const sales = await this.prisma.sale.findMany({
@@ -858,7 +858,7 @@ export class SalesCheckService {
         }
 
         // Create a formatted sale item with time included
-        const saleDateTime = convertToManilaTime(sale.createdAt); // Consistent conversion
+        const saleDateTime = formatDateForClient(sale.createdAt);
         const formattedTime = `${saleDateTime.getHours().toString().padStart(2, '0')}:${saleDateTime.getMinutes().toString().padStart(2, '0')}`;
 
         return {
@@ -934,9 +934,6 @@ export class SalesCheckService {
 
   // New method for getting all cashier sales under a user
   async getAllCashierSalesByDate(userId: string, date?: string) {
-    // For this function, we can keep the legacy approach since it's simpler
-    const { startOfDay, endOfDay } = getManilaDateRangeForQuery(date);
-
     // Get all cashiers under this user
     const cashiers = await this.prisma.cashier.findMany({
       where: { userId },

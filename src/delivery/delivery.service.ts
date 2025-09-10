@@ -4,9 +4,7 @@ import { CreateDeliveryDto } from './dto/create.dto';
 import { TransferService } from 'src/transfer/transfer.service';
 import {
   formatDateForClient,
-  // Legacy functions for backward compatibility
-  convertToManilaTime,
-  parseManilaDateForStorage,
+  createManilaDateFilter,
 } from 'src/utils/date.util';
 import { Decimal } from '@prisma/client/runtime/library';
 
@@ -21,14 +19,14 @@ export class DeliveryService {
     if (!delivery) return null;
     return {
       ...delivery,
-      createdAt: convertToManilaTime(delivery.createdAt),
-      updatedAt: convertToManilaTime(delivery.updatedAt),
-      deliveryTimeStart: convertToManilaTime(delivery.deliveryTimeStart),
+      createdAt: formatDateForClient(delivery.createdAt),
+      updatedAt: formatDateForClient(delivery.updatedAt),
+      deliveryTimeStart: formatDateForClient(delivery.deliveryTimeStart),
       DeliveryItem: delivery.DeliveryItem
         ? delivery.DeliveryItem.map((item) => ({
             ...item,
-            createdAt: convertToManilaTime(item.createdAt),
-            updatedAt: convertToManilaTime(item.updatedAt),
+            createdAt: formatDateForClient(item.createdAt),
+            updatedAt: formatDateForClient(item.updatedAt),
           }))
         : [],
     };
@@ -42,8 +40,8 @@ export class DeliveryService {
 
     // Convert deliveryTimeStart from Manila Time to UTC for storage
     const utcDeliveryTimeStart = deliveryTimeStart
-      ? parseManilaDateForStorage(deliveryTimeStart.toString())
-      : parseManilaDateForStorage(); // Current time in UTC
+      ? new Date(`${deliveryTimeStart}T00:00:00+08:00`)
+      : new Date();
 
     const result = await this.prisma.$transaction(
       async (tx) => {
@@ -145,7 +143,7 @@ export class DeliveryService {
 
     // Convert deliveryTimeStart from Manila Time to UTC for storage
     const utcDeliveryTimeStart = deliveryTimeStart
-      ? parseManilaDateForStorage(deliveryTimeStart.toString())
+      ? new Date(`${deliveryTimeStart}T00:00:00+08:00`)
       : undefined;
 
     const result = await this.prisma.$transaction(

@@ -5,11 +5,7 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { RegisterCashierDto } from './dto/register.dto';
 import { ConfigService } from '@nestjs/config';
 import { EditCashierDto } from './dto/edit.dto';
-import {
-  formatDateForClient,
-  // Legacy function for backward compatibility
-  convertToManilaTime,
-} from 'src/utils/date.util';
+import { formatDateForClient } from 'src/utils/date.util';
 
 @Injectable()
 export class CashierService {
@@ -23,8 +19,8 @@ export class CashierService {
     if (!cashier) return null;
     return {
       ...cashier,
-      createdAt: convertToManilaTime(cashier.createdAt),
-      updatedAt: convertToManilaTime(cashier.updatedAt),
+      createdAt: formatDateForClient(cashier.createdAt),
+      updatedAt: formatDateForClient(cashier.updatedAt),
     };
   }
 

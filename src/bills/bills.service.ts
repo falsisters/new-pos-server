@@ -6,23 +6,12 @@ import { BillType, PaymentMethod } from '@prisma/client';
 import {
   formatDateForClient,
   createManilaDateFilter,
-  // Legacy functions for backward compatibility
-  convertToManilaTime,
-  getManilaDateRangeForQuery,
-  parseManilaDateForStorage,
 } from 'src/utils/date.util';
 import { Decimal } from '@prisma/client/runtime/library';
 
 @Injectable()
 export class BillsService {
   constructor(private prisma: PrismaService) {}
-
-  private convertDecimalToString(value: Decimal | number): string {
-    if (value instanceof Decimal) {
-      return Math.ceil(value.toNumber()).toFixed(2);
-    }
-    return Math.ceil(Number(value)).toFixed(2);
-  }
 
   private convertDecimalToNumber(value: Decimal | number): number {
     if (value instanceof Decimal) {
@@ -36,17 +25,14 @@ export class BillsService {
     cashierId: string,
     createDto: CreateBillCountDto,
   ) {
-    // Get UTC date range for querying
-    const { startOfDay, endOfDay } = getManilaDateRangeForQuery(createDto.date);
+    // Use timezone-aware date filtering
+    const dateFilter = createManilaDateFilter(createDto.date);
 
     // Check if a bill count already exists for the specified day
     const existingBillCount = await this.prisma.billCount.findFirst({
       where: {
         cashierId,
-        createdAt: {
-          gte: startOfDay,
-          lte: endOfDay,
-        },
+        createdAt: dateFilter,
       },
       include: {
         Bills: true,
@@ -61,15 +47,17 @@ export class BillsService {
       );
       return updated;
     } else {
-      // Create new bill count with UTC time for storage
-      const targetDateUTC = parseManilaDateForStorage(createDto.date);
+      // Create new bill count with timezone-aware date
+      const targetDate = createDto.date
+        ? new Date(`${createDto.date}T00:00:00+08:00`)
+        : new Date();
 
       const billCount = await this.prisma.billCount.create({
         data: {
           cashierId,
           beginningBalance: createDto.beginningBalance || 0,
           showBeginningBalance: createDto.showBeginningBalance || false,
-          createdAt: targetDateUTC,
+          createdAt: targetDate,
         },
       });
 
@@ -166,16 +154,13 @@ export class BillsService {
   }
 
   async getBillCountForDate(cashierId: string, date?: string) {
-    // Get UTC date range for querying
-    const { startOfDay, endOfDay } = getManilaDateRangeForQuery(date);
+    // Use timezone-aware date filtering
+    const dateFilter = createManilaDateFilter(date);
 
     const billCount = await this.prisma.billCount.findFirst({
       where: {
         cashierId,
-        createdAt: {
-          gte: startOfDay,
-          lte: endOfDay,
-        },
+        createdAt: dateFilter,
       },
       include: {
         Bills: true,
@@ -206,16 +191,13 @@ export class BillsService {
     userId: string,
     createDto: CreateBillCountDto,
   ) {
-    // Get UTC date range for querying
-    const { startOfDay, endOfDay } = getManilaDateRangeForQuery(createDto.date);
+    // Use timezone-aware date filtering
+    const dateFilter = createManilaDateFilter(createDto.date);
 
     const existingBillCount = await this.prisma.billCount.findFirst({
       where: {
         userId,
-        createdAt: {
-          gte: startOfDay,
-          lte: endOfDay,
-        },
+        createdAt: dateFilter,
       },
       include: {
         Bills: true,
@@ -225,15 +207,17 @@ export class BillsService {
     if (existingBillCount) {
       return this.updateBillCount(existingBillCount.id, createDto);
     } else {
-      // Create new bill count with UTC time for storage
-      const targetDateUTC = parseManilaDateForStorage(createDto.date);
+      // Create new bill count with timezone-aware date
+      const targetDate = createDto.date
+        ? new Date(`${createDto.date}T00:00:00+08:00`)
+        : new Date();
 
       const billCount = await this.prisma.billCount.create({
         data: {
           userId,
           beginningBalance: createDto.beginningBalance || 0,
           showBeginningBalance: createDto.showBeginningBalance || false,
-          createdAt: targetDateUTC,
+          createdAt: targetDate,
         },
       });
 
@@ -256,16 +240,13 @@ export class BillsService {
   }
 
   async getUserBillCountForDate(userId: string, date?: string) {
-    // Get UTC date range for querying
-    const { startOfDay, endOfDay } = getManilaDateRangeForQuery(date);
+    // Use timezone-aware date filtering
+    const dateFilter = createManilaDateFilter(date);
 
     const billCount = await this.prisma.billCount.findFirst({
       where: {
         userId,
-        createdAt: {
-          gte: startOfDay,
-          lte: endOfDay,
-        },
+        createdAt: dateFilter,
       },
       include: {
         Bills: true,
@@ -286,15 +267,12 @@ export class BillsService {
 
   async getAllUserBillCountsByDate(date?: string) {
     // Get UTC date range for querying
-    const { startOfDay, endOfDay } = getManilaDateRangeForQuery(date);
+    const dateFilter = createManilaDateFilter(date);
 
     const billCounts = await this.prisma.billCount.findMany({
       where: {
         userId: { not: null },
-        createdAt: {
-          gte: startOfDay,
-          lte: endOfDay,
-        },
+        createdAt: dateFilter,
       },
       include: {
         Bills: true,
@@ -326,15 +304,12 @@ export class BillsService {
 
   async getAllCashierBillCountsByDate(date?: string) {
     // Get UTC date range for querying
-    const { startOfDay, endOfDay } = getManilaDateRangeForQuery(date);
+    const dateFilter = createManilaDateFilter(date);
 
     const billCounts = await this.prisma.billCount.findMany({
       where: {
         cashierId: { not: null },
-        createdAt: {
-          gte: startOfDay,
-          lte: endOfDay,
-        },
+        createdAt: dateFilter,
       },
       include: {
         Bills: true,
@@ -375,14 +350,16 @@ export class BillsService {
     targetDateUTC: Date,
     isUser: boolean,
   ): Promise<number> {
-    // Use the same date range logic as other services
-    // Convert the UTC date to Manila time to get the date string, then back to UTC range
-    const manilaDate = convertToManilaTime(targetDateUTC);
-    const manilaDateString = manilaDate.toISOString().split('T')[0];
+    // The targetDateUTC is the billCount.createdAt. Since billCount was created with a specific date
+    // (e.g., "2025-09-10T00:00:00+08:00" which becomes "2025-09-09T16:00:00.000Z" in UTC storage),
+    // we need to convert it back to Manila time to get the original intended date
+    const manilaDate = formatDateForClient(targetDateUTC);
 
-    // Use the exact same utility function as sales-check and sales services
-    const { startOfDay, endOfDay } =
-      getManilaDateRangeForQuery(manilaDateString);
+    // Extract the date string in Manila timezone
+    // Using the same approach as formatDateForClient but getting just the date part
+    const manilaDateString = `${manilaDate.getFullYear()}-${(manilaDate.getMonth() + 1).toString().padStart(2, '0')}-${manilaDate.getDate().toString().padStart(2, '0')}`;
+
+    const dateFilter = createManilaDateFilter(manilaDateString);
 
     if (isUser) {
       const cashSales = await this.prisma.sale.findMany({
@@ -391,42 +368,146 @@ export class BillsService {
           cashier: {
             userId: ownerId,
           },
-          createdAt: {
-            gte: startOfDay,
-            lte: endOfDay,
+          createdAt: dateFilter,
+        },
+        include: {
+          SaleItem: {
+            include: {
+              product: { select: { id: true, name: true } },
+              SackPrice: {
+                include: {
+                  specialPrice: true,
+                },
+              },
+              perKiloPrice: true,
+            },
           },
         },
-        select: {
-          totalAmount: true,
+        orderBy: {
+          createdAt: 'asc',
         },
       });
 
-      // Use the exact same calculation logic as sale.service.ts
-      const total = cashSales.reduce(
-        (sum, sale) => sum + Number(sale.totalAmount),
-        0,
+      // Check if any sale item has null price, if so revert to totalAmount calculation
+      const hasNullPrice = cashSales.some((sale) =>
+        sale.SaleItem.some((item) => item.price === null),
       );
+
+      if (hasNullPrice) {
+        // Revert to using totalAmount - same as sales-check fallback
+        const total = cashSales.reduce(
+          (sum, sale) => sum + Number(sale.totalAmount),
+          0,
+        );
+        return Math.round(total);
+      }
+
+      // Use individual item prices - same calculation logic as sales-check
+      let total = 0;
+      cashSales.forEach((sale) => {
+        sale.SaleItem.forEach((item) => {
+          let itemTotal = 0;
+
+          // Same logic as sales-check service
+          if (item.price !== null && item.price !== undefined) {
+            // Use the price field directly
+            itemTotal = Number(item.price);
+          } else if (item.perKiloPriceId && item.perKiloPrice) {
+            // Calculate from per kilo price
+            itemTotal = Number(item.perKiloPrice.price) * Number(item.quantity);
+          } else if (item.sackPriceId && item.SackPrice) {
+            // Calculate from sack price
+            let unitPrice;
+            if (item.isSpecialPrice && item.SackPrice.specialPrice) {
+              unitPrice = Number(item.SackPrice.specialPrice.price);
+            } else {
+              unitPrice = Number(item.SackPrice.price);
+            }
+            itemTotal = unitPrice * Number(item.quantity);
+          }
+
+          // Apply discount if applicable - same as sales-check
+          if (item.isDiscounted && item.discountedPrice !== null) {
+            itemTotal = Number(item.discountedPrice) * Number(item.quantity);
+          }
+
+          total += itemTotal;
+        });
+      });
+
       return Math.round(total);
     } else {
       const cashSales = await this.prisma.sale.findMany({
         where: {
           paymentMethod: PaymentMethod.CASH,
           cashierId: ownerId,
-          createdAt: {
-            gte: startOfDay,
-            lte: endOfDay,
+          createdAt: dateFilter,
+        },
+        include: {
+          SaleItem: {
+            include: {
+              product: { select: { id: true, name: true } },
+              SackPrice: {
+                include: {
+                  specialPrice: true,
+                },
+              },
+              perKiloPrice: true,
+            },
           },
         },
-        select: {
-          totalAmount: true,
+        orderBy: {
+          createdAt: 'asc',
         },
       });
 
-      // Use the exact same calculation logic as sale.service.ts
-      const total = cashSales.reduce(
-        (sum, sale) => sum + Number(sale.totalAmount),
-        0,
+      // Check if any sale item has null price, if so revert to totalAmount calculation
+      const hasNullPrice = cashSales.some((sale) =>
+        sale.SaleItem.some((item) => item.price === null),
       );
+
+      if (hasNullPrice) {
+        // Revert to using totalAmount - same as sales-check fallback
+        const total = cashSales.reduce(
+          (sum, sale) => sum + Number(sale.totalAmount),
+          0,
+        );
+        return Math.round(total);
+      }
+
+      // Use individual item prices - same calculation logic as sales-check
+      let total = 0;
+      cashSales.forEach((sale) => {
+        sale.SaleItem.forEach((item) => {
+          let itemTotal = 0;
+
+          // Same logic as sales-check service
+          if (item.price !== null && item.price !== undefined) {
+            // Use the price field directly
+            itemTotal = Number(item.price);
+          } else if (item.perKiloPriceId && item.perKiloPrice) {
+            // Calculate from per kilo price
+            itemTotal = Number(item.perKiloPrice.price) * Number(item.quantity);
+          } else if (item.sackPriceId && item.SackPrice) {
+            // Calculate from sack price
+            let unitPrice;
+            if (item.isSpecialPrice && item.SackPrice.specialPrice) {
+              unitPrice = Number(item.SackPrice.specialPrice.price);
+            } else {
+              unitPrice = Number(item.SackPrice.price);
+            }
+            itemTotal = unitPrice * Number(item.quantity);
+          }
+
+          // Apply discount if applicable - same as sales-check
+          if (item.isDiscounted && item.discountedPrice !== null) {
+            itemTotal = Number(item.discountedPrice) * Number(item.quantity);
+          }
+
+          total += itemTotal;
+        });
+      });
+
       return Math.round(total);
     }
   }
@@ -437,12 +518,11 @@ export class BillsService {
     isUser: boolean,
   ): Promise<number> {
     // Use the same date range logic as other services
-    const manilaDate = convertToManilaTime(targetDateUTC);
+    const manilaDate = formatDateForClient(targetDateUTC);
     const manilaDateString = manilaDate.toISOString().split('T')[0];
 
-    // Use the exact same utility function as other services
-    const { startOfDay, endOfDay } =
-      getManilaDateRangeForQuery(manilaDateString);
+    // Use timezone-aware date filtering
+    const dateFilter = createManilaDateFilter(manilaDateString);
 
     let expenseList;
 
@@ -450,10 +530,7 @@ export class BillsService {
       expenseList = await this.prisma.expenseList.findFirst({
         where: {
           userId: ownerId,
-          createdAt: {
-            gte: startOfDay,
-            lte: endOfDay,
-          },
+          createdAt: dateFilter,
         },
         include: {
           ExpenseItems: true,
@@ -463,10 +540,7 @@ export class BillsService {
       expenseList = await this.prisma.expenseList.findFirst({
         where: {
           cashierId: ownerId,
-          createdAt: {
-            gte: startOfDay,
-            lte: endOfDay,
-          },
+          createdAt: dateFilter,
         },
         include: {
           ExpenseItems: true,
@@ -534,8 +608,8 @@ export class BillsService {
 
     return {
       id: billCount.id,
-      date: convertToManilaTime(billCount.createdAt),
-      updatedAt: convertToManilaTime(billCount.updatedAt),
+      date: formatDateForClient(billCount.createdAt),
+      updatedAt: formatDateForClient(billCount.updatedAt),
       beginningBalance: this.convertDecimalToNumber(billCount.beginningBalance),
       showBeginningBalance: billCount.showBeginningBalance,
       totalCash,
@@ -546,8 +620,8 @@ export class BillsService {
         type: bill.type,
         amount: bill.amount,
         value: bill.amount * this.getBillValue(bill.type),
-        createdAt: convertToManilaTime(bill.createdAt),
-        updatedAt: convertToManilaTime(bill.updatedAt),
+        createdAt: formatDateForClient(bill.createdAt),
+        updatedAt: formatDateForClient(bill.updatedAt),
       })),
       billsByType,
       billsTotal,
