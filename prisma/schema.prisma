@@ -179,6 +179,7 @@ enum PaymentMethod {
 model SaleItem {
   id              String        @id @default(cuid())
   quantity        Decimal
+  price           Decimal?
   discountedPrice Decimal?
   isDiscounted    Boolean       @default(false)
   product         Product       @relation(fields: [productId], references: [id], onDelete: Cascade)

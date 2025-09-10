@@ -156,6 +156,11 @@ export class SaleService {
                   isSpecialPrice: item.isSpecialPrice,
                   // Ensure isDiscounted is always a boolean
                   isDiscounted: item.isDiscounted ?? false,
+                  // Only add price if it's defined AND not null
+                  ...(item.price !== undefined &&
+                    item.price !== null && {
+                      price: new Decimal(item.price),
+                    }),
                   // Only add discountedPrice if it's defined AND not null
                   ...(item.discountedPrice !== undefined &&
                     item.discountedPrice !== null && {
@@ -330,6 +335,11 @@ export class SaleService {
             isSpecialPrice: item.isSpecialPrice,
             // Ensure isDiscounted is always a boolean
             isDiscounted: item.isDiscounted ?? false,
+            // Only add price if it's defined AND not null
+            ...(item.price !== undefined &&
+              item.price !== null && {
+                price: new Decimal(item.price),
+              }),
             // Only add discountedPrice if it's defined AND not null
             ...(item.discountedPrice !== undefined &&
               item.discountedPrice !== null && {

@@ -32,6 +32,10 @@ class ProductDto {
 
   @IsOptional()
   @IsNumberString()
+  price?: string | null;
+
+  @IsOptional()
+  @IsNumberString()
   discountedPrice?: string | null;
 
   @IsOptional()

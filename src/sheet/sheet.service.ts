@@ -598,18 +598,44 @@ export class SheetService {
       endOfDay = currentRange.endOfDay;
     }
 
-    // Find the kahon for this cashier
-    const kahon = await this.prisma.kahon.findFirst({
+    // Find the kahon for this cashier, create if not found
+    let kahon = await this.prisma.kahon.findFirst({
       where: { cashierId, name: 'Kahon' },
     });
 
     if (!kahon) {
-      return null;
+      kahon = await this.prisma.kahon.create({
+        data: {
+          cashierId,
+          name: 'Kahon',
+          Sheets: {
+            create: {
+              name: 'Kahon Sheet',
+              columns: 10,
+            },
+          },
+        },
+      });
+    }
+
+    // Find the sheet for this kahon, create if not found
+    let sheet = await this.prisma.sheet.findFirst({
+      where: { kahonId: kahon.id },
+    });
+
+    if (!sheet) {
+      sheet = await this.prisma.sheet.create({
+        data: {
+          name: 'Kahon Sheet',
+          columns: 10,
+          kahon: { connect: { id: kahon.id } },
+        },
+      });
     }
 
     // Return sheets with rows filtered by date range
-    const result = await this.prisma.sheet.findFirst({
-      where: { kahonId: kahon.id },
+    const result = await this.prisma.sheet.findUnique({
+      where: { id: sheet.id },
       include: {
         Rows: {
           where: {
@@ -648,8 +674,7 @@ export class SheetService {
         });
       }
     }
-
-    // Ensure we always return a valid array, even if empty
-    return resultSheets.length > 0 ? resultSheets : [];
+    // Always return a valid array, even if empty
+    return resultSheets;
   }
 }

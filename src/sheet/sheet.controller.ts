@@ -413,7 +413,7 @@ export class SheetController {
       );
 
       // Ensure we always return a valid response
-      return result || [];
+      return Array.isArray(result) ? result : [];
     } catch (error) {
       console.error('Error in getUserSheetByOneDate:', error);
       // Return empty array instead of letting the error bubble up

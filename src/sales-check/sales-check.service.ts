@@ -113,7 +113,32 @@ export class SalesCheckService {
         let totalAmount = new Decimal(0);
         let unitPrice = new Decimal(0);
 
-        if (item.perKiloPriceId && item.perKiloPrice) {
+        // If price field exists, use it directly
+        if ((item as any).price !== null && (item as any).price !== undefined) {
+          unitPrice = (item as any).price;
+          totalAmount = unitPrice;
+
+          // Determine price type based on what's connected
+          if (item.perKiloPriceId && item.perKiloPrice) {
+            priceType = 'KG';
+          } else if (item.sackPriceId && item.SackPrice) {
+            switch (item.sackType) {
+              case 'FIFTY_KG':
+                priceType = '50KG';
+                break;
+              case 'TWENTY_FIVE_KG':
+                priceType = '25KG';
+                break;
+              case 'FIVE_KG':
+                priceType = '5KG';
+                break;
+              default:
+                priceType = item.sackType || 'SACK';
+            }
+          } else {
+            priceType = 'CUSTOM';
+          }
+        } else if (item.perKiloPriceId && item.perKiloPrice) {
           priceType = 'KG';
           unitPrice = item.perKiloPrice.price;
           totalAmount = unitPrice.mul(item.quantity);
@@ -327,7 +352,32 @@ export class SalesCheckService {
         let totalAmount = new Decimal(0);
         let unitPrice = new Decimal(0);
 
-        if (item.perKiloPriceId && item.perKiloPrice) {
+        // If price field exists, use it directly
+        if ((item as any).price !== null && (item as any).price !== undefined) {
+          unitPrice = (item as any).price;
+          totalAmount = unitPrice;
+
+          // Determine price type based on what's connected
+          if (item.perKiloPriceId && item.perKiloPrice) {
+            priceType = 'KG';
+          } else if (item.sackPriceId && item.SackPrice) {
+            switch (item.sackType) {
+              case 'FIFTY_KG':
+                priceType = '50KG';
+                break;
+              case 'TWENTY_FIVE_KG':
+                priceType = '25KG';
+                break;
+              case 'FIVE_KG':
+                priceType = '5KG';
+                break;
+              default:
+                priceType = item.sackType || 'SACK';
+            }
+          } else {
+            priceType = 'CUSTOM';
+          }
+        } else if (item.perKiloPriceId && item.perKiloPrice) {
           priceType = 'KG';
           unitPrice = item.perKiloPrice.price;
           totalAmount = unitPrice.mul(item.quantity);
@@ -534,7 +584,32 @@ export class SalesCheckService {
         let totalAmount = new Decimal(0);
         let unitPrice = new Decimal(0);
 
-        if (item.perKiloPriceId && item.perKiloPrice) {
+        // If price field exists, use it directly
+        if ((item as any).price !== null && (item as any).price !== undefined) {
+          unitPrice = (item as any).price;
+          totalAmount = unitPrice;
+
+          // Determine price type based on what's connected
+          if (item.perKiloPriceId && item.perKiloPrice) {
+            priceType = 'KG';
+          } else if (item.sackPriceId && item.SackPrice) {
+            switch (item.sackType) {
+              case 'FIFTY_KG':
+                priceType = '50KG';
+                break;
+              case 'TWENTY_FIVE_KG':
+                priceType = '25KG';
+                break;
+              case 'FIVE_KG':
+                priceType = '5KG';
+                break;
+              default:
+                priceType = item.sackType || 'SACK';
+            }
+          } else {
+            priceType = 'CUSTOM';
+          }
+        } else if (item.perKiloPriceId && item.perKiloPrice) {
           priceType = 'KG';
           unitPrice = item.perKiloPrice.price;
           totalAmount = unitPrice.mul(item.quantity);
@@ -731,7 +806,32 @@ export class SalesCheckService {
         let totalAmount = new Decimal(0);
         let unitPrice = new Decimal(0);
 
-        if (item.perKiloPriceId && item.perKiloPrice) {
+        // If price field exists, use it directly
+        if ((item as any).price !== null && (item as any).price !== undefined) {
+          unitPrice = (item as any).price;
+          totalAmount = unitPrice;
+
+          // Determine price type based on what's connected
+          if (item.perKiloPriceId && item.perKiloPrice) {
+            priceType = 'KG';
+          } else if (item.sackPriceId && item.SackPrice) {
+            switch (item.sackType) {
+              case 'FIFTY_KG':
+                priceType = '50KG';
+                break;
+              case 'TWENTY_FIVE_KG':
+                priceType = '25KG';
+                break;
+              case 'FIVE_KG':
+                priceType = '5KG';
+                break;
+              default:
+                priceType = item.sackType || 'SACK';
+            }
+          } else {
+            priceType = 'CUSTOM';
+          }
+        } else if (item.perKiloPriceId && item.perKiloPrice) {
           priceType = 'KG';
           unitPrice = item.perKiloPrice.price;
           totalAmount = unitPrice.mul(item.quantity);
