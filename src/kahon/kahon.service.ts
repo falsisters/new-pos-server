@@ -2,6 +2,10 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { EditKahonItemsDto } from './dto/editKahonItemsDto';
 import {
+  formatObjectDatesForClient,
+  formatArrayDatesForClient,
+  createManilaDateFilter,
+  // Legacy functions for backward compatibility
   convertObjectDatesToManilaTime,
   convertArrayDatesToManilaTime,
   getManilaDateRangeForQuery,

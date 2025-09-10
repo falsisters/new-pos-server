@@ -18,8 +18,8 @@ model User {
   email       String        @unique
   name        String
   password    String
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  createdAt   DateTime      @default(now()) @db.Timestamptz
+  updatedAt   DateTime      @updatedAt @db.Timestamptz
   Cashier     Cashier[]
   Employee    Employee[]
   BillCount   BillCount[]
@@ -35,8 +35,8 @@ model Cashier {
   accessKey   String
   secureCode  String               @default(cuid())
   permissions CashierPermissions[]
-  createdAt   DateTime             @default(now())
-  updatedAt   DateTime             @updatedAt
+  createdAt   DateTime             @default(now()) @db.Timestamptz
+  updatedAt   DateTime             @updatedAt @db.Timestamptz
   user        User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId      String
   Product     Product[] // Add this relation
@@ -64,13 +64,13 @@ enum CashierPermissions {
 
 model Shift {
   id        String          @id @default(cuid())
-  startTime DateTime        @default(now())
-  endTime   DateTime?
+  startTime DateTime        @default(now()) @db.Timestamptz
+  endTime   DateTime?       @db.Timestamptz
   employee  ShiftEmployee[]
   cashier   Cashier         @relation(fields: [cashierId], references: [id], onDelete: Cascade)
   cashierId String
-  createdAt DateTime        @default(now())
-  updatedAt DateTime        @updatedAt
+  createdAt DateTime        @default(now()) @db.Timestamptz
+  updatedAt DateTime        @updatedAt @db.Timestamptz
 }
 
 model ShiftEmployee {
@@ -79,8 +79,8 @@ model ShiftEmployee {
   shiftId    String
   employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   employeeId String
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  createdAt  DateTime @default(now()) @db.Timestamptz
+  updatedAt  DateTime @updatedAt @db.Timestamptz
 }
 
 model Employee {
@@ -88,8 +88,8 @@ model Employee {
   name          String
   userId        String
   user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime        @updatedAt
+  createdAt     DateTime        @default(now()) @db.Timestamptz
+  updatedAt     DateTime        @updatedAt @db.Timestamptz
   ShiftEmployee ShiftEmployee[]
 }
 
@@ -97,8 +97,8 @@ model Product {
   id           String         @id @default(cuid())
   name         String
   picture      String         @default("https://placehold.co/800x800?text=Product")
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
+  createdAt    DateTime       @default(now()) @db.Timestamptz
+  updatedAt    DateTime       @updatedAt @db.Timestamptz
   cashierId    String? // Made optional for migration
   cashier      Cashier?       @relation(fields: [cashierId], references: [id], onDelete: Cascade) // Made optional
   userId       String
@@ -118,8 +118,8 @@ model SackPrice {
   product        Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
   productId      String
   profit         Decimal?
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
+  createdAt      DateTime       @default(now()) @db.Timestamptz
+  updatedAt      DateTime       @updatedAt @db.Timestamptz
   specialPrice   SpecialPrice?
   specialPriceId String?
   OrderItem      OrderItem[]
@@ -140,8 +140,8 @@ model SpecialPrice {
   profit      Decimal?
   sackPrice   SackPrice @relation(fields: [sackPriceId], references: [id], onDelete: Cascade)
   sackPriceId String    @unique
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  createdAt   DateTime  @default(now()) @db.Timestamptz
+  updatedAt   DateTime  @updatedAt @db.Timestamptz
 }
 
 model PerKiloPrice {
@@ -151,8 +151,8 @@ model PerKiloPrice {
   profit       Decimal?
   product      Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
   productId    String         @unique
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
+  createdAt    DateTime       @default(now()) @db.Timestamptz
+  updatedAt    DateTime       @updatedAt @db.Timestamptz
   OrderItem    OrderItem[]
   DeliveryItem DeliveryItem[]
   SaleItem     SaleItem[]
@@ -164,8 +164,8 @@ model Sale {
   cashierId     String
   totalAmount   Decimal
   paymentMethod PaymentMethod
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  createdAt     DateTime      @default(now()) @db.Timestamptz
+  updatedAt     DateTime      @updatedAt @db.Timestamptz
   SaleItem      SaleItem[]
   Order         Order?
 }
@@ -193,18 +193,18 @@ model SaleItem {
   saleId          String
   isGantang       Boolean       @default(false)
   isSpecialPrice  Boolean       @default(false)
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  createdAt       DateTime      @default(now()) @db.Timestamptz
+  updatedAt       DateTime      @updatedAt @db.Timestamptz
 }
 
 model Delivery {
   id                String         @id @default(cuid())
   driverName        String
-  deliveryTimeStart DateTime
+  deliveryTimeStart DateTime       @db.Timestamptz
   cashier           Cashier        @relation(fields: [cashierId], references: [id], onDelete: Cascade)
   cashierId         String
-  createdAt         DateTime       @default(now())
-  updatedAt         DateTime       @updatedAt
+  createdAt         DateTime       @default(now()) @db.Timestamptz
+  updatedAt         DateTime       @updatedAt @db.Timestamptz
   DeliveryItem      DeliveryItem[]
 }
 
@@ -220,8 +220,8 @@ model DeliveryItem {
   perKiloPriceId String?
   delivery       Delivery      @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
   deliveryId     String
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+  createdAt      DateTime      @default(now()) @db.Timestamptz
+  updatedAt      DateTime      @updatedAt @db.Timestamptz
 }
 
 model Transfer {
@@ -231,8 +231,8 @@ model Transfer {
   type      TransferType
   cashier   Cashier      @relation(fields: [cashierId], references: [id], onDelete: Cascade)
   cashierId String
-  createdAt DateTime     @default(now())
-  updatedAt DateTime     @updatedAt
+  createdAt DateTime     @default(now()) @db.Timestamptz
+  updatedAt DateTime     @updatedAt @db.Timestamptz
 }
 
 enum TransferType {
@@ -247,8 +247,8 @@ model Kahon {
   name       String
   cashier    Cashier     @relation(fields: [cashierId], references: [id], onDelete: Cascade)
   cashierId  String
-  createdAt  DateTime    @default(now())
-  updatedAt  DateTime    @updatedAt
+  createdAt  DateTime    @default(now()) @db.Timestamptz
+  updatedAt  DateTime    @updatedAt @db.Timestamptz
   KahonItems KahonItem[]
   Sheets     Sheet[]
 }
@@ -258,8 +258,8 @@ model Inventory {
   name           String
   cashier        Cashier          @relation(fields: [cashierId], references: [id], onDelete: Cascade)
   cashierId      String
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
+  createdAt      DateTime         @default(now()) @db.Timestamptz
+  updatedAt      DateTime         @updatedAt @db.Timestamptz
   InventorySheet InventorySheet[]
 }
 
@@ -269,8 +269,8 @@ model KahonItem {
   quantity  Decimal
   kahon     Kahon    @relation(fields: [kahonId], references: [id], onDelete: Cascade)
   kahonId   String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now()) @db.Timestamptz
+  updatedAt DateTime @updatedAt @db.Timestamptz
   Cells     Cell[]
 }
 
@@ -280,8 +280,8 @@ model InventorySheet {
   inventory   Inventory      @relation(fields: [inventoryId], references: [id], onDelete: Cascade)
   inventoryId String
   columns     Int            @default(10) // Number of columns in this sheet
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
+  createdAt   DateTime       @default(now()) @db.Timestamptz
+  updatedAt   DateTime       @updatedAt @db.Timestamptz
   Rows        InventoryRow[]
 }
 
@@ -292,8 +292,8 @@ model InventoryRow {
   inventorySheetId String
   isItemRow        Boolean         @default(true) // Regular row or total/calculation row
   itemId           String? // Can be null for total/calculation rows
-  createdAt        DateTime        @default(now())
-  updatedAt        DateTime        @updatedAt
+  createdAt        DateTime        @default(now()) @db.Timestamptz
+  updatedAt        DateTime        @updatedAt @db.Timestamptz
   Cells            InventoryCell[]
 }
 
@@ -306,8 +306,8 @@ model InventoryCell {
   value          String? // The displayed/calculated value
   formula        String? // Formula for calculated cells (e.g., "=C2*D2")
   isCalculated   Boolean      @default(false)
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  createdAt      DateTime     @default(now()) @db.Timestamptz
+  updatedAt      DateTime     @updatedAt @db.Timestamptz
 }
 
 model Sheet {
@@ -316,8 +316,8 @@ model Sheet {
   kahon     Kahon    @relation(fields: [kahonId], references: [id], onDelete: Cascade)
   kahonId   String
   columns   Int      @default(10) // Number of columns in this sheet
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now()) @db.Timestamptz
+  updatedAt DateTime @updatedAt @db.Timestamptz
   Rows      Row[]
 }
 
@@ -328,8 +328,8 @@ model Row {
   sheetId   String
   isItemRow Boolean  @default(true) // Regular row or total/calculation row
   itemId    String? // Can be null for total/calculation rows
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now()) @db.Timestamptz
+  updatedAt DateTime @updatedAt @db.Timestamptz
   Cells     Cell[]
 }
 
@@ -344,8 +344,8 @@ model Cell {
   value        String? // The displayed/calculated value
   formula      String? // Formula for calculated cells (e.g., "=C2*D2")
   isCalculated Boolean    @default(false)
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
+  createdAt    DateTime   @default(now()) @db.Timestamptz
+  updatedAt    DateTime   @updatedAt @db.Timestamptz
 }
 
 model Attachment {
@@ -355,8 +355,8 @@ model Attachment {
   userId    String
   type      AttachmentType
   user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt DateTime       @default(now())
-  updatedAt DateTime       @updatedAt
+  createdAt DateTime       @default(now()) @db.Timestamptz
+  updatedAt DateTime       @updatedAt @db.Timestamptz
 }
 
 enum AttachmentType {
@@ -375,8 +375,8 @@ model BillCount {
   showBeginningBalance Boolean  @default(false)
   user                 User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
   cashier              Cashier? @relation(fields: [cashierId], references: [id], onDelete: Cascade)
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
+  createdAt            DateTime @default(now()) @db.Timestamptz
+  updatedAt            DateTime @updatedAt @db.Timestamptz
 }
 
 model Bills {
@@ -385,8 +385,8 @@ model Bills {
   type        BillType
   billCountId String
   billCount   BillCount @relation(fields: [billCountId], references: [id], onDelete: Cascade)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  createdAt   DateTime  @default(now()) @db.Timestamptz
+  updatedAt   DateTime  @updatedAt @db.Timestamptz
 }
 
 enum BillType {
@@ -405,8 +405,8 @@ model Customer {
   password  String
   address   String
   phone     String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now()) @db.Timestamptz
+  updatedAt DateTime @updatedAt @db.Timestamptz
   Order     Order[]
 }
 
@@ -422,8 +422,8 @@ model Order {
   status     OrderStatus @default(PENDING)
   saleId     String?     @unique
   sale       Sale?       @relation(fields: [saleId], references: [id], onDelete: Cascade)
-  createdAt  DateTime    @default(now())
-  updatedAt  DateTime    @updatedAt
+  createdAt  DateTime    @default(now()) @db.Timestamptz
+  updatedAt  DateTime    @updatedAt @db.Timestamptz
   OrderItem  OrderItem[]
 }
 
@@ -440,8 +440,8 @@ model OrderItem {
   isSpecialPrice Boolean       @default(false)
   order          Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
   orderId        String
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+  createdAt      DateTime      @default(now()) @db.Timestamptz
+  updatedAt      DateTime      @updatedAt @db.Timestamptz
 }
 
 enum OrderStatus {
@@ -456,8 +456,8 @@ model ExpenseList {
   cashierId    String? // Optional for cashier operations
   user         User?          @relation(fields: [userId], references: [id], onDelete: Cascade)
   cashier      Cashier?       @relation(fields: [cashierId], references: [id], onDelete: Cascade)
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
+  createdAt    DateTime       @default(now()) @db.Timestamptz
+  updatedAt    DateTime       @updatedAt @db.Timestamptz
   ExpenseItems ExpenseItems[]
 }
 
@@ -467,6 +467,6 @@ model ExpenseItems {
   amount        Decimal
   expenseList   ExpenseList @relation(fields: [expenseListId], references: [id], onDelete: Cascade)
   expenseListId String
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+  createdAt     DateTime    @default(now()) @db.Timestamptz
+  updatedAt     DateTime    @updatedAt @db.Timestamptz
 }

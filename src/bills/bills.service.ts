@@ -4,6 +4,9 @@ import { CreateBillCountDto } from './dto/create-bill-count.dto';
 import { UpdateBillCountDto } from './dto/update-bill-count.dto';
 import { BillType, PaymentMethod } from '@prisma/client';
 import {
+  formatDateForClient,
+  createManilaDateFilter,
+  // Legacy functions for backward compatibility
   convertToManilaTime,
   getManilaDateRangeForQuery,
   parseManilaDateForStorage,

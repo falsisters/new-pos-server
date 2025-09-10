@@ -3,6 +3,9 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateExpenseDto } from './dto/createExpense.dto';
 import { GetExpenseByDateDto } from './dto/getExpenseByDate.dto';
 import {
+  formatDateForClient,
+  createManilaDateFilter,
+  // Legacy functions for backward compatibility
   convertToManilaTime,
   getManilaDateRangeForQuery,
   parseManilaDateForStorage,

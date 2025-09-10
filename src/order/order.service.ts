@@ -2,6 +2,9 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateOrderDto } from './dto/createOrder.dto';
 import {
+  formatObjectDatesForClient,
+  formatArrayDatesForClient,
+  // Legacy functions for backward compatibility
   convertObjectDatesToManilaTime,
   convertArrayDatesToManilaTime,
 } from '../utils/date.util';

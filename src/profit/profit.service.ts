@@ -3,6 +3,9 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { ProfitFilterDto } from './dto/profit-filter.dto';
 import { PaymentMethod, Prisma, SackType } from '@prisma/client';
 import {
+  formatDateForClient,
+  createManilaDateFilter,
+  // Legacy functions for backward compatibility
   convertToManilaTime,
   getManilaDateRangeForQuery,
 } from '../utils/date.util';

@@ -6,6 +6,10 @@ import { OrderService } from 'src/order/order.service';
 import { RecentSalesFilterDto } from './dto/recent-sales.dto';
 import { Decimal } from '@prisma/client/runtime/library';
 import {
+  formatObjectDatesForClient,
+  formatArrayDatesForClient,
+  createManilaDateFilter,
+  // Legacy functions for backward compatibility
   convertObjectDatesToManilaTime,
   convertArrayDatesToManilaTime,
   getManilaDateRangeForQuery,

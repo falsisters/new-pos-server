@@ -5,7 +5,11 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { RegisterCashierDto } from './dto/register.dto';
 import { ConfigService } from '@nestjs/config';
 import { EditCashierDto } from './dto/edit.dto';
-import { convertToManilaTime } from 'src/utils/date.util';
+import {
+  formatDateForClient,
+  // Legacy function for backward compatibility
+  convertToManilaTime,
+} from 'src/utils/date.util';
 
 @Injectable()
 export class CashierService {

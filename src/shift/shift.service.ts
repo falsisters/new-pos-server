@@ -3,6 +3,8 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateShiftDto } from './dto/create.dto';
 import { EditShiftDto } from './dto/edit.dto';
 import {
+  formatObjectDatesForClient,
+  // Legacy functions for backward compatibility
   convertObjectDatesToManilaTime,
   parseManilaDateForStorage,
 } from '../utils/date.util';

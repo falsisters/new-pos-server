@@ -3,6 +3,8 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateDeliveryDto } from './dto/create.dto';
 import { TransferService } from 'src/transfer/transfer.service';
 import {
+  formatDateForClient,
+  // Legacy functions for backward compatibility
   convertToManilaTime,
   parseManilaDateForStorage,
 } from 'src/utils/date.util';

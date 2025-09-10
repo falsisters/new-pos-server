@@ -4,6 +4,9 @@ import { UploadService } from 'src/upload/upload.service';
 import { ProductFormData } from './types/productFormData.type';
 import { EditProductFormData } from './types/editProductFormData.type';
 import {
+  formatObjectDatesForClient,
+  formatArrayDatesForClient,
+  // Legacy functions for backward compatibility
   convertObjectDatesToManilaTime,
   convertArrayDatesToManilaTime,
 } from '../utils/date.util';

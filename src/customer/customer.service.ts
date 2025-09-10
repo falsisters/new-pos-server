@@ -4,7 +4,11 @@ import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { RegisterCustomerDto } from './dto/register.dto';
 import * as bcrypt from 'bcrypt';
-import { convertToManilaTime } from 'src/utils/date.util';
+import {
+  formatDateForClient,
+  // Legacy function for backward compatibility
+  convertToManilaTime,
+} from 'src/utils/date.util';
 
 @Injectable()
 export class CustomerService {

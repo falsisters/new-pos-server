@@ -6,6 +6,10 @@ import { TransferProductDto } from './dto/transferProduct.dto';
 import { EditTransferDto } from './dto/editTransfer.dto';
 import { TransferFilterDto } from './dto/transferWithFilter.dto';
 import {
+  formatObjectDatesForClient,
+  formatArrayDatesForClient,
+  createManilaDateFilter,
+  // Legacy functions for backward compatibility
   convertObjectDatesToManilaTime,
   convertArrayDatesToManilaTime,
   getManilaDateRangeForQuery,

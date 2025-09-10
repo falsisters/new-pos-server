@@ -3,7 +3,13 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateEmployeeDto } from './dto/create.dto';
 import { EditEmployeeDto } from './dto/edit.dto';
 import { EmployeeAttendanceFilterDto } from './dto/employee-attendance.dto';
-import { convertToManilaTime, parseManilaDateRange } from 'src/utils/date.util';
+import {
+  formatDateForClient,
+  createManilaDateRangeFilter,
+  // Legacy functions for backward compatibility
+  convertToManilaTime,
+  parseManilaDateRange,
+} from 'src/utils/date.util';
 
 @Injectable()
 export class EmployeeService {

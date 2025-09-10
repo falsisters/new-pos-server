@@ -5,6 +5,9 @@ import { TotalSalesFilterDto } from './dto/total-sales.dto';
 import { PaymentMethod } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 import {
+  formatDateForClient,
+  createManilaDateFilter,
+  // Legacy functions for backward compatibility
   convertToManilaTime,
   getManilaDateRangeForQuery,
 } from '../utils/date.util';
@@ -21,8 +24,8 @@ export class SalesCheckService {
   }
 
   async getSalesWithFilter(userId: string, filters: SalesCheckFilterDto) {
-    // Use consistent date range conversion
-    const { startOfDay, endOfDay } = getManilaDateRangeForQuery(filters.date);
+    // Use timezone-aware date filtering
+    const dateFilter = filters.date ? createManilaDateFilter(filters.date) : {};
 
     // Build the query conditions
     const whereConditions: any = {
@@ -32,12 +35,9 @@ export class SalesCheckService {
             userId,
           },
         },
-        {
-          createdAt: {
-            gte: startOfDay,
-            lte: endOfDay,
-          },
-        },
+        ...(Object.keys(dateFilter).length > 0
+          ? [{ createdAt: dateFilter }]
+          : []),
       ],
     };
 
@@ -262,8 +262,8 @@ export class SalesCheckService {
     cashierId: string,
     filters: SalesCheckFilterDto,
   ) {
-    // Use consistent date range conversion
-    const { startOfDay, endOfDay } = getManilaDateRangeForQuery(filters.date);
+    // Use timezone-aware date filtering
+    const dateFilter = filters.date ? createManilaDateFilter(filters.date) : {};
 
     // Build the query conditions for specific cashier
     const whereConditions: any = {
@@ -271,12 +271,9 @@ export class SalesCheckService {
         {
           cashierId,
         },
-        {
-          createdAt: {
-            gte: startOfDay,
-            lte: endOfDay,
-          },
-        },
+        ...(Object.keys(dateFilter).length > 0
+          ? [{ createdAt: dateFilter }]
+          : []),
       ],
     };
 
@@ -497,8 +494,8 @@ export class SalesCheckService {
   }
 
   async getTotalSales(userId: string, filters: TotalSalesFilterDto) {
-    // Use consistent date range conversion
-    const { startOfDay, endOfDay } = getManilaDateRangeForQuery(filters.date);
+    // Use timezone-aware date filtering
+    const dateFilter = filters.date ? createManilaDateFilter(filters.date) : {};
 
     // Build the query conditions
     const whereConditions: any = {
@@ -508,12 +505,9 @@ export class SalesCheckService {
             userId,
           },
         },
-        {
-          createdAt: {
-            gte: startOfDay,
-            lte: endOfDay,
-          },
-        },
+        ...(Object.keys(dateFilter).length > 0
+          ? [{ createdAt: dateFilter }]
+          : []),
       ],
     };
 
@@ -721,8 +715,8 @@ export class SalesCheckService {
 
   // New method for cashier-specific total sales using cashier ID
   async getCashierTotalSales(cashierId: string, filters: TotalSalesFilterDto) {
-    // Use consistent date range conversion
-    const { startOfDay, endOfDay } = getManilaDateRangeForQuery(filters.date);
+    // Use timezone-aware date filtering
+    const dateFilter = filters.date ? createManilaDateFilter(filters.date) : {};
 
     // Build the query conditions for specific cashier
     const whereConditions: any = {
@@ -730,12 +724,9 @@ export class SalesCheckService {
         {
           cashierId,
         },
-        {
-          createdAt: {
-            gte: startOfDay,
-            lte: endOfDay,
-          },
-        },
+        ...(Object.keys(dateFilter).length > 0
+          ? [{ createdAt: dateFilter }]
+          : []),
       ],
     };
 
@@ -943,6 +934,7 @@ export class SalesCheckService {
 
   // New method for getting all cashier sales under a user
   async getAllCashierSalesByDate(userId: string, date?: string) {
+    // For this function, we can keep the legacy approach since it's simpler
     const { startOfDay, endOfDay } = getManilaDateRangeForQuery(date);
 
     // Get all cashiers under this user
