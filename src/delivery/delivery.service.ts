@@ -39,9 +39,40 @@ export class DeliveryService {
     const { driverName, deliveryTimeStart, deliveryItem } = createDeliveryDto;
 
     // Convert deliveryTimeStart from Manila Time to UTC for storage
-    const utcDeliveryTimeStart = deliveryTimeStart
-      ? new Date(`${deliveryTimeStart}T00:00:00+08:00`)
-      : new Date();
+    console.log(
+      'Received deliveryTimeStart:',
+      createDeliveryDto.deliveryTimeStart,
+    );
+    let utcDeliveryTimeStart: Date;
+
+    if (deliveryTimeStart) {
+      // Handle different date formats from client
+      const dateString =
+        typeof deliveryTimeStart === 'string'
+          ? deliveryTimeStart
+          : deliveryTimeStart.toString();
+
+      // If it's already an ISO string with timezone info, use it directly
+      if (
+        dateString.includes('T') &&
+        (dateString.includes('Z') || dateString.includes('+'))
+      ) {
+        utcDeliveryTimeStart = new Date(dateString);
+      } else if (dateString.includes('T')) {
+        // If it's ISO format but without timezone, assume it's Manila time
+        utcDeliveryTimeStart = new Date(dateString + '+08:00');
+      } else {
+        // If it's just a date string, append time and timezone
+        utcDeliveryTimeStart = new Date(`${dateString}T00:00:00+08:00`);
+      }
+
+      // Validate the parsed date
+      if (isNaN(utcDeliveryTimeStart.getTime())) {
+        throw new Error(`Invalid delivery date format: ${deliveryTimeStart}`);
+      }
+    } else {
+      utcDeliveryTimeStart = new Date();
+    }
 
     const result = await this.prisma.$transaction(
       async (tx) => {
@@ -142,9 +173,33 @@ export class DeliveryService {
     const { driverName, deliveryTimeStart, deliveryItem } = editDeliveryDto;
 
     // Convert deliveryTimeStart from Manila Time to UTC for storage
-    const utcDeliveryTimeStart = deliveryTimeStart
-      ? new Date(`${deliveryTimeStart}T00:00:00+08:00`)
-      : undefined;
+    let utcDeliveryTimeStart: Date | undefined;
+
+    if (deliveryTimeStart) {
+      const dateString =
+        typeof deliveryTimeStart === 'string'
+          ? deliveryTimeStart
+          : deliveryTimeStart.toString();
+
+      // If it's already an ISO string with timezone info, use it directly
+      if (
+        dateString.includes('T') &&
+        (dateString.includes('Z') || dateString.includes('+'))
+      ) {
+        utcDeliveryTimeStart = new Date(dateString);
+      } else if (dateString.includes('T')) {
+        // If it's ISO format but without timezone, assume it's Manila time
+        utcDeliveryTimeStart = new Date(dateString + '+08:00');
+      } else {
+        // If it's just a date string, append time and timezone
+        utcDeliveryTimeStart = new Date(`${dateString}T00:00:00+08:00`);
+      }
+
+      // Validate the parsed date
+      if (isNaN(utcDeliveryTimeStart.getTime())) {
+        throw new Error(`Invalid delivery date format: ${deliveryTimeStart}`);
+      }
+    }
 
     const result = await this.prisma.$transaction(
       async (tx) => {
