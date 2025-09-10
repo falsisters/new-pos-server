@@ -147,10 +147,26 @@ export class BillsService {
 
     // Use the billCount creation date for totalCash calculation
     const targetDate = billCount.createdAt;
-    const ownerId = billCount.cashierId || billCount.userId;
-    const isUser = !!billCount.userId;
 
-    return this.formatBillCountResponse(billCount, ownerId, targetDate, isUser);
+    if (billCount.cashierId) {
+      // For cashier bill counts, use cashier ID
+      return this.formatBillCountResponse(
+        billCount,
+        billCount.cashierId,
+        targetDate,
+        false,
+      );
+    } else if (billCount.userId) {
+      // For user bill counts, use user ID
+      return this.formatBillCountResponse(
+        billCount,
+        billCount.userId,
+        targetDate,
+        true,
+      );
+    } else {
+      throw new Error('Bill count must have either cashierId or userId');
+    }
   }
 
   async getBillCountForDate(cashierId: string, date?: string) {
@@ -336,7 +352,7 @@ export class BillsService {
       billCounts.map(async (billCount) => ({
         ...(await this.formatBillCountResponse(
           billCount,
-          billCount.cashier.user.id,
+          billCount.cashierId,
           billCount.createdAt,
           false,
         )),
@@ -387,6 +403,8 @@ export class BillsService {
           createdAt: 'asc',
         },
       });
+
+      console.log(cashSales);
 
       // Check if any sale item has null price, if so revert to totalAmount calculation
       const hasNullPrice = cashSales.some((sale) =>
@@ -460,6 +478,8 @@ export class BillsService {
           createdAt: 'asc',
         },
       });
+
+      console.log(cashSales);
 
       // Check if any sale item has null price, if so revert to totalAmount calculation
       const hasNullPrice = cashSales.some((sale) =>

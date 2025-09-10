@@ -59,6 +59,8 @@ export class SalesCheckService {
       },
     });
 
+    console.log(sales);
+
     // Process and calculate profits for each sale item
     const allSaleItems = sales.flatMap((sale) => {
       return sale.SaleItem.filter((item) => {
@@ -295,6 +297,8 @@ export class SalesCheckService {
       },
     });
 
+    console.log(sales);
+
     // Process and calculate profits for each sale item
     const allSaleItems = sales.flatMap((sale) => {
       return sale.SaleItem.filter((item) => {
@@ -529,6 +533,8 @@ export class SalesCheckService {
       },
     });
 
+    console.log(sales);
+
     // Filter and map sale items with consistent date conversion
     const allSaleItems = sales.flatMap((sale) => {
       return sale.SaleItem.filter((item) => {
@@ -747,6 +753,8 @@ export class SalesCheckService {
         createdAt: 'asc',
       },
     });
+
+    console.log(sales);
 
     // Filter and map sale items with consistent date conversion
     const allSaleItems = sales.flatMap((sale) => {

@@ -71,6 +71,12 @@ export class SaleService {
       SaleItem: sale.SaleItem
         ? sale.SaleItem.map((item) => {
             const convertedItem = this.convertDecimalFieldsToString(item);
+
+            // Use item.price as the primary price source, but maintain structure for frontend compatibility
+            const itemPrice = item.price
+              ? this.convertDecimalToString(item.price)
+              : null;
+
             return {
               ...convertedItem,
               createdAt: formatDateForClient(item.createdAt),
@@ -82,16 +88,24 @@ export class SaleService {
                     updatedAt: formatDateForClient(item.product.updatedAt),
                   }
                 : null,
+              // If item has perKiloPrice relation, maintain structure but use item.price as the price value
               perKiloPrice: item.perKiloPrice
                 ? {
                     ...this.convertDecimalFieldsToString(item.perKiloPrice),
+                    price:
+                      itemPrice ||
+                      this.convertDecimalToString(item.perKiloPrice.price),
                     createdAt: formatDateForClient(item.perKiloPrice.createdAt),
                     updatedAt: formatDateForClient(item.perKiloPrice.updatedAt),
                   }
                 : null,
+              // If item has SackPrice relation, maintain structure but use item.price as the price value
               SackPrice: item.SackPrice
                 ? {
                     ...this.convertDecimalFieldsToString(item.SackPrice),
+                    price:
+                      itemPrice ||
+                      this.convertDecimalToString(item.SackPrice.price),
                     createdAt: formatDateForClient(item.SackPrice.createdAt),
                     updatedAt: formatDateForClient(item.SackPrice.updatedAt),
                   }
@@ -584,12 +598,19 @@ export class SaleService {
   }
 
   async getAllSales(userId: string) {
-    const sales = await this.prisma.sale.findMany({
-      where: {
-        cashier: {
-          userId,
+    // Build the query conditions using the same logic as sales-check service
+    const whereConditions: any = {
+      AND: [
+        {
+          cashier: {
+            userId,
+          },
         },
-      },
+      ],
+    };
+
+    const sales = await this.prisma.sale.findMany({
+      where: whereConditions,
       include: {
         SaleItem: {
           include: {
@@ -603,8 +624,13 @@ export class SaleService {
                 },
               },
             },
+            perKiloPrice: true,
+            SackPrice: true,
           },
         },
+      },
+      orderBy: {
+        createdAt: 'desc',
       },
     });
     return this.formatSales(sales);
@@ -648,10 +674,17 @@ export class SaleService {
       throw new Error('Cashier not found or does not belong to this user');
     }
 
+    // Build the query conditions using the same logic as sales-check service
+    const whereConditions: any = {
+      AND: [
+        {
+          cashierId,
+        },
+      ],
+    };
+
     const sales = await this.prisma.sale.findMany({
-      where: {
-        cashierId,
-      },
+      where: whereConditions,
       include: {
         SaleItem: {
           include: {
@@ -665,8 +698,13 @@ export class SaleService {
                 },
               },
             },
+            perKiloPrice: true,
+            SackPrice: true,
           },
         },
+      },
+      orderBy: {
+        createdAt: 'desc',
       },
     });
     return this.formatSales(sales);
