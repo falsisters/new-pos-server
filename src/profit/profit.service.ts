@@ -59,7 +59,9 @@ export class ProfitService {
             userId,
           },
         },
-        dateFilter,
+        {
+          createdAt: dateFilter,
+        },
       ],
     };
 
@@ -82,6 +84,8 @@ export class ProfitService {
         createdAt: 'desc',
       },
     });
+
+    console.log('Filtered Sales:', sales);
 
     // Process and calculate profits for each sale item
     const profitItems = sales.flatMap((sale) => {
@@ -283,7 +287,9 @@ export class ProfitService {
         {
           cashierId,
         },
-        dateFilter,
+        {
+          createdAt: dateFilter,
+        },
       ],
     };
 
