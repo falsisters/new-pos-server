@@ -64,6 +64,8 @@ export class SaleService {
   private formatSale(sale: any) {
     if (!sale) return null;
 
+    console.log('sale before formatting: ', sale);
+
     const formatted = {
       ...sale,
       createdAt: formatDateForClient(sale.createdAt),
@@ -88,10 +90,12 @@ export class SaleService {
                     updatedAt: formatDateForClient(item.product.updatedAt),
                   }
                 : null,
-              // If item has perKiloPrice relation, maintain structure but use item.price as the price value
+              // If item has perKiloPrice relation, maintain structure but use item.price as the primary price value
               perKiloPrice: item.perKiloPrice
                 ? {
                     ...this.convertDecimalFieldsToString(item.perKiloPrice),
+                    quantity: this.convertDecimalToString(item.quantity),
+                    // Always use SaleItem.price if available, otherwise fall back to perKiloPrice.price
                     price:
                       itemPrice ||
                       this.convertDecimalToString(item.perKiloPrice.price),
@@ -99,10 +103,11 @@ export class SaleService {
                     updatedAt: formatDateForClient(item.perKiloPrice.updatedAt),
                   }
                 : null,
-              // If item has SackPrice relation, maintain structure but use item.price as the price value
+              // If item has SackPrice relation, maintain structure but use item.price as the primary price value
               SackPrice: item.SackPrice
                 ? {
                     ...this.convertDecimalFieldsToString(item.SackPrice),
+                    // Always use SaleItem.price if available, otherwise fall back to SackPrice.price
                     price:
                       itemPrice ||
                       this.convertDecimalToString(item.SackPrice.price),
@@ -114,6 +119,8 @@ export class SaleService {
           })
         : [],
     };
+
+    console.log('sales: ', this.convertDecimalFieldsToString(formatted));
 
     return this.convertDecimalFieldsToString(formatted);
   }
