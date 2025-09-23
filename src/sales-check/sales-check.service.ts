@@ -168,8 +168,8 @@ export class SalesCheckService {
 
         // If this item is discounted, use the discounted price instead
         if (item.isDiscounted && item.discountedPrice !== null) {
-          totalAmount = item.discountedPrice.mul(item.quantity);
-          unitPrice = item.discountedPrice;
+          unitPrice = item.discountedPrice.div(item.quantity);
+          totalAmount = item.discountedPrice;
         }
 
         // Create a formatted sale item
@@ -180,6 +180,7 @@ export class SalesCheckService {
             id: item.product?.id || item.productId,
             name: item.product?.name || 'Unknown Product',
           },
+          price: this.convertDecimalToString(item.price),
           priceType,
           unitPrice: this.convertDecimalToString(unitPrice),
           totalAmount: this.convertDecimalToString(totalAmount),
@@ -406,8 +407,8 @@ export class SalesCheckService {
 
         // If this item is discounted, use the discounted price instead
         if (item.isDiscounted && item.discountedPrice !== null) {
-          totalAmount = item.discountedPrice.mul(item.quantity);
-          unitPrice = item.discountedPrice;
+          unitPrice = item.discountedPrice.div(item.quantity);
+          totalAmount = item.discountedPrice;
         }
 
         // Create a formatted sale item
@@ -419,6 +420,7 @@ export class SalesCheckService {
             name: item.product?.name || 'Unknown Product',
           },
           priceType,
+          price: this.convertDecimalToString(item.price),
           unitPrice: this.convertDecimalToString(unitPrice),
           totalAmount: this.convertDecimalToString(totalAmount),
           paymentMethod: sale.paymentMethod,
@@ -637,8 +639,8 @@ export class SalesCheckService {
 
         // If this item is discounted, use the discounted price instead
         if (item.isDiscounted && item.discountedPrice !== null) {
-          totalAmount = item.discountedPrice.mul(item.quantity);
-          unitPrice = item.discountedPrice;
+          unitPrice = item.discountedPrice.div(item.quantity);
+          totalAmount = item.discountedPrice;
         }
 
         // Create a formatted sale item with time included
@@ -654,6 +656,7 @@ export class SalesCheckService {
             name: item.product?.name || 'Unknown Product',
           },
           priceType,
+          price: this.convertDecimalToString(item.price),
           unitPrice: this.convertDecimalToString(unitPrice),
           totalAmount: this.convertDecimalToString(totalAmount),
           paymentMethod: sale.paymentMethod,
@@ -858,8 +861,8 @@ export class SalesCheckService {
 
         // If this item is discounted, use the discounted price instead
         if (item.isDiscounted && item.discountedPrice !== null) {
-          totalAmount = item.discountedPrice.mul(item.quantity);
-          unitPrice = item.discountedPrice;
+          unitPrice = item.discountedPrice.div(item.quantity);
+          totalAmount = item.discountedPrice;
         }
 
         // Create a formatted sale item with time included
@@ -875,6 +878,7 @@ export class SalesCheckService {
             name: item.product?.name || 'Unknown Product',
           },
           priceType,
+          price: this.convertDecimalToString(item.price),
           unitPrice: this.convertDecimalToString(unitPrice),
           totalAmount: this.convertDecimalToString(totalAmount),
           paymentMethod: sale.paymentMethod,

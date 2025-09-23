@@ -366,16 +366,16 @@ export class BillsService {
     targetDateUTC: Date,
     isUser: boolean,
   ): Promise<number> {
-    // The targetDateUTC is the billCount.createdAt. Since billCount was created with a specific date
-    // (e.g., "2025-09-10T00:00:00+08:00" which becomes "2025-09-09T16:00:00.000Z" in UTC storage),
-    // we need to convert it back to Manila time to get the original intended date
-    const manilaDate = formatDateForClient(targetDateUTC);
-
-    // Extract the date string in Manila timezone
-    // Using the same approach as formatDateForClient but getting just the date part
-    const manilaDateString = `${manilaDate.getFullYear()}-${(manilaDate.getMonth() + 1).toString().padStart(2, '0')}-${manilaDate.getDate().toString().padStart(2, '0')}`;
-
+    // Convert the stored UTC date back to Manila date
+    // The stored date is Manila midnight stored as UTC (e.g., 2025-09-23T16:00:00.000Z = Sept 24 00:00 Manila)
+    // We need to add 8 hours to get the correct Manila date
+    const manilaDate = new Date(targetDateUTC.getTime() + 8 * 60 * 60 * 1000);
+    const manilaDateString = manilaDate.toISOString().split('T')[0]; // Get YYYY-MM-DD
     const dateFilter = createManilaDateFilter(manilaDateString);
+
+    console.log('Target date UTC:', targetDateUTC);
+    console.log('Manila date string:', manilaDateString);
+    console.log('Date filter for sales:', dateFilter);
 
     if (isUser) {
       const cashSales = await this.prisma.sale.findMany({
@@ -404,7 +404,7 @@ export class BillsService {
         },
       });
 
-      console.log(cashSales);
+      console.log('Found cash sales:', cashSales.length);
 
       // Check if any sale item has null price, if so revert to totalAmount calculation
       const hasNullPrice = cashSales.some((sale) =>
@@ -412,7 +412,6 @@ export class BillsService {
       );
 
       if (hasNullPrice) {
-        // Revert to using totalAmount - same as sales-check fallback
         const total = cashSales.reduce(
           (sum, sale) => sum + Number(sale.totalAmount),
           0,
@@ -420,21 +419,16 @@ export class BillsService {
         return Math.round(total);
       }
 
-      // Use individual item prices - same calculation logic as sales-check
       let total = 0;
       cashSales.forEach((sale) => {
         sale.SaleItem.forEach((item) => {
           let itemTotal = 0;
 
-          // Same logic as sales-check service
           if (item.price !== null && item.price !== undefined) {
-            // Use the price field directly
             itemTotal = Number(item.price);
           } else if (item.perKiloPriceId && item.perKiloPrice) {
-            // Calculate from per kilo price
             itemTotal = Number(item.perKiloPrice.price) * Number(item.quantity);
           } else if (item.sackPriceId && item.SackPrice) {
-            // Calculate from sack price
             let unitPrice;
             if (item.isSpecialPrice && item.SackPrice.specialPrice) {
               unitPrice = Number(item.SackPrice.specialPrice.price);
@@ -444,9 +438,8 @@ export class BillsService {
             itemTotal = unitPrice * Number(item.quantity);
           }
 
-          // Apply discount if applicable - same as sales-check
           if (item.isDiscounted && item.discountedPrice !== null) {
-            itemTotal = Number(item.discountedPrice) * Number(item.quantity);
+            itemTotal = Number(item.discountedPrice);
           }
 
           total += itemTotal;
@@ -479,7 +472,7 @@ export class BillsService {
         },
       });
 
-      console.log(cashSales);
+      console.log('Found cash sales:', cashSales.length);
 
       // Check if any sale item has null price, if so revert to totalAmount calculation
       const hasNullPrice = cashSales.some((sale) =>
@@ -487,7 +480,6 @@ export class BillsService {
       );
 
       if (hasNullPrice) {
-        // Revert to using totalAmount - same as sales-check fallback
         const total = cashSales.reduce(
           (sum, sale) => sum + Number(sale.totalAmount),
           0,
@@ -495,21 +487,16 @@ export class BillsService {
         return Math.round(total);
       }
 
-      // Use individual item prices - same calculation logic as sales-check
       let total = 0;
       cashSales.forEach((sale) => {
         sale.SaleItem.forEach((item) => {
           let itemTotal = 0;
 
-          // Same logic as sales-check service
           if (item.price !== null && item.price !== undefined) {
-            // Use the price field directly
             itemTotal = Number(item.price);
           } else if (item.perKiloPriceId && item.perKiloPrice) {
-            // Calculate from per kilo price
             itemTotal = Number(item.perKiloPrice.price) * Number(item.quantity);
           } else if (item.sackPriceId && item.SackPrice) {
-            // Calculate from sack price
             let unitPrice;
             if (item.isSpecialPrice && item.SackPrice.specialPrice) {
               unitPrice = Number(item.SackPrice.specialPrice.price);
@@ -519,9 +506,8 @@ export class BillsService {
             itemTotal = unitPrice * Number(item.quantity);
           }
 
-          // Apply discount if applicable - same as sales-check
           if (item.isDiscounted && item.discountedPrice !== null) {
-            itemTotal = Number(item.discountedPrice) * Number(item.quantity);
+            itemTotal = Number(item.discountedPrice);
           }
 
           total += itemTotal;
@@ -537,15 +523,9 @@ export class BillsService {
     targetDateUTC: Date,
     isUser: boolean,
   ): Promise<number> {
-    // The targetDateUTC is the billCount.createdAt. Since billCount was created with a specific date
-    // (e.g., "2025-09-10T00:00:00+08:00" which becomes "2025-09-09T16:00:00.000Z" in UTC storage),
-    // we need to convert it back to Manila time to get the original intended date
-    const manilaDate = formatDateForClient(targetDateUTC);
-
-    // Extract the date string in Manila timezone
-    // Using the same approach as formatDateForClient but getting just the date part
-    const manilaDateString = `${manilaDate.getFullYear()}-${(manilaDate.getMonth() + 1).toString().padStart(2, '0')}-${manilaDate.getDate().toString().padStart(2, '0')}`;
-
+    // Same fix for expenses - convert UTC date back to Manila date
+    const manilaDate = new Date(targetDateUTC.getTime() + 8 * 60 * 60 * 1000);
+    const manilaDateString = manilaDate.toISOString().split('T')[0]; // Get YYYY-MM-DD
     const dateFilter = createManilaDateFilter(manilaDateString);
 
     let expenseList;
