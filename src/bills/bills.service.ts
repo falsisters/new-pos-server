@@ -608,7 +608,12 @@ export class BillsService {
       (billCount.showBeginningBalance
         ? this.convertDecimalToNumber(billCount.beginningBalance)
         : 0);
-    const summaryFinal = summaryStep1 + totalExpenses;
+    const summaryFinal =
+      summaryStep1 +
+      totalExpenses -
+      (billCount.showBeginningBalance
+        ? this.convertDecimalToNumber(billCount.beginningBalance)
+        : 0);
 
     return {
       id: billCount.id,
