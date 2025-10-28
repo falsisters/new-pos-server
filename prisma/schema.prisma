@@ -60,6 +60,7 @@ enum CashierPermissions {
   BILLS
   ATTACHMENTS
   SALES_HISTORY
+  VOID
 }
 
 model Shift {
@@ -164,6 +165,8 @@ model Sale {
   cashierId     String
   totalAmount   Decimal
   paymentMethod PaymentMethod
+  isVoid        Boolean       @default(false)
+  voidedAt      DateTime?     @db.Timestamptz
   createdAt     DateTime      @default(now()) @db.Timestamptz
   updatedAt     DateTime      @updatedAt @db.Timestamptz
   SaleItem      SaleItem[]

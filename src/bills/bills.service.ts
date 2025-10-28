@@ -385,6 +385,7 @@ export class BillsService {
             userId: ownerId,
           },
           createdAt: dateFilter,
+          isVoid: false,
         },
         include: {
           SaleItem: {
@@ -453,6 +454,7 @@ export class BillsService {
           paymentMethod: PaymentMethod.CASH,
           cashierId: ownerId,
           createdAt: dateFilter,
+          isVoid: false,
         },
         include: {
           SaleItem: {

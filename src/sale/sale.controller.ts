@@ -92,4 +92,18 @@ export class SaleController {
   ) {
     return this.saleService.getTotalCashForDate(cashierId, date);
   }
+
+  @UseGuards(JwtCashierAuthGuard)
+  @Get('voided/cashier')
+  async getVoidedSalesByCashier(@Request() req) {
+    const cashierId = req.user.id;
+    return this.saleService.getVoidedSalesByCashier(cashierId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('voided/user')
+  async getVoidedSalesByUser(@Request() req) {
+    const userId = req.user.id;
+    return this.saleService.getVoidedSalesByUser(userId);
+  }
 }

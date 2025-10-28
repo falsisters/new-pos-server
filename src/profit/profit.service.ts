@@ -60,6 +60,9 @@ export class ProfitService {
           },
         },
         {
+          isVoid: false,
+        },
+        {
           createdAt: dateFilter,
         },
       ],
@@ -286,6 +289,9 @@ export class ProfitService {
       AND: [
         {
           cashierId,
+        },
+        {
+          isVoid: false,
         },
         {
           createdAt: dateFilter,

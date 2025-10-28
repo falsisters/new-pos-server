@@ -70,6 +70,7 @@ export class SaleService {
       ...sale,
       createdAt: formatDateForClient(sale.createdAt),
       updatedAt: formatDateForClient(sale.updatedAt),
+      voidedAt: sale.voidedAt ? formatDateForClient(sale.voidedAt) : null,
       SaleItem: sale.SaleItem
         ? sale.SaleItem.map((item) => {
             const convertedItem = this.convertDecimalFieldsToString(item);
@@ -518,10 +519,34 @@ export class SaleService {
           });
         }
 
-        // 4. Delete the sale (this will cascade delete the SaleItems)
-        return tx.sale.delete({
+        // 4. Mark the sale as void instead of deleting
+        const voidedSale = await tx.sale.update({
           where: { id },
+          data: {
+            isVoid: true,
+            voidedAt: new Date(),
+          },
+          include: {
+            SaleItem: {
+              include: {
+                product: {
+                  include: {
+                    perKiloPrice: true,
+                    SackPrice: {
+                      include: {
+                        specialPrice: true,
+                      },
+                    },
+                  },
+                },
+                perKiloPrice: true,
+                SackPrice: true,
+              },
+            },
+          },
         });
+
+        return this.formatSale(voidedSale);
       },
       {
         timeout: 20000, // 20 seconds in milliseconds
@@ -531,7 +556,10 @@ export class SaleService {
 
   async getSale(id: string) {
     const result = await this.prisma.sale.findUnique({
-      where: { id },
+      where: {
+        id,
+        isVoid: false,
+      },
       include: {
         SaleItem: {
           include: {
@@ -567,6 +595,9 @@ export class SaleService {
             },
             {
               createdAt: dateFilter,
+            },
+            {
+              isVoid: false,
             },
           ],
         },
@@ -613,6 +644,9 @@ export class SaleService {
             userId,
           },
         },
+        {
+          isVoid: false,
+        },
       ],
     };
 
@@ -647,6 +681,7 @@ export class SaleService {
     const sales = await this.prisma.sale.findMany({
       where: {
         cashierId,
+        isVoid: false,
       },
       include: {
         SaleItem: {
@@ -687,6 +722,9 @@ export class SaleService {
         {
           cashierId,
         },
+        {
+          isVoid: false,
+        },
       ],
     };
 
@@ -726,6 +764,7 @@ export class SaleService {
         paymentMethod: 'CASH',
         cashierId,
         createdAt: dateFilter,
+        isVoid: false,
       },
       select: {
         totalAmount: true,
@@ -745,5 +784,69 @@ export class SaleService {
         amount: Math.round(Number(sale.totalAmount)),
       })),
     };
+  }
+
+  async getVoidedSalesByCashier(cashierId: string) {
+    const sales = await this.prisma.sale.findMany({
+      where: {
+        cashierId,
+        isVoid: true,
+      },
+      include: {
+        SaleItem: {
+          include: {
+            product: {
+              include: {
+                perKiloPrice: true,
+                SackPrice: {
+                  include: {
+                    specialPrice: true,
+                  },
+                },
+              },
+            },
+            perKiloPrice: true,
+            SackPrice: true,
+          },
+        },
+      },
+      orderBy: {
+        voidedAt: 'desc',
+      },
+    });
+    return this.formatSales(sales);
+  }
+
+  async getVoidedSalesByUser(userId: string) {
+    const sales = await this.prisma.sale.findMany({
+      where: {
+        cashier: {
+          userId,
+        },
+        isVoid: true,
+      },
+      include: {
+        SaleItem: {
+          include: {
+            product: {
+              include: {
+                perKiloPrice: true,
+                SackPrice: {
+                  include: {
+                    specialPrice: true,
+                  },
+                },
+              },
+            },
+            perKiloPrice: true,
+            SackPrice: true,
+          },
+        },
+      },
+      orderBy: {
+        voidedAt: 'desc',
+      },
+    });
+    return this.formatSales(sales);
   }
 }

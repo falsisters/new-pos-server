@@ -32,6 +32,9 @@ export class SalesCheckService {
             userId,
           },
         },
+        {
+          isVoid: false,
+        },
         ...(Object.keys(dateFilter).length > 0
           ? [{ createdAt: dateFilter }]
           : []),
@@ -271,6 +274,9 @@ export class SalesCheckService {
         {
           cashierId,
         },
+        {
+          isVoid: false,
+        },
         ...(Object.keys(dateFilter).length > 0
           ? [{ createdAt: dateFilter }]
           : []),
@@ -508,6 +514,9 @@ export class SalesCheckService {
             userId,
           },
         },
+        {
+          isVoid: false,
+        },
         ...(Object.keys(dateFilter).length > 0
           ? [{ createdAt: dateFilter }]
           : []),
@@ -729,6 +738,9 @@ export class SalesCheckService {
       AND: [
         {
           cashierId,
+        },
+        {
+          isVoid: false,
         },
         ...(Object.keys(dateFilter).length > 0
           ? [{ createdAt: dateFilter }]
