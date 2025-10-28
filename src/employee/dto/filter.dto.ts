@@ -1,9 +1,6 @@
 import { IsOptional, IsString } from 'class-validator';
 
-export class EditEmployeeDto {
-  @IsOptional()
-  name: string;
-
+export class EmployeeFilterDto {
   @IsOptional()
   @IsString()
   branch?: string;

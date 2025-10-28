@@ -87,6 +87,7 @@ model ShiftEmployee {
 model Employee {
   id            String          @id @default(cuid())
   name          String
+  branch        String?
   userId        String
   user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt     DateTime        @default(now()) @db.Timestamptz

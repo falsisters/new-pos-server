@@ -3,6 +3,7 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateEmployeeDto } from './dto/create.dto';
 import { EditEmployeeDto } from './dto/edit.dto';
 import { EmployeeAttendanceFilterDto } from './dto/employee-attendance.dto';
+import { EmployeeFilterDto } from './dto/filter.dto';
 import {
   formatDateForClient,
   createManilaDateRangeFilter,
@@ -87,11 +88,18 @@ export class EmployeeService {
     return this.formatEmployee(employee);
   }
 
-  async getAllEmployees(userId: string) {
+  async getAllEmployees(userId: string, filterDto?: EmployeeFilterDto) {
+    const whereClause: any = {
+      userId,
+    };
+
+    // Add branch filter if provided
+    if (filterDto?.branch) {
+      whereClause.branch = filterDto.branch;
+    }
+
     const employees = await this.prisma.employee.findMany({
-      where: {
-        userId,
-      },
+      where: whereClause,
       include: {
         ShiftEmployee: {
           include: {
@@ -191,6 +199,7 @@ export class EmployeeService {
         employees: shift.employee.map((shiftEmployee) => ({
           id: shiftEmployee.employee.id,
           name: shiftEmployee.employee.name,
+          branch: shiftEmployee.employee.branch,
           joinedAt: formatDateForClient(shiftEmployee.createdAt),
           createdAt: formatDateForClient(shiftEmployee.createdAt),
           updatedAt: formatDateForClient(shiftEmployee.updatedAt),
