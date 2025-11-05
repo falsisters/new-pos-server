@@ -10,8 +10,10 @@ import { Decimal } from '@prisma/client/runtime/library';
 export interface ProductStock {
   productName: string;
   stockSold: number;
-  stockTransferred: number;
+  stockTransferredKahon: number;
+  stockOwnConsumption: number;
   total: number;
+  totalPrice?: number; // For plastic products, we track total price instead of stock
 }
 
 @Injectable()
@@ -23,16 +25,34 @@ export class StockService {
     return Number(value);
   }
 
+  private truncateProductName(name: string): string {
+    // Find the first occurrence of a digit
+    const match = name.match(/\d/);
+    if (match && match.index !== undefined) {
+      // Return the substring before the first digit, trimmed
+      return name.substring(0, match.index).trim();
+    }
+    // If no digit found, return the original name
+    return name;
+  }
+
   private formatStockForPrinter(
     productStocks: ProductStock[],
     totalStockSold: number,
-    totalStockTransferred: number,
+    totalStockTransferredKahon: number,
+    totalStockOwnConsumption: number,
     grandTotal: number,
     date: string,
     title: string,
+    isPlastic: boolean = false,
   ): {
     lines: string[];
-    totals: { sold: number; transferred: number; total: number };
+    totals: {
+      sold: number;
+      transferredKahon: number;
+      ownConsumption: number;
+      total: number;
+    };
   } {
     const lines: string[] = [];
 
@@ -43,17 +63,60 @@ export class StockService {
 
     // Product details
     productStocks.forEach((product) => {
-      lines.push(
-        `${product.productName} = ${product.stockSold} + ${product.stockTransferred} = ${product.total}`,
-      );
+      if (isPlastic) {
+        // For plastic products, only show total price
+        lines.push(
+          `${product.productName} = ₱${product.totalPrice?.toFixed(2) || '0.00'}`,
+        );
+      } else {
+        // Build the equation dynamically, excluding zero values
+        const parts: string[] = [];
+
+        if (product.stockSold > 0) {
+          parts.push(`${product.stockSold}`);
+        }
+        if (product.stockTransferredKahon > 0) {
+          parts.push(`${product.stockTransferredKahon}`);
+        }
+        if (product.stockOwnConsumption > 0) {
+          parts.push(`${product.stockOwnConsumption}`);
+        }
+
+        const equation =
+          parts.length > 0
+            ? `${parts.join(' + ')} = ${product.total}`
+            : `${product.total}`;
+        lines.push(`${product.productName} = ${equation}`);
+      }
     });
 
     // Overall totals
     lines.push('');
     lines.push('='.repeat(40));
-    lines.push(
-      `TOTAL = ${totalStockSold} + ${totalStockTransferred} = ${grandTotal}`,
-    );
+
+    if (!isPlastic) {
+      // Build total equation dynamically, excluding zero values
+      const totalParts: string[] = [];
+
+      if (totalStockSold > 0) {
+        totalParts.push(`${totalStockSold}`);
+      }
+      if (totalStockTransferredKahon > 0) {
+        totalParts.push(`${totalStockTransferredKahon}`);
+      }
+      if (totalStockOwnConsumption > 0) {
+        totalParts.push(`${totalStockOwnConsumption}`);
+      }
+
+      const totalEquation =
+        totalParts.length > 0
+          ? `${totalParts.join(' + ')} = ${grandTotal}`
+          : `${grandTotal}`;
+      lines.push(`TOTAL = ${totalEquation}`);
+    } else {
+      lines.push(`TOTAL = ${grandTotal}`);
+    }
+
     lines.push('='.repeat(40));
     lines.push('');
     lines.push(`Date: ${date}`);
@@ -62,7 +125,8 @@ export class StockService {
       lines,
       totals: {
         sold: totalStockSold,
-        transferred: totalStockTransferred,
+        transferredKahon: totalStockTransferredKahon,
+        ownConsumption: totalStockOwnConsumption,
         total: grandTotal,
       },
     };
@@ -76,7 +140,7 @@ export class StockService {
     const targetDate = filters.date || getCurrentManilaDate();
     const dateFilter = createManilaDateFilter(targetDate);
 
-    // Get all sales for the date
+    // Get all sales for the date - only SackPrice sales
     const sales = await this.prisma.sale.findMany({
       where: {
         cashierId,
@@ -85,10 +149,14 @@ export class StockService {
       },
       include: {
         SaleItem: {
+          where: {
+            sackPriceId: {
+              not: null, // Only include items with SackPrice (excludes PerKilo)
+            },
+          },
           include: {
             product: true,
             SackPrice: true,
-            perKiloPrice: true,
           },
         },
       },
@@ -111,40 +179,55 @@ export class StockService {
     // Process sales
     sales.forEach((sale) => {
       sale.SaleItem.forEach((item) => {
-        const productName = item.product.name;
+        const rawProductName = item.product.name;
+        const productName = this.truncateProductName(rawProductName);
         const quantity = this.convertDecimalToNumber(item.quantity);
+        const price = item.price ? this.convertDecimalToNumber(item.price) : 0;
+        const totalPrice = quantity * price;
 
         if (!productStockMap.has(productName)) {
           productStockMap.set(productName, {
             productName,
             stockSold: 0,
-            stockTransferred: 0,
+            stockTransferredKahon: 0,
+            stockOwnConsumption: 0,
             total: 0,
+            totalPrice: 0,
           });
         }
 
         const productStock = productStockMap.get(productName)!;
         productStock.stockSold += quantity;
         productStock.total += quantity;
+        productStock.totalPrice = (productStock.totalPrice || 0) + totalPrice;
       });
     });
 
-    // Process transfers
+    // Process transfers - separate KAHON and OWN_CONSUMPTION
     transfers.forEach((transfer) => {
-      const productName = transfer.name;
+      const rawProductName = transfer.name;
+      const productName = this.truncateProductName(rawProductName);
       const quantity = this.convertDecimalToNumber(transfer.quantity);
 
       if (!productStockMap.has(productName)) {
         productStockMap.set(productName, {
           productName,
           stockSold: 0,
-          stockTransferred: 0,
+          stockTransferredKahon: 0,
+          stockOwnConsumption: 0,
           total: 0,
+          totalPrice: 0,
         });
       }
 
       const productStock = productStockMap.get(productName)!;
-      productStock.stockTransferred += quantity;
+
+      if (transfer.type === 'KAHON') {
+        productStock.stockTransferredKahon += quantity;
+      } else if (transfer.type === 'OWN_CONSUMPTION') {
+        productStock.stockOwnConsumption += quantity;
+      }
+
       productStock.total += quantity;
     });
 
@@ -171,11 +254,17 @@ export class StockService {
       return products.reduce(
         (acc, product) => {
           acc.stockSold += product.stockSold;
-          acc.stockTransferred += product.stockTransferred;
+          acc.stockTransferredKahon += product.stockTransferredKahon;
+          acc.stockOwnConsumption += product.stockOwnConsumption;
           acc.total += product.total;
           return acc;
         },
-        { stockSold: 0, stockTransferred: 0, total: 0 },
+        {
+          stockSold: 0,
+          stockTransferredKahon: 0,
+          stockOwnConsumption: 0,
+          total: 0,
+        },
       );
     };
 
@@ -187,7 +276,8 @@ export class StockService {
     const regularFormatted = this.formatStockForPrinter(
       regularProducts,
       regularTotals.stockSold,
-      regularTotals.stockTransferred,
+      regularTotals.stockTransferredKahon,
+      regularTotals.stockOwnConsumption,
       regularTotals.total,
       targetDate,
       'REGULAR PRODUCTS STOCK REPORT',
@@ -196,7 +286,8 @@ export class StockService {
     const asinFormatted = this.formatStockForPrinter(
       asinProducts,
       asinTotals.stockSold,
-      asinTotals.stockTransferred,
+      asinTotals.stockTransferredKahon,
+      asinTotals.stockOwnConsumption,
       asinTotals.total,
       targetDate,
       'ASIN PRODUCTS STOCK REPORT',
@@ -205,10 +296,12 @@ export class StockService {
     const plasticFormatted = this.formatStockForPrinter(
       plasticProducts,
       plasticTotals.stockSold,
-      plasticTotals.stockTransferred,
+      plasticTotals.stockTransferredKahon,
+      plasticTotals.stockOwnConsumption,
       plasticTotals.total,
       targetDate,
       'PLASTIC PRODUCTS STOCK REPORT',
+      true, // isPlastic = true
     );
 
     return {
@@ -253,7 +346,7 @@ export class StockService {
 
     const cashierIds = cashiers.map((cashier) => cashier.id);
 
-    // Get all sales for the date across all cashiers
+    // Get all sales for the date across all cashiers - only SackPrice sales
     const sales = await this.prisma.sale.findMany({
       where: {
         cashierId: {
@@ -264,10 +357,14 @@ export class StockService {
       },
       include: {
         SaleItem: {
+          where: {
+            sackPriceId: {
+              not: null, // Only include items with SackPrice (excludes PerKilo)
+            },
+          },
           include: {
             product: true,
             SackPrice: true,
-            perKiloPrice: true,
           },
         },
       },
@@ -292,40 +389,55 @@ export class StockService {
     // Process sales
     sales.forEach((sale) => {
       sale.SaleItem.forEach((item) => {
-        const productName = item.product.name;
+        const rawProductName = item.product.name;
+        const productName = this.truncateProductName(rawProductName);
         const quantity = this.convertDecimalToNumber(item.quantity);
+        const price = item.price ? this.convertDecimalToNumber(item.price) : 0;
+        const totalPrice = quantity * price;
 
         if (!productStockMap.has(productName)) {
           productStockMap.set(productName, {
             productName,
             stockSold: 0,
-            stockTransferred: 0,
+            stockTransferredKahon: 0,
+            stockOwnConsumption: 0,
             total: 0,
+            totalPrice: 0,
           });
         }
 
         const productStock = productStockMap.get(productName)!;
         productStock.stockSold += quantity;
         productStock.total += quantity;
+        productStock.totalPrice = (productStock.totalPrice || 0) + totalPrice;
       });
     });
 
-    // Process transfers
+    // Process transfers - separate KAHON and OWN_CONSUMPTION
     transfers.forEach((transfer) => {
-      const productName = transfer.name;
+      const rawProductName = transfer.name;
+      const productName = this.truncateProductName(rawProductName);
       const quantity = this.convertDecimalToNumber(transfer.quantity);
 
       if (!productStockMap.has(productName)) {
         productStockMap.set(productName, {
           productName,
           stockSold: 0,
-          stockTransferred: 0,
+          stockTransferredKahon: 0,
+          stockOwnConsumption: 0,
           total: 0,
+          totalPrice: 0,
         });
       }
 
       const productStock = productStockMap.get(productName)!;
-      productStock.stockTransferred += quantity;
+
+      if (transfer.type === 'KAHON') {
+        productStock.stockTransferredKahon += quantity;
+      } else if (transfer.type === 'OWN_CONSUMPTION') {
+        productStock.stockOwnConsumption += quantity;
+      }
+
       productStock.total += quantity;
     });
 
@@ -352,11 +464,17 @@ export class StockService {
       return products.reduce(
         (acc, product) => {
           acc.stockSold += product.stockSold;
-          acc.stockTransferred += product.stockTransferred;
+          acc.stockTransferredKahon += product.stockTransferredKahon;
+          acc.stockOwnConsumption += product.stockOwnConsumption;
           acc.total += product.total;
           return acc;
         },
-        { stockSold: 0, stockTransferred: 0, total: 0 },
+        {
+          stockSold: 0,
+          stockTransferredKahon: 0,
+          stockOwnConsumption: 0,
+          total: 0,
+        },
       );
     };
 
@@ -368,7 +486,8 @@ export class StockService {
     const regularFormatted = this.formatStockForPrinter(
       regularProducts,
       regularTotals.stockSold,
-      regularTotals.stockTransferred,
+      regularTotals.stockTransferredKahon,
+      regularTotals.stockOwnConsumption,
       regularTotals.total,
       targetDate,
       'REGULAR PRODUCTS STOCK REPORT',
@@ -377,7 +496,8 @@ export class StockService {
     const asinFormatted = this.formatStockForPrinter(
       asinProducts,
       asinTotals.stockSold,
-      asinTotals.stockTransferred,
+      asinTotals.stockTransferredKahon,
+      asinTotals.stockOwnConsumption,
       asinTotals.total,
       targetDate,
       'ASIN PRODUCTS STOCK REPORT',
@@ -386,10 +506,12 @@ export class StockService {
     const plasticFormatted = this.formatStockForPrinter(
       plasticProducts,
       plasticTotals.stockSold,
-      plasticTotals.stockTransferred,
+      plasticTotals.stockTransferredKahon,
+      plasticTotals.stockOwnConsumption,
       plasticTotals.total,
       targetDate,
       'PLASTIC PRODUCTS STOCK REPORT',
+      true, // isPlastic = true
     );
 
     return {
