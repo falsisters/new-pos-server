@@ -793,6 +793,7 @@ export class SaleService {
         isVoid: true,
       },
       include: {
+        cashier: true,
         SaleItem: {
           include: {
             product: {
@@ -826,6 +827,7 @@ export class SaleService {
         isVoid: true,
       },
       include: {
+        cashier: true,
         SaleItem: {
           include: {
             product: {

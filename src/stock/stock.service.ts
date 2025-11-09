@@ -22,7 +22,7 @@ export class StockService {
 
   private convertDecimalToNumber(value: Decimal | null | undefined): number {
     if (value === null || value === undefined) return 0;
-    return Number(value);
+    return Math.ceil(Number(value));
   }
 
   private truncateProductName(name: string): string {
@@ -56,9 +56,13 @@ export class StockService {
   } {
     const lines: string[] = [];
 
+    // Date at the top
+    lines.push(`Date: ${date}`);
+    lines.push('');
+
     // Title
     lines.push(title);
-    lines.push('='.repeat(40));
+    lines.push('='.repeat(32));
     lines.push('');
 
     // Product details
@@ -92,7 +96,7 @@ export class StockService {
 
     // Overall totals
     lines.push('');
-    lines.push('='.repeat(40));
+    lines.push('='.repeat(32));
 
     if (!isPlastic) {
       // Build total equation dynamically, excluding zero values
@@ -117,9 +121,7 @@ export class StockService {
       lines.push(`TOTAL = ${grandTotal}`);
     }
 
-    lines.push('='.repeat(40));
-    lines.push('');
-    lines.push(`Date: ${date}`);
+    lines.push('='.repeat(32));
 
     return {
       lines,
@@ -183,7 +185,7 @@ export class StockService {
         const productName = this.truncateProductName(rawProductName);
         const quantity = this.convertDecimalToNumber(item.quantity);
         const price = item.price ? this.convertDecimalToNumber(item.price) : 0;
-        const totalPrice = quantity * price;
+        const totalPrice = Math.ceil(quantity * price);
 
         if (!productStockMap.has(productName)) {
           productStockMap.set(productName, {
@@ -199,7 +201,9 @@ export class StockService {
         const productStock = productStockMap.get(productName)!;
         productStock.stockSold += quantity;
         productStock.total += quantity;
-        productStock.totalPrice = (productStock.totalPrice || 0) + totalPrice;
+        productStock.totalPrice = Math.ceil(
+          (productStock.totalPrice || 0) + totalPrice,
+        );
       });
     });
 
@@ -393,7 +397,7 @@ export class StockService {
         const productName = this.truncateProductName(rawProductName);
         const quantity = this.convertDecimalToNumber(item.quantity);
         const price = item.price ? this.convertDecimalToNumber(item.price) : 0;
-        const totalPrice = quantity * price;
+        const totalPrice = Math.ceil(quantity * price);
 
         if (!productStockMap.has(productName)) {
           productStockMap.set(productName, {
@@ -409,7 +413,9 @@ export class StockService {
         const productStock = productStockMap.get(productName)!;
         productStock.stockSold += quantity;
         productStock.total += quantity;
-        productStock.totalPrice = (productStock.totalPrice || 0) + totalPrice;
+        productStock.totalPrice = Math.ceil(
+          (productStock.totalPrice || 0) + totalPrice,
+        );
       });
     });
 
