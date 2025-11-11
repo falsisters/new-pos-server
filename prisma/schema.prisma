@@ -110,6 +110,7 @@ model Product {
   DeliveryItem DeliveryItem[]
   SaleItem     SaleItem[]
   OrderItem    OrderItem[]
+  Transfer     Transfer[]
 }
 
 model SackPrice {
@@ -127,6 +128,7 @@ model SackPrice {
   OrderItem      OrderItem[]
   DeliveryItem   DeliveryItem[]
   SaleItem       SaleItem[]
+  Transfer       Transfer[]
 }
 
 enum SackType {
@@ -158,6 +160,7 @@ model PerKiloPrice {
   OrderItem    OrderItem[]
   DeliveryItem DeliveryItem[]
   SaleItem     SaleItem[]
+  Transfer     Transfer[]
 }
 
 model Sale {
@@ -229,14 +232,21 @@ model DeliveryItem {
 }
 
 model Transfer {
-  id        String       @id @default(cuid())
-  quantity  Decimal
-  name      String
-  type      TransferType
-  cashier   Cashier      @relation(fields: [cashierId], references: [id], onDelete: Cascade)
-  cashierId String
-  createdAt DateTime     @default(now()) @db.Timestamptz
-  updatedAt DateTime     @updatedAt @db.Timestamptz
+  id             String        @id @default(cuid())
+  quantity       Decimal
+  name           String
+  type           TransferType
+  cashier        Cashier       @relation(fields: [cashierId], references: [id], onDelete: Cascade)
+  cashierId      String
+  product        Product?      @relation(fields: [productId], references: [id], onDelete: Cascade)
+  productId      String?
+  SackPrice      SackPrice?    @relation(fields: [sackPriceId], references: [id], onDelete: Cascade)
+  sackPriceId    String?
+  sackType       SackType?
+  perKiloPrice   PerKiloPrice? @relation(fields: [perKiloPriceId], references: [id], onDelete: Cascade)
+  perKiloPriceId String?
+  createdAt      DateTime      @default(now()) @db.Timestamptz
+  updatedAt      DateTime      @updatedAt @db.Timestamptz
 }
 
 enum TransferType {

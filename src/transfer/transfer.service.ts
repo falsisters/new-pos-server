@@ -482,6 +482,9 @@ export class TransferService {
               quantity: product.sackPrice.quantity,
               type: transferProductDto.transferType,
               cashier: { connect: { id: cashierId } },
+              product: { connect: { id: product.id } },
+              SackPrice: { connect: { id: product.sackPrice.id } },
+              sackType: product.sackPrice.type,
             },
           });
         }
@@ -493,6 +496,8 @@ export class TransferService {
               quantity: 0,
               type: transferProductDto.transferType,
               cashier: { connect: { id: cashierId } },
+              product: { connect: { id: product.id } },
+              perKiloPrice: { connect: { id: product.perKiloPrice.id } },
             },
           });
         }

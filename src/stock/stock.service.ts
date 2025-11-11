@@ -28,12 +28,26 @@ export class StockService {
   private truncateProductName(name: string): string {
     // Find the first occurrence of a digit
     const match = name.match(/\d/);
+    let truncated: string;
+
     if (match && match.index !== undefined) {
-      // Return the substring before the first digit, trimmed
-      return name.substring(0, match.index).trim();
+      // Get substring before the first digit, trimmed
+      truncated = name.substring(0, match.index).trim();
+    } else {
+      // If no digit found, use the original name
+      truncated = name;
     }
-    // If no digit found, return the original name
-    return name;
+
+    // Check if there are multiple words
+    const words = truncated.split(/\s+/).filter((word) => word.length > 0);
+
+    if (words.length > 1) {
+      // Create acronym from first letter of each word
+      return words.map((word) => word[0].toUpperCase()).join('');
+    }
+
+    // Single word, return as is
+    return truncated;
   }
 
   private formatStockForPrinter(
@@ -173,16 +187,36 @@ export class StockService {
           in: ['OWN_CONSUMPTION', 'KAHON'],
         },
       },
+      include: {
+        product: true,
+      },
     });
 
     // Aggregate stock data by product
     const productStockMap = new Map<string, ProductStock>();
 
+    // Helper function to get sack type suffix
+    const getSackTypeSuffix = (sackType: string | null): string => {
+      if (!sackType) return '';
+      switch (sackType) {
+        case 'FIFTY_KG':
+          return ' 50KG';
+        case 'TWENTY_FIVE_KG':
+          return ' 25KG';
+        case 'FIVE_KG':
+          return ' 5KG';
+        default:
+          return '';
+      }
+    };
+
     // Process sales
     sales.forEach((sale) => {
       sale.SaleItem.forEach((item) => {
         const rawProductName = item.product.name;
-        const productName = this.truncateProductName(rawProductName);
+        const truncatedName = this.truncateProductName(rawProductName);
+        const sackTypeSuffix = getSackTypeSuffix(item.sackType);
+        const productName = truncatedName + sackTypeSuffix;
         const quantity = this.convertDecimalToNumber(item.quantity);
         const price = item.price ? this.convertDecimalToNumber(item.price) : 0;
         const totalPrice = Math.ceil(quantity * price);
@@ -208,9 +242,15 @@ export class StockService {
     });
 
     // Process transfers - separate KAHON and OWN_CONSUMPTION
+    // Now using product relationship instead of parsing transfer names
     transfers.forEach((transfer) => {
-      const rawProductName = transfer.name;
-      const productName = this.truncateProductName(rawProductName);
+      // Skip transfers without product link (legacy data)
+      if (!transfer.product) return;
+
+      const rawProductName = transfer.product.name;
+      const truncatedName = this.truncateProductName(rawProductName);
+      const sackTypeSuffix = getSackTypeSuffix(transfer.sackType);
+      const productName = truncatedName + sackTypeSuffix;
       const quantity = this.convertDecimalToNumber(transfer.quantity);
 
       if (!productStockMap.has(productName)) {
@@ -385,16 +425,36 @@ export class StockService {
           in: ['OWN_CONSUMPTION', 'KAHON'],
         },
       },
+      include: {
+        product: true,
+      },
     });
 
     // Aggregate stock data by product
     const productStockMap = new Map<string, ProductStock>();
 
+    // Helper function to get sack type suffix
+    const getSackTypeSuffix = (sackType: string | null): string => {
+      if (!sackType) return '';
+      switch (sackType) {
+        case 'FIFTY_KG':
+          return ' 50KG';
+        case 'TWENTY_FIVE_KG':
+          return ' 25KG';
+        case 'FIVE_KG':
+          return ' 5KG';
+        default:
+          return '';
+      }
+    };
+
     // Process sales
     sales.forEach((sale) => {
       sale.SaleItem.forEach((item) => {
         const rawProductName = item.product.name;
-        const productName = this.truncateProductName(rawProductName);
+        const truncatedName = this.truncateProductName(rawProductName);
+        const sackTypeSuffix = getSackTypeSuffix(item.sackType);
+        const productName = truncatedName + sackTypeSuffix;
         const quantity = this.convertDecimalToNumber(item.quantity);
         const price = item.price ? this.convertDecimalToNumber(item.price) : 0;
         const totalPrice = Math.ceil(quantity * price);
@@ -420,9 +480,15 @@ export class StockService {
     });
 
     // Process transfers - separate KAHON and OWN_CONSUMPTION
+    // Now using product relationship instead of parsing transfer names
     transfers.forEach((transfer) => {
-      const rawProductName = transfer.name;
-      const productName = this.truncateProductName(rawProductName);
+      // Skip transfers without product link (legacy data)
+      if (!transfer.product) return;
+
+      const rawProductName = transfer.product.name;
+      const truncatedName = this.truncateProductName(rawProductName);
+      const sackTypeSuffix = getSackTypeSuffix(transfer.sackType);
+      const productName = truncatedName + sackTypeSuffix;
       const quantity = this.convertDecimalToNumber(transfer.quantity);
 
       if (!productStockMap.has(productName)) {
