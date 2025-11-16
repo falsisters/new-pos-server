@@ -379,6 +379,18 @@ export class TransferService {
               }
             });
 
+            await tx.transfer.create({
+              data: {
+                name: `${currentProduct.name} ${this.parseSackType(product.sackPrice.type)}`,
+                quantity: product.sackPrice.quantity,
+                type: transferProductDto.transferType,
+                cashier: { connect: { id: cashierId } },
+                product: { connect: { id: product.id } },
+                SackPrice: { connect: { id: product.sackPrice.id } },
+                sackType: product.sackPrice.type,
+              },
+            });
+
             await tx.cell.createMany({
               data: cellsData,
             });
@@ -431,6 +443,17 @@ export class TransferService {
                   kahonItemId: kahonItem.id,
                 };
               }
+            });
+
+            await tx.transfer.create({
+              data: {
+                name: `${currentProduct.name} ${product.perKiloPrice.quantity}KG`,
+                quantity: 0,
+                type: transferProductDto.transferType,
+                cashier: { connect: { id: cashierId } },
+                product: { connect: { id: product.id } },
+                perKiloPrice: { connect: { id: product.perKiloPrice.id } },
+              },
             });
 
             await tx.cell.createMany({

@@ -156,7 +156,7 @@ export class StockService {
     const targetDate = filters.date || getCurrentManilaDate();
     const dateFilter = createManilaDateFilter(targetDate);
 
-    // Get all sales for the date - only SackPrice sales
+    // Get all sales for the date - includes both SackPrice and PerKiloPrice
     const sales = await this.prisma.sale.findMany({
       where: {
         cashierId,
@@ -165,14 +165,10 @@ export class StockService {
       },
       include: {
         SaleItem: {
-          where: {
-            sackPriceId: {
-              not: null, // Only include items with SackPrice (excludes PerKilo)
-            },
-          },
           include: {
             product: true,
             SackPrice: true,
+            perKiloPrice: true,
           },
         },
       },
@@ -390,7 +386,7 @@ export class StockService {
 
     const cashierIds = cashiers.map((cashier) => cashier.id);
 
-    // Get all sales for the date across all cashiers - only SackPrice sales
+    // Get all sales for the date across all cashiers - includes both SackPrice and PerKiloPrice
     const sales = await this.prisma.sale.findMany({
       where: {
         cashierId: {
@@ -401,14 +397,10 @@ export class StockService {
       },
       include: {
         SaleItem: {
-          where: {
-            sackPriceId: {
-              not: null, // Only include items with SackPrice (excludes PerKilo)
-            },
-          },
           include: {
             product: true,
             SackPrice: true,
+            perKiloPrice: true,
           },
         },
       },
