@@ -20,6 +20,19 @@ export class SalesCheckService {
     return Math.ceil(Number(value)).toFixed(2);
   }
 
+  private formatTimeInManilaTimezone(date: Date): string {
+    // Convert to Manila timezone (UTC+8)
+    const manilaOffset = 8 * 60; // 8 hours in minutes
+    const utcTime = date.getTime();
+    const manilaTime = new Date(utcTime + manilaOffset * 60 * 1000);
+
+    // Extract hours and minutes from Manila time
+    const hours = manilaTime.getUTCHours();
+    const minutes = manilaTime.getUTCMinutes();
+
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+  }
+
   async getSalesWithFilter(userId: string, filters: SalesCheckFilterDto) {
     // Use timezone-aware date filtering
     const dateFilter = filters.date ? createManilaDateFilter(filters.date) : {};
@@ -654,7 +667,7 @@ export class SalesCheckService {
 
         // Create a formatted sale item with time included
         const saleDateTime = formatDateForClient(sale.createdAt);
-        const formattedTime = `${saleDateTime.getHours().toString().padStart(2, '0')}:${saleDateTime.getMinutes().toString().padStart(2, '0')}`;
+        const formattedTime = this.formatTimeInManilaTimezone(sale.createdAt);
 
         return {
           id: item.id,
@@ -879,7 +892,7 @@ export class SalesCheckService {
 
         // Create a formatted sale item with time included
         const saleDateTime = formatDateForClient(sale.createdAt);
-        const formattedTime = `${saleDateTime.getHours().toString().padStart(2, '0')}:${saleDateTime.getMinutes().toString().padStart(2, '0')}`;
+        const formattedTime = this.formatTimeInManilaTimezone(sale.createdAt);
 
         return {
           id: item.id,
