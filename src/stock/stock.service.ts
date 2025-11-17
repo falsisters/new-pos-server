@@ -206,9 +206,12 @@ export class StockService {
       }
     };
 
-    // Process sales
+    // Process sales - only include items with SackPrice (exclude PerKiloPrice)
     sales.forEach((sale) => {
       sale.SaleItem.forEach((item) => {
+        // Skip items that don't have a sackType (PerKiloPrice items)
+        if (!item.sackType) return;
+
         const rawProductName = item.product.name;
         const truncatedName = this.truncateProductName(rawProductName);
         const sackTypeSuffix = getSackTypeSuffix(item.sackType);
@@ -440,9 +443,12 @@ export class StockService {
       }
     };
 
-    // Process sales
+    // Process sales - only include items with SackPrice (exclude PerKiloPrice)
     sales.forEach((sale) => {
       sale.SaleItem.forEach((item) => {
+        // Skip items that don't have a sackType (PerKiloPrice items)
+        if (!item.sackType) return;
+
         const rawProductName = item.product.name;
         const truncatedName = this.truncateProductName(rawProductName);
         const sackTypeSuffix = getSackTypeSuffix(item.sackType);
@@ -474,8 +480,8 @@ export class StockService {
     // Process transfers - separate KAHON and OWN_CONSUMPTION
     // Now using product relationship instead of parsing transfer names
     transfers.forEach((transfer) => {
-      // Skip transfers without product link (legacy data)
-      if (!transfer.product) return;
+      // Skip transfers without product link (legacy data) or without sackType (PerKiloPrice items)
+      if (!transfer.product || !transfer.sackType) return;
 
       const rawProductName = transfer.product.name;
       const truncatedName = this.truncateProductName(rawProductName);
