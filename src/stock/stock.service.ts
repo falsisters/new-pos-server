@@ -206,13 +206,17 @@ export class StockService {
       }
     };
 
-    // Process sales - only include items with SackPrice (exclude PerKiloPrice)
+    // Process sales - only include SackPrice for regular/asin, allow PerKiloPrice for plastic
     sales.forEach((sale) => {
       sale.SaleItem.forEach((item) => {
-        // Skip items that don't have a sackType (PerKiloPrice items)
-        if (!item.sackType) return;
-
         const rawProductName = item.product.name;
+        const isPlasticProduct = rawProductName
+          .toLowerCase()
+          .includes('plastic');
+
+        // Skip PerKiloPrice items unless they are plastic products
+        if (!item.sackType && !isPlasticProduct) return;
+
         const truncatedName = this.truncateProductName(rawProductName);
         const sackTypeSuffix = getSackTypeSuffix(item.sackType);
         const productName = truncatedName + sackTypeSuffix;
@@ -246,8 +250,15 @@ export class StockService {
       // Skip transfers without product link (legacy data)
       if (!transfer.product) return;
 
-      const rawProductName = transfer.product.name;
-      const truncatedName = this.truncateProductName(rawProductName);
+      const transferProductName = transfer.product.name;
+      const isPlasticTransfer = transferProductName
+        .toLowerCase()
+        .includes('plastic');
+
+      // Skip PerKiloPrice items unless they are plastic products
+      if (!transfer.sackType && !isPlasticTransfer) return;
+
+      const truncatedName = this.truncateProductName(transferProductName);
       const sackTypeSuffix = getSackTypeSuffix(transfer.sackType);
       const productName = truncatedName + sackTypeSuffix;
       const quantity = this.convertDecimalToNumber(transfer.quantity);
@@ -443,13 +454,17 @@ export class StockService {
       }
     };
 
-    // Process sales - only include items with SackPrice (exclude PerKiloPrice)
+    // Process sales - only include SackPrice for regular/asin, allow PerKiloPrice for plastic
     sales.forEach((sale) => {
       sale.SaleItem.forEach((item) => {
-        // Skip items that don't have a sackType (PerKiloPrice items)
-        if (!item.sackType) return;
-
         const rawProductName = item.product.name;
+        const isPlasticProduct = rawProductName
+          .toLowerCase()
+          .includes('plastic');
+
+        // Skip PerKiloPrice items unless they are plastic products
+        if (!item.sackType && !isPlasticProduct) return;
+
         const truncatedName = this.truncateProductName(rawProductName);
         const sackTypeSuffix = getSackTypeSuffix(item.sackType);
         const productName = truncatedName + sackTypeSuffix;
@@ -480,10 +495,15 @@ export class StockService {
     // Process transfers - separate KAHON and OWN_CONSUMPTION
     // Now using product relationship instead of parsing transfer names
     transfers.forEach((transfer) => {
-      // Skip transfers without product link (legacy data) or without sackType (PerKiloPrice items)
-      if (!transfer.product || !transfer.sackType) return;
+      // Skip transfers without product link (legacy data)
+      if (!transfer.product) return;
 
       const rawProductName = transfer.product.name;
+      const isPlasticProduct = rawProductName.toLowerCase().includes('plastic');
+
+      // Skip PerKiloPrice items unless they are plastic products
+      if (!transfer.sackType && !isPlasticProduct) return;
+
       const truncatedName = this.truncateProductName(rawProductName);
       const sackTypeSuffix = getSackTypeSuffix(transfer.sackType);
       const productName = truncatedName + sackTypeSuffix;
