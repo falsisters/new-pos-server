@@ -222,7 +222,10 @@ export class StockService {
         const productName = truncatedName + sackTypeSuffix;
         const quantity = this.convertDecimalToNumber(item.quantity);
         const price = item.price ? this.convertDecimalToNumber(item.price) : 0;
-        const totalPrice = Math.ceil(quantity * price);
+        // For plastic products, price is already the final price, no need to multiply
+        const totalPrice = isPlasticProduct
+          ? price
+          : Math.ceil(quantity * price);
 
         if (!productStockMap.has(productName)) {
           productStockMap.set(productName, {
@@ -470,7 +473,10 @@ export class StockService {
         const productName = truncatedName + sackTypeSuffix;
         const quantity = this.convertDecimalToNumber(item.quantity);
         const price = item.price ? this.convertDecimalToNumber(item.price) : 0;
-        const totalPrice = Math.ceil(quantity * price);
+        // For plastic products, price is already the final price, no need to multiply
+        const totalPrice = isPlasticProduct
+          ? price
+          : Math.ceil(quantity * price);
 
         if (!productStockMap.has(productName)) {
           productStockMap.set(productName, {
