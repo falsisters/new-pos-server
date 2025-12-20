@@ -19,20 +19,17 @@ export class SaleService {
 
   private formatSale(sale: any) {
     if (!sale) return null;
+    // Return sale data with raw UTC timestamps - frontend handles timezone conversion
     const formatted = {
       ...sale,
       SaleItem: sale.SaleItem
-        ? convertArrayDatesToManilaTime(
-            sale.SaleItem.map((item) => ({
-              ...item,
-              product: item.product
-                ? convertObjectDatesToManilaTime(item.product)
-                : null,
-            })),
-          )
+        ? sale.SaleItem.map((item: any) => ({
+            ...item,
+            product: item.product || null,
+          }))
         : [],
     };
-    return convertObjectDatesToManilaTime(formatted);
+    return formatted;
   }
 
   private formatSales(sales: any[]) {
@@ -547,7 +544,7 @@ export class SaleService {
     return this.formatSales(sales);
   }
 
-  async getSalesByCashierId(userId: string, cashierId: string) {
+  async getSalesByCashierId(userId: string, cashierId: string, date?: string) {
     // First verify that the cashier belongs to the user
     const cashier = await this.prisma.cashier.findFirst({
       where: {
@@ -560,9 +557,22 @@ export class SaleService {
       throw new Error('Cashier not found or does not belong to this user');
     }
 
+    // Use date range filtering like profit service
+    const { startOfDay, endOfDay } = getManilaDateRangeForQuery(date);
+
+    console.log(`📅 Sales by Cashier - Manila date range for ${date || 'today'}:`, {
+      cashierId,
+      startUTC: startOfDay.toISOString(),
+      endUTC: endOfDay.toISOString(),
+    });
+
     const sales = await this.prisma.sale.findMany({
       where: {
         cashierId,
+        createdAt: {
+          gte: startOfDay,
+          lte: endOfDay,
+        },
       },
       include: {
         SaleItem: {
@@ -580,7 +590,13 @@ export class SaleService {
           },
         },
       },
+      orderBy: {
+        createdAt: 'desc',
+      },
     });
+
+    console.log(`📊 Sales by Cashier - Found ${sales.length} sales for ${date || 'today'}`);
+
     return this.formatSales(sales);
   }
 }
