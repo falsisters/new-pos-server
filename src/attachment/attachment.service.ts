@@ -4,8 +4,8 @@ import { UploadService } from 'src/upload/upload.service';
 import { CreateAttachmentFormData } from './types/createAttachment.type';
 import { AttachmentType } from '@prisma/client';
 import {
-  convertToManilaTime,
-  parseManilaDateToUTCRange,
+  formatDateForClient,
+  createManilaDateFilter,
 } from 'src/utils/date.util';
 
 @Injectable()
@@ -19,22 +19,19 @@ export class AttachmentService {
     if (!attachment) return null;
     return {
       ...attachment,
-      createdAt: convertToManilaTime(attachment.createdAt),
-      updatedAt: convertToManilaTime(attachment.updatedAt),
+      createdAt: formatDateForClient(attachment.createdAt),
+      updatedAt: formatDateForClient(attachment.updatedAt),
     };
   }
 
   async getAttachments(userId: string) {
-    // Use Manila Time for "today" calculation
-    const { startOfDay, endOfDay } = parseManilaDateToUTCRange();
+    // Use timezone-aware date filtering for "today"
+    const todayFilter = createManilaDateFilter();
 
     const attachments = await this.prismaService.attachment.findMany({
       where: {
         userId,
-        createdAt: {
-          gte: startOfDay,
-          lte: endOfDay,
-        },
+        createdAt: todayFilter,
       },
       orderBy: { createdAt: 'desc' },
     });
@@ -99,20 +96,17 @@ export class AttachmentService {
   }
 
   async getYesterdayAttachments() {
-    // Get yesterday in Manila Time, then convert to UTC range
+    // Get yesterday's date in YYYY-MM-DD format
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
     const yesterdayDateString = yesterday.toISOString().split('T')[0];
 
-    const { startOfDay, endOfDay } =
-      parseManilaDateToUTCRange(yesterdayDateString);
+    // Use timezone-aware date filtering for yesterday
+    const yesterdayFilter = createManilaDateFilter(yesterdayDateString);
 
     const attachments = await this.prismaService.attachment.findMany({
       where: {
-        createdAt: {
-          gte: startOfDay,
-          lte: endOfDay,
-        },
+        createdAt: yesterdayFilter,
       },
     });
 
@@ -157,7 +151,7 @@ export class AttachmentService {
           id: att.id,
           name: att.name,
           url: att.url,
-          createdAt: convertToManilaTime(att.createdAt),
+          createdAt: formatDateForClient(att.createdAt),
         })),
       };
     } catch (error) {

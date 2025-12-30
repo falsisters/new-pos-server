@@ -6,9 +6,8 @@ import { TransferProductDto } from './dto/transferProduct.dto';
 import { EditTransferDto } from './dto/editTransfer.dto';
 import { TransferFilterDto } from './dto/transferWithFilter.dto';
 import {
-  convertObjectDatesToManilaTime,
-  convertArrayDatesToManilaTime,
-  getManilaDateRangeForQuery,
+  formatDateForClient,
+  createManilaDateFilter,
 } from '../utils/date.util';
 
 @Injectable()
@@ -17,11 +16,26 @@ export class TransferService {
 
   private formatTransfer(transfer: any) {
     if (!transfer) return null;
-    return convertObjectDatesToManilaTime(transfer);
+    const formatted = {
+      ...transfer,
+      createdAt: formatDateForClient(transfer.createdAt),
+      updatedAt: formatDateForClient(transfer.updatedAt),
+    };
+    // Ensure quantity is returned as a number
+    if (formatted.quantity !== undefined) {
+      formatted.quantity = Number(formatted.quantity);
+    }
+    return formatted;
   }
 
   private formatTransfers(transfers: any[]) {
-    return convertArrayDatesToManilaTime(transfers);
+    // Ensure quantities are returned as numbers
+    return transfers.map((transfer) => ({
+      ...transfer,
+      createdAt: formatDateForClient(transfer.createdAt),
+      updatedAt: formatDateForClient(transfer.updatedAt),
+      quantity: Number(transfer.quantity),
+    }));
   }
 
   private parseSackType(type: SackType) {
@@ -207,7 +221,11 @@ export class TransferService {
     });
 
     // Format the result to convert dates to Manila time
-    return convertObjectDatesToManilaTime(result);
+    return {
+      ...result,
+      createdAt: formatDateForClient(result.createdAt),
+      updatedAt: formatDateForClient(result.updatedAt),
+    };
   }
 
   async transferProduct(
@@ -361,6 +379,18 @@ export class TransferService {
               }
             });
 
+            await tx.transfer.create({
+              data: {
+                name: `${currentProduct.name} ${this.parseSackType(product.sackPrice.type)}`,
+                quantity: product.sackPrice.quantity,
+                type: transferProductDto.transferType,
+                cashier: { connect: { id: cashierId } },
+                product: { connect: { id: product.id } },
+                SackPrice: { connect: { id: product.sackPrice.id } },
+                sackType: product.sackPrice.type,
+              },
+            });
+
             await tx.cell.createMany({
               data: cellsData,
             });
@@ -415,6 +445,17 @@ export class TransferService {
               }
             });
 
+            await tx.transfer.create({
+              data: {
+                name: `${currentProduct.name} ${product.perKiloPrice.quantity}KG`,
+                quantity: 0,
+                type: transferProductDto.transferType,
+                cashier: { connect: { id: cashierId } },
+                product: { connect: { id: product.id } },
+                perKiloPrice: { connect: { id: product.perKiloPrice.id } },
+              },
+            });
+
             await tx.cell.createMany({
               data: cellsData,
             });
@@ -425,7 +466,11 @@ export class TransferService {
       });
 
       // Format the result to convert dates to Manila time
-      return convertObjectDatesToManilaTime(result);
+      return {
+        ...result,
+        createdAt: formatDateForClient(result.createdAt),
+        updatedAt: formatDateForClient(result.updatedAt),
+      };
     } else {
       // Non-KAHON transfer logic remains unchanged
       const result = await this.prisma.$transaction(async (tx) => {
@@ -460,6 +505,9 @@ export class TransferService {
               quantity: product.sackPrice.quantity,
               type: transferProductDto.transferType,
               cashier: { connect: { id: cashierId } },
+              product: { connect: { id: product.id } },
+              SackPrice: { connect: { id: product.sackPrice.id } },
+              sackType: product.sackPrice.type,
             },
           });
         }
@@ -471,6 +519,8 @@ export class TransferService {
               quantity: 0,
               type: transferProductDto.transferType,
               cashier: { connect: { id: cashierId } },
+              product: { connect: { id: product.id } },
+              perKiloPrice: { connect: { id: product.perKiloPrice.id } },
             },
           });
         }
@@ -484,8 +534,8 @@ export class TransferService {
   }
 
   async getAllTransfersWithFilter(userId: string, filters: TransferFilterDto) {
-    // Use standardized date range query utility
-    const { startOfDay, endOfDay } = getManilaDateRangeForQuery(filters.date);
+    // Use timezone-aware date filtering
+    const dateFilter = createManilaDateFilter(filters.date);
 
     const cashiers = await this.prisma.cashier.findMany({
       where: {
@@ -507,10 +557,7 @@ export class TransferService {
             },
           },
           {
-            createdAt: {
-              gte: startOfDay,
-              lte: endOfDay,
-            },
+            createdAt: dateFilter,
           },
         ],
       },
@@ -553,8 +600,8 @@ export class TransferService {
     cashierId: string,
     filters: TransferFilterDto,
   ) {
-    // Use standardized date range query utility
-    const { startOfDay, endOfDay } = getManilaDateRangeForQuery(filters.date);
+    // Use timezone-aware date filtering
+    const dateFilter = createManilaDateFilter(filters.date);
 
     const transfers = await this.prisma.transfer.findMany({
       where: {
@@ -563,10 +610,7 @@ export class TransferService {
             cashierId,
           },
           {
-            createdAt: {
-              gte: startOfDay,
-              lte: endOfDay,
-            },
+            createdAt: dateFilter,
           },
         ],
       },

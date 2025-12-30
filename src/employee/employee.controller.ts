@@ -16,6 +16,7 @@ import { JwtAuthGuard } from 'src/auth/guards/jwt.guard';
 import { EditEmployeeDto } from './dto/edit.dto';
 import { JwtCashierAuthGuard } from 'src/cashier/guards/jwt.guard';
 import { EmployeeAttendanceFilterDto } from './dto/employee-attendance.dto';
+import { EmployeeFilterDto } from './dto/filter.dto';
 
 @Controller('employee')
 export class EmployeeController {
@@ -48,16 +49,22 @@ export class EmployeeController {
 
   @UseGuards(JwtAuthGuard)
   @Get('user')
-  async getAllEmployeesByUser(@Request() req) {
+  async getAllEmployeesByUser(
+    @Request() req,
+    @Query() filterDto: EmployeeFilterDto,
+  ) {
     const userId = req.user.id;
-    return this.employeeService.getAllEmployees(userId);
+    return this.employeeService.getAllEmployees(userId, filterDto);
   }
 
   @UseGuards(JwtCashierAuthGuard)
   @Get('cashier')
-  async getAllEmployeesByCashier(@Request() req) {
+  async getAllEmployeesByCashier(
+    @Request() req,
+    @Query() filterDto: EmployeeFilterDto,
+  ) {
     const userId = req.user.userId;
-    return this.employeeService.getAllEmployees(userId);
+    return this.employeeService.getAllEmployees(userId, filterDto);
   }
 
   @Get(':id')

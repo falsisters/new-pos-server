@@ -1,10 +1,7 @@
 import { IsOptional, IsString } from 'class-validator';
 
-export class EditEmployeeDto {
-  @IsOptional()
-  name: string;
-
+export class StockStatisticsFilterDto {
   @IsOptional()
   @IsString()
-  branch?: string;
+  date?: string; // Format: YYYY-MM-DD
 }

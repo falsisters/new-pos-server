@@ -3,9 +3,8 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateExpenseDto } from './dto/createExpense.dto';
 import { GetExpenseByDateDto } from './dto/getExpenseByDate.dto';
 import {
-  convertToManilaTime,
-  getManilaDateRangeForQuery,
-  parseManilaDateForStorage,
+  formatDateForClient,
+  createManilaDateFilter,
 } from 'src/utils/date.util';
 
 @Injectable()
@@ -16,13 +15,13 @@ export class ExpensesService {
     if (!expenseList) return null;
     return {
       ...expenseList,
-      createdAt: convertToManilaTime(expenseList.createdAt),
-      updatedAt: convertToManilaTime(expenseList.updatedAt),
+      createdAt: formatDateForClient(expenseList.createdAt),
+      updatedAt: formatDateForClient(expenseList.updatedAt),
       ExpenseItems: expenseList.ExpenseItems
         ? expenseList.ExpenseItems.map((item) => ({
             ...item,
-            createdAt: convertToManilaTime(item.createdAt),
-            updatedAt: convertToManilaTime(item.updatedAt),
+            createdAt: formatDateForClient(item.createdAt),
+            updatedAt: formatDateForClient(item.updatedAt),
           }))
         : [],
     };
@@ -31,23 +30,15 @@ export class ExpensesService {
   async createExpense(cashierId: string, createExpenseDto: CreateExpenseDto) {
     const itemsToProcess = createExpenseDto.expenseItems || [];
 
-    // Use consistent date range conversion for querying
-    const { startOfDay, endOfDay } = getManilaDateRangeForQuery(
-      createExpenseDto.date,
-    );
-
-    // Convert Manila time to UTC for storage
-    const targetDateUTC = parseManilaDateForStorage(createExpenseDto.date);
+    // Use timezone-aware date filtering
+    const dateFilter = createManilaDateFilter(createExpenseDto.date);
 
     const result = await this.prisma.$transaction(async (tx) => {
       // Check if there's already an expense list for the target date
       const existingExpense = await tx.expenseList.findFirst({
         where: {
           cashierId,
-          createdAt: {
-            gte: startOfDay,
-            lte: endOfDay,
-          },
+          createdAt: dateFilter,
         },
       });
 
@@ -69,11 +60,15 @@ export class ExpensesService {
           },
         });
       } else {
-        // If not exists, create a new expense list with UTC time for storage
+        // If not exists, create a new expense list with timezone-aware date
+        const targetDate = createExpenseDto.date
+          ? new Date(`${createExpenseDto.date}T00:00:00+08:00`)
+          : new Date();
+
         return await tx.expenseList.create({
           data: {
             cashierId,
-            createdAt: targetDateUTC,
+            createdAt: targetDate,
             ExpenseItems: {
               create: itemsToProcess.map((item) => ({
                 name: item.name,
@@ -139,18 +134,13 @@ export class ExpensesService {
     cashierId: string,
     expenseDate: GetExpenseByDateDto,
   ) {
-    // Use consistent date range conversion for querying
-    const { startOfDay, endOfDay } = getManilaDateRangeForQuery(
-      expenseDate.date,
-    );
+    // Use timezone-aware date filtering
+    const dateFilter = createManilaDateFilter(expenseDate.date);
 
     const expense = await this.prisma.expenseList.findFirst({
       where: {
         cashierId,
-        createdAt: {
-          gte: startOfDay,
-          lte: endOfDay,
-        },
+        createdAt: dateFilter,
       },
       include: {
         ExpenseItems: true,
@@ -173,23 +163,15 @@ export class ExpensesService {
   async createUserExpense(userId: string, createExpenseDto: CreateExpenseDto) {
     const itemsToProcess = createExpenseDto.expenseItems || [];
 
-    // Use consistent date range conversion for querying
-    const { startOfDay, endOfDay } = getManilaDateRangeForQuery(
-      createExpenseDto.date,
-    );
-
-    // Convert Manila time to UTC for storage
-    const targetDateUTC = parseManilaDateForStorage(createExpenseDto.date);
+    // Use timezone-aware date filtering
+    const dateFilter = createManilaDateFilter(createExpenseDto.date);
 
     const result = await this.prisma.$transaction(async (tx) => {
       // Check if there's already an expense list for the target date
       const existingExpense = await tx.expenseList.findFirst({
         where: {
           userId,
-          createdAt: {
-            gte: startOfDay,
-            lte: endOfDay,
-          },
+          createdAt: dateFilter,
         },
       });
 
@@ -211,11 +193,15 @@ export class ExpensesService {
           },
         });
       } else {
-        // If not exists, create a new expense list with UTC time for storage
+        // If not exists, create a new expense list with timezone-aware date
+        const targetDate = createExpenseDto.date
+          ? new Date(`${createExpenseDto.date}T00:00:00+08:00`)
+          : new Date();
+
         return await tx.expenseList.create({
           data: {
             userId,
-            createdAt: targetDateUTC,
+            createdAt: targetDate,
             ExpenseItems: {
               create: itemsToProcess.map((item) => ({
                 name: item.name,
@@ -233,18 +219,13 @@ export class ExpensesService {
   }
 
   async getUserExpenseByDate(userId: string, expenseDate: GetExpenseByDateDto) {
-    // Use consistent date range conversion for querying
-    const { startOfDay, endOfDay } = getManilaDateRangeForQuery(
-      expenseDate.date,
-    );
+    // Use timezone-aware date filtering
+    const dateFilter = createManilaDateFilter(expenseDate.date);
 
     const expense = await this.prisma.expenseList.findFirst({
       where: {
         userId,
-        createdAt: {
-          gte: startOfDay,
-          lte: endOfDay,
-        },
+        createdAt: dateFilter,
       },
       include: {
         ExpenseItems: true,
@@ -257,16 +238,13 @@ export class ExpensesService {
   }
 
   async getAllUserExpensesByDate(date?: string) {
-    // Use consistent date range conversion for querying
-    const { startOfDay, endOfDay } = getManilaDateRangeForQuery(date);
+    // Use timezone-aware date filtering
+    const dateFilter = createManilaDateFilter(date);
 
     const expenses = await this.prisma.expenseList.findMany({
       where: {
         userId: { not: null },
-        createdAt: {
-          gte: startOfDay,
-          lte: endOfDay,
-        },
+        createdAt: dateFilter,
       },
       include: {
         ExpenseItems: true,
@@ -286,16 +264,13 @@ export class ExpensesService {
   }
 
   async getAllCashierExpensesByDate(date?: string) {
-    // Use consistent date range conversion for querying
-    const { startOfDay, endOfDay } = getManilaDateRangeForQuery(date);
+    // Use timezone-aware date filtering
+    const dateFilter = createManilaDateFilter(date);
 
     const expenses = await this.prisma.expenseList.findMany({
       where: {
         cashierId: { not: null },
-        createdAt: {
-          gte: startOfDay,
-          lte: endOfDay,
-        },
+        createdAt: dateFilter,
       },
       include: {
         ExpenseItems: true,

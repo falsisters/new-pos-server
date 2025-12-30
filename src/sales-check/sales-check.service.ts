@@ -3,18 +3,39 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { SalesCheckFilterDto } from './dto/sales-check.dto';
 import { TotalSalesFilterDto } from './dto/total-sales.dto';
 import { PaymentMethod } from '@prisma/client';
+import { Decimal } from '@prisma/client/runtime/library';
 import {
-  convertToManilaTime,
-  getManilaDateRangeForQuery,
+  formatDateForClient,
+  createManilaDateFilter,
 } from '../utils/date.util';
 
 @Injectable()
 export class SalesCheckService {
   constructor(private prisma: PrismaService) {}
 
+  private convertDecimalToString(value: Decimal | number): string {
+    if (value instanceof Decimal) {
+      return Math.ceil(value.toNumber()).toFixed(2);
+    }
+    return Math.ceil(Number(value)).toFixed(2);
+  }
+
+  private formatTimeInManilaTimezone(date: Date): string {
+    // Convert to Manila timezone (UTC+8)
+    const manilaOffset = 8 * 60; // 8 hours in minutes
+    const utcTime = date.getTime();
+    const manilaTime = new Date(utcTime + manilaOffset * 60 * 1000);
+
+    // Extract hours and minutes from Manila time
+    const hours = manilaTime.getUTCHours();
+    const minutes = manilaTime.getUTCMinutes();
+
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+  }
+
   async getSalesWithFilter(userId: string, filters: SalesCheckFilterDto) {
-    // Use consistent date range conversion
-    const { startOfDay, endOfDay } = getManilaDateRangeForQuery(filters.date);
+    // Use timezone-aware date filtering
+    const dateFilter = filters.date ? createManilaDateFilter(filters.date) : {};
 
     // Build the query conditions
     const whereConditions: any = {
@@ -25,11 +46,11 @@ export class SalesCheckService {
           },
         },
         {
-          createdAt: {
-            gte: startOfDay,
-            lte: endOfDay,
-          },
+          isVoid: false,
         },
+        ...(Object.keys(dateFilter).length > 0
+          ? [{ createdAt: dateFilter }]
+          : []),
       ],
     };
 
@@ -53,6 +74,8 @@ export class SalesCheckService {
         createdAt: 'desc',
       },
     });
+
+    console.log(sales);
 
     // Process and calculate profits for each sale item
     const allSaleItems = sales.flatMap((sale) => {
@@ -102,13 +125,38 @@ export class SalesCheckService {
         return true;
       }).map((item) => {
         let priceType = '';
-        let totalAmount = 0;
-        let unitPrice = 0;
+        let totalAmount = new Decimal(0);
+        let unitPrice = new Decimal(0);
 
-        if (item.perKiloPriceId && item.perKiloPrice) {
+        // If price field exists, use it directly
+        if ((item as any).price !== null && (item as any).price !== undefined) {
+          unitPrice = (item as any).price;
+          totalAmount = unitPrice;
+
+          // Determine price type based on what's connected
+          if (item.perKiloPriceId && item.perKiloPrice) {
+            priceType = 'KG';
+          } else if (item.sackPriceId && item.SackPrice) {
+            switch (item.sackType) {
+              case 'FIFTY_KG':
+                priceType = '50KG';
+                break;
+              case 'TWENTY_FIVE_KG':
+                priceType = '25KG';
+                break;
+              case 'FIVE_KG':
+                priceType = '5KG';
+                break;
+              default:
+                priceType = item.sackType || 'SACK';
+            }
+          } else {
+            priceType = 'CUSTOM';
+          }
+        } else if (item.perKiloPriceId && item.perKiloPrice) {
           priceType = 'KG';
           unitPrice = item.perKiloPrice.price;
-          totalAmount = unitPrice * item.quantity;
+          totalAmount = unitPrice.mul(item.quantity);
         } else if (item.sackPriceId && item.SackPrice) {
           switch (item.sackType) {
             case 'FIFTY_KG':
@@ -129,33 +177,36 @@ export class SalesCheckService {
           } else {
             unitPrice = item.SackPrice.price;
           }
-          totalAmount = unitPrice * item.quantity;
+          totalAmount = unitPrice.mul(item.quantity);
         } else {
           priceType = 'UNKNOWN';
         }
 
         // If this item is discounted, use the discounted price instead
         if (item.isDiscounted && item.discountedPrice !== null) {
-          totalAmount = item.discountedPrice * item.quantity;
-          unitPrice = item.discountedPrice;
+          unitPrice = item.discountedPrice.div(item.quantity);
+          totalAmount = item.discountedPrice;
         }
 
         // Create a formatted sale item
         return {
           id: item.id,
-          quantity: item.quantity,
+          quantity: this.convertDecimalToString(item.quantity),
           product: {
             id: item.product?.id || item.productId,
             name: item.product?.name || 'Unknown Product',
           },
+          price: this.convertDecimalToString(item.price),
           priceType,
-          unitPrice: Number(unitPrice.toFixed(2)),
-          totalAmount: Number(totalAmount.toFixed(2)),
+          unitPrice: this.convertDecimalToString(unitPrice),
+          totalAmount: this.convertDecimalToString(totalAmount),
           paymentMethod: sale.paymentMethod,
           isSpecialPrice: item.isSpecialPrice,
           isDiscounted: item.isDiscounted,
-          discountedPrice: item.isDiscounted ? item.discountedPrice : null,
-          saleDate: convertToManilaTime(sale.createdAt), // Convert to Manila time
+          discountedPrice: item.isDiscounted
+            ? this.convertDecimalToString(item.discountedPrice)
+            : null,
+          saleDate: formatDateForClient(sale.createdAt),
         };
       });
     });
@@ -169,22 +220,24 @@ export class SalesCheckService {
           productName: item.product.name,
           priceType: item.priceType,
           items: [],
-          totalQuantity: 0,
-          totalAmount: 0,
+          totalQuantity: new Decimal(0),
+          totalAmount: new Decimal(0),
           paymentTotals: {
-            [PaymentMethod.CASH]: 0,
-            [PaymentMethod.CHECK]: 0,
-            [PaymentMethod.BANK_TRANSFER]: 0,
+            [PaymentMethod.CASH]: new Decimal(0),
+            [PaymentMethod.CHECK]: new Decimal(0),
+            [PaymentMethod.BANK_TRANSFER]: new Decimal(0),
           },
         };
       }
 
       result[key].items.push(item);
-      result[key].totalQuantity += item.quantity;
-      result[key].totalAmount += item.totalAmount;
+      result[key].totalQuantity = result[key].totalQuantity.add(item.quantity);
+      result[key].totalAmount = result[key].totalAmount.add(item.totalAmount);
 
       // Add to payment method totals
-      result[key].paymentTotals[item.paymentMethod] += item.totalAmount;
+      result[key].paymentTotals[item.paymentMethod] = result[key].paymentTotals[
+        item.paymentMethod
+      ].add(item.totalAmount);
 
       return result;
     }, {});
@@ -200,19 +253,21 @@ export class SalesCheckService {
           paymentMethod: item.paymentMethod,
           isSpecialPrice: item.isSpecialPrice,
           isDiscounted: item.isDiscounted,
-          discountedPrice: item.isDiscounted ? item.discountedPrice : null, // Add this field
+          discountedPrice: item.discountedPrice,
           formattedSale: `${item.quantity} ${item.product.name} ${item.priceType} = ${item.totalAmount}${
             item.paymentMethod !== 'CASH'
               ? ` (${item.paymentMethod.replace('_', ' ')})`
               : ''
           }${item.isSpecialPrice ? ' (special price)' : ''}${item.isDiscounted ? ' (discounted)' : ''}`,
         })),
-        totalQuantity: group.totalQuantity,
-        totalAmount: Number(group.totalAmount.toFixed(2)),
+        totalQuantity: this.convertDecimalToString(group.totalQuantity),
+        totalAmount: this.convertDecimalToString(group.totalAmount),
         paymentTotals: {
-          cash: Number(group.paymentTotals.CASH.toFixed(2)),
-          check: Number(group.paymentTotals.CHECK.toFixed(2)),
-          bankTransfer: Number(group.paymentTotals.BANK_TRANSFER.toFixed(2)),
+          cash: this.convertDecimalToString(group.paymentTotals.CASH),
+          check: this.convertDecimalToString(group.paymentTotals.CHECK),
+          bankTransfer: this.convertDecimalToString(
+            group.paymentTotals.BANK_TRANSFER,
+          ),
         },
       };
     });
@@ -223,8 +278,8 @@ export class SalesCheckService {
     cashierId: string,
     filters: SalesCheckFilterDto,
   ) {
-    // Use consistent date range conversion
-    const { startOfDay, endOfDay } = getManilaDateRangeForQuery(filters.date);
+    // Use timezone-aware date filtering
+    const dateFilter = filters.date ? createManilaDateFilter(filters.date) : {};
 
     // Build the query conditions for specific cashier
     const whereConditions: any = {
@@ -233,11 +288,11 @@ export class SalesCheckService {
           cashierId,
         },
         {
-          createdAt: {
-            gte: startOfDay,
-            lte: endOfDay,
-          },
+          isVoid: false,
         },
+        ...(Object.keys(dateFilter).length > 0
+          ? [{ createdAt: dateFilter }]
+          : []),
       ],
     };
 
@@ -261,6 +316,8 @@ export class SalesCheckService {
         createdAt: 'desc',
       },
     });
+
+    console.log(sales);
 
     // Process and calculate profits for each sale item
     const allSaleItems = sales.flatMap((sale) => {
@@ -310,13 +367,38 @@ export class SalesCheckService {
         return true;
       }).map((item) => {
         let priceType = '';
-        let totalAmount = 0;
-        let unitPrice = 0;
+        let totalAmount = new Decimal(0);
+        let unitPrice = new Decimal(0);
 
-        if (item.perKiloPriceId && item.perKiloPrice) {
+        // If price field exists, use it directly
+        if ((item as any).price !== null && (item as any).price !== undefined) {
+          unitPrice = (item as any).price;
+          totalAmount = unitPrice;
+
+          // Determine price type based on what's connected
+          if (item.perKiloPriceId && item.perKiloPrice) {
+            priceType = 'KG';
+          } else if (item.sackPriceId && item.SackPrice) {
+            switch (item.sackType) {
+              case 'FIFTY_KG':
+                priceType = '50KG';
+                break;
+              case 'TWENTY_FIVE_KG':
+                priceType = '25KG';
+                break;
+              case 'FIVE_KG':
+                priceType = '5KG';
+                break;
+              default:
+                priceType = item.sackType || 'SACK';
+            }
+          } else {
+            priceType = 'CUSTOM';
+          }
+        } else if (item.perKiloPriceId && item.perKiloPrice) {
           priceType = 'KG';
           unitPrice = item.perKiloPrice.price;
-          totalAmount = unitPrice * item.quantity;
+          totalAmount = unitPrice.mul(item.quantity);
         } else if (item.sackPriceId && item.SackPrice) {
           switch (item.sackType) {
             case 'FIFTY_KG':
@@ -337,33 +419,36 @@ export class SalesCheckService {
           } else {
             unitPrice = item.SackPrice.price;
           }
-          totalAmount = unitPrice * item.quantity;
+          totalAmount = unitPrice.mul(item.quantity);
         } else {
           priceType = 'UNKNOWN';
         }
 
         // If this item is discounted, use the discounted price instead
         if (item.isDiscounted && item.discountedPrice !== null) {
-          totalAmount = item.discountedPrice * item.quantity;
-          unitPrice = item.discountedPrice;
+          unitPrice = item.discountedPrice.div(item.quantity);
+          totalAmount = item.discountedPrice;
         }
 
         // Create a formatted sale item
         return {
           id: item.id,
-          quantity: item.quantity,
+          quantity: this.convertDecimalToString(item.quantity),
           product: {
             id: item.product?.id || item.productId,
             name: item.product?.name || 'Unknown Product',
           },
           priceType,
-          unitPrice: Number(unitPrice.toFixed(2)),
-          totalAmount: Number(totalAmount.toFixed(2)),
+          price: this.convertDecimalToString(item.price),
+          unitPrice: this.convertDecimalToString(unitPrice),
+          totalAmount: this.convertDecimalToString(totalAmount),
           paymentMethod: sale.paymentMethod,
           isSpecialPrice: item.isSpecialPrice,
           isDiscounted: item.isDiscounted,
-          discountedPrice: item.isDiscounted ? item.discountedPrice : null,
-          saleDate: convertToManilaTime(sale.createdAt), // Convert to Manila time
+          discountedPrice: item.isDiscounted
+            ? this.convertDecimalToString(item.discountedPrice)
+            : null,
+          saleDate: formatDateForClient(sale.createdAt),
         };
       });
     });
@@ -377,22 +462,24 @@ export class SalesCheckService {
           productName: item.product.name,
           priceType: item.priceType,
           items: [],
-          totalQuantity: 0,
-          totalAmount: 0,
+          totalQuantity: new Decimal(0),
+          totalAmount: new Decimal(0),
           paymentTotals: {
-            [PaymentMethod.CASH]: 0,
-            [PaymentMethod.CHECK]: 0,
-            [PaymentMethod.BANK_TRANSFER]: 0,
+            [PaymentMethod.CASH]: new Decimal(0),
+            [PaymentMethod.CHECK]: new Decimal(0),
+            [PaymentMethod.BANK_TRANSFER]: new Decimal(0),
           },
         };
       }
 
       result[key].items.push(item);
-      result[key].totalQuantity += item.quantity;
-      result[key].totalAmount += item.totalAmount;
+      result[key].totalQuantity = result[key].totalQuantity.add(item.quantity);
+      result[key].totalAmount = result[key].totalAmount.add(item.totalAmount);
 
       // Add to payment method totals
-      result[key].paymentTotals[item.paymentMethod] += item.totalAmount;
+      result[key].paymentTotals[item.paymentMethod] = result[key].paymentTotals[
+        item.paymentMethod
+      ].add(item.totalAmount);
 
       return result;
     }, {});
@@ -408,27 +495,29 @@ export class SalesCheckService {
           paymentMethod: item.paymentMethod,
           isSpecialPrice: item.isSpecialPrice,
           isDiscounted: item.isDiscounted,
-          discountedPrice: item.isDiscounted ? item.discountedPrice : null, // Add this field
+          discountedPrice: item.discountedPrice,
           formattedSale: `${item.quantity} ${item.product.name} ${item.priceType} = ${item.totalAmount}${
             item.paymentMethod !== 'CASH'
               ? ` (${item.paymentMethod.replace('_', ' ')})`
               : ''
           }${item.isSpecialPrice ? ' (special price)' : ''}${item.isDiscounted ? ' (discounted)' : ''}`,
         })),
-        totalQuantity: group.totalQuantity,
-        totalAmount: Number(group.totalAmount.toFixed(2)),
+        totalQuantity: this.convertDecimalToString(group.totalQuantity),
+        totalAmount: this.convertDecimalToString(group.totalAmount),
         paymentTotals: {
-          cash: Number(group.paymentTotals.CASH.toFixed(2)),
-          check: Number(group.paymentTotals.CHECK.toFixed(2)),
-          bankTransfer: Number(group.paymentTotals.BANK_TRANSFER.toFixed(2)),
+          cash: this.convertDecimalToString(group.paymentTotals.CASH),
+          check: this.convertDecimalToString(group.paymentTotals.CHECK),
+          bankTransfer: this.convertDecimalToString(
+            group.paymentTotals.BANK_TRANSFER,
+          ),
         },
       };
     });
   }
 
   async getTotalSales(userId: string, filters: TotalSalesFilterDto) {
-    // Use consistent date range conversion
-    const { startOfDay, endOfDay } = getManilaDateRangeForQuery(filters.date);
+    // Use timezone-aware date filtering
+    const dateFilter = filters.date ? createManilaDateFilter(filters.date) : {};
 
     // Build the query conditions
     const whereConditions: any = {
@@ -439,11 +528,11 @@ export class SalesCheckService {
           },
         },
         {
-          createdAt: {
-            gte: startOfDay,
-            lte: endOfDay,
-          },
+          isVoid: false,
         },
+        ...(Object.keys(dateFilter).length > 0
+          ? [{ createdAt: dateFilter }]
+          : []),
       ],
     };
 
@@ -468,7 +557,9 @@ export class SalesCheckService {
       },
     });
 
-    // Filter and map sale items
+    console.log(sales);
+
+    // Filter and map sale items with consistent date conversion
     const allSaleItems = sales.flatMap((sale) => {
       return sale.SaleItem.filter((item) => {
         // Filter by product name if specified
@@ -511,13 +602,38 @@ export class SalesCheckService {
         return true;
       }).map((item) => {
         let priceType = '';
-        let totalAmount = 0;
-        let unitPrice = 0;
+        let totalAmount = new Decimal(0);
+        let unitPrice = new Decimal(0);
 
-        if (item.perKiloPriceId && item.perKiloPrice) {
+        // If price field exists, use it directly
+        if ((item as any).price !== null && (item as any).price !== undefined) {
+          unitPrice = (item as any).price;
+          totalAmount = unitPrice;
+
+          // Determine price type based on what's connected
+          if (item.perKiloPriceId && item.perKiloPrice) {
+            priceType = 'KG';
+          } else if (item.sackPriceId && item.SackPrice) {
+            switch (item.sackType) {
+              case 'FIFTY_KG':
+                priceType = '50KG';
+                break;
+              case 'TWENTY_FIVE_KG':
+                priceType = '25KG';
+                break;
+              case 'FIVE_KG':
+                priceType = '5KG';
+                break;
+              default:
+                priceType = item.sackType || 'SACK';
+            }
+          } else {
+            priceType = 'CUSTOM';
+          }
+        } else if (item.perKiloPriceId && item.perKiloPrice) {
           priceType = 'KG';
           unitPrice = item.perKiloPrice.price;
-          totalAmount = unitPrice * item.quantity;
+          totalAmount = unitPrice.mul(item.quantity);
         } else if (item.sackPriceId && item.SackPrice) {
           switch (item.sackType) {
             case 'FIFTY_KG':
@@ -538,39 +654,42 @@ export class SalesCheckService {
           } else {
             unitPrice = item.SackPrice.price;
           }
-          totalAmount = unitPrice * item.quantity;
+          totalAmount = unitPrice.mul(item.quantity);
         } else {
           priceType = 'UNKNOWN';
         }
 
         // If this item is discounted, use the discounted price instead
         if (item.isDiscounted && item.discountedPrice !== null) {
-          totalAmount = item.discountedPrice * item.quantity;
-          unitPrice = item.discountedPrice;
+          unitPrice = item.discountedPrice.div(item.quantity);
+          totalAmount = item.discountedPrice;
         }
 
         // Create a formatted sale item with time included
-        const saleDateTime = convertToManilaTime(sale.createdAt); // Convert to Manila time
-        const formattedTime = `${saleDateTime.getHours().toString().padStart(2, '0')}:${saleDateTime.getMinutes().toString().padStart(2, '0')}`;
+        const saleDateTime = formatDateForClient(sale.createdAt);
+        const formattedTime = this.formatTimeInManilaTimezone(sale.createdAt);
 
         return {
           id: item.id,
           saleId: sale.id,
-          quantity: item.quantity,
+          quantity: this.convertDecimalToString(item.quantity),
           product: {
             id: item.product?.id || item.productId,
             name: item.product?.name || 'Unknown Product',
           },
           priceType,
-          unitPrice: Number(unitPrice.toFixed(2)),
-          totalAmount: Number(totalAmount.toFixed(2)),
+          price: this.convertDecimalToString(item.price),
+          unitPrice: this.convertDecimalToString(unitPrice),
+          totalAmount: this.convertDecimalToString(totalAmount),
           paymentMethod: sale.paymentMethod,
           isSpecialPrice: item.isSpecialPrice,
-          isDiscounted: item.isDiscounted, // Add this field
-          discountedPrice: item.isDiscounted ? item.discountedPrice : null,
+          isDiscounted: item.isDiscounted,
+          discountedPrice: item.isDiscounted
+            ? this.convertDecimalToString(item.discountedPrice)
+            : null,
           saleDate: saleDateTime,
           formattedTime,
-          formattedSale: `${item.quantity} ${item.product?.name || 'Unknown Product'} ${priceType} = ${Number(totalAmount.toFixed(2))}${
+          formattedSale: `${this.convertDecimalToString(item.quantity)} ${item.product?.name || 'Unknown Product'} ${priceType} = ${this.convertDecimalToString(totalAmount)}${
             sale.paymentMethod !== 'CASH'
               ? ` (${sale.paymentMethod.replace('_', ' ')})`
               : ''
@@ -581,38 +700,42 @@ export class SalesCheckService {
 
     // Calculate totals and categorize by payment method
     const totalQuantity = allSaleItems.reduce(
-      (sum, item) => sum + item.quantity,
-      0,
+      (sum, item) => sum.add(item.quantity),
+      new Decimal(0),
     );
     const totalAmount = allSaleItems.reduce(
-      (sum, item) => sum + item.totalAmount,
-      0,
+      (sum, item) => sum.add(item.totalAmount),
+      new Decimal(0),
     );
 
     // Group by payment method
     const paymentTotals = {
-      [PaymentMethod.CASH]: 0,
-      [PaymentMethod.CHECK]: 0,
-      [PaymentMethod.BANK_TRANSFER]: 0,
+      [PaymentMethod.CASH]: new Decimal(0),
+      [PaymentMethod.CHECK]: new Decimal(0),
+      [PaymentMethod.BANK_TRANSFER]: new Decimal(0),
     };
 
     allSaleItems.forEach((item) => {
-      paymentTotals[item.paymentMethod] += item.totalAmount;
+      paymentTotals[item.paymentMethod] = paymentTotals[item.paymentMethod].add(
+        item.totalAmount,
+      );
     });
 
-    const nonCashTotal = paymentTotals.CHECK + paymentTotals.BANK_TRANSFER;
-    const cashTotal = totalAmount - nonCashTotal;
+    const nonCashTotal = paymentTotals.CHECK.add(paymentTotals.BANK_TRANSFER);
+    const cashTotal = totalAmount.sub(nonCashTotal);
 
     // Return formatted data for the UI
     return {
       items: allSaleItems,
       summary: {
-        totalQuantity: Number(totalQuantity.toFixed(2)),
-        totalAmount: Number(totalAmount.toFixed(2)),
+        totalQuantity: this.convertDecimalToString(totalQuantity),
+        totalAmount: this.convertDecimalToString(totalAmount),
         paymentTotals: {
-          cash: Number(cashTotal.toFixed(2)),
-          check: Number(paymentTotals.CHECK.toFixed(2)),
-          bankTransfer: Number(paymentTotals.BANK_TRANSFER.toFixed(2)),
+          cash: this.convertDecimalToString(cashTotal),
+          check: this.convertDecimalToString(paymentTotals.CHECK),
+          bankTransfer: this.convertDecimalToString(
+            paymentTotals.BANK_TRANSFER,
+          ),
         },
       },
     };
@@ -620,8 +743,8 @@ export class SalesCheckService {
 
   // New method for cashier-specific total sales using cashier ID
   async getCashierTotalSales(cashierId: string, filters: TotalSalesFilterDto) {
-    // Use consistent date range conversion
-    const { startOfDay, endOfDay } = getManilaDateRangeForQuery(filters.date);
+    // Use timezone-aware date filtering
+    const dateFilter = filters.date ? createManilaDateFilter(filters.date) : {};
 
     // Build the query conditions for specific cashier
     const whereConditions: any = {
@@ -630,11 +753,11 @@ export class SalesCheckService {
           cashierId,
         },
         {
-          createdAt: {
-            gte: startOfDay,
-            lte: endOfDay,
-          },
+          isVoid: false,
         },
+        ...(Object.keys(dateFilter).length > 0
+          ? [{ createdAt: dateFilter }]
+          : []),
       ],
     };
 
@@ -659,7 +782,9 @@ export class SalesCheckService {
       },
     });
 
-    // Filter and map sale items
+    console.log(sales);
+
+    // Filter and map sale items with consistent date conversion
     const allSaleItems = sales.flatMap((sale) => {
       return sale.SaleItem.filter((item) => {
         // Filter by product name if specified
@@ -702,13 +827,38 @@ export class SalesCheckService {
         return true;
       }).map((item) => {
         let priceType = '';
-        let totalAmount = 0;
-        let unitPrice = 0;
+        let totalAmount = new Decimal(0);
+        let unitPrice = new Decimal(0);
 
-        if (item.perKiloPriceId && item.perKiloPrice) {
+        // If price field exists, use it directly
+        if ((item as any).price !== null && (item as any).price !== undefined) {
+          unitPrice = (item as any).price;
+          totalAmount = unitPrice;
+
+          // Determine price type based on what's connected
+          if (item.perKiloPriceId && item.perKiloPrice) {
+            priceType = 'KG';
+          } else if (item.sackPriceId && item.SackPrice) {
+            switch (item.sackType) {
+              case 'FIFTY_KG':
+                priceType = '50KG';
+                break;
+              case 'TWENTY_FIVE_KG':
+                priceType = '25KG';
+                break;
+              case 'FIVE_KG':
+                priceType = '5KG';
+                break;
+              default:
+                priceType = item.sackType || 'SACK';
+            }
+          } else {
+            priceType = 'CUSTOM';
+          }
+        } else if (item.perKiloPriceId && item.perKiloPrice) {
           priceType = 'KG';
           unitPrice = item.perKiloPrice.price;
-          totalAmount = unitPrice * item.quantity;
+          totalAmount = unitPrice.mul(item.quantity);
         } else if (item.sackPriceId && item.SackPrice) {
           switch (item.sackType) {
             case 'FIFTY_KG':
@@ -729,39 +879,42 @@ export class SalesCheckService {
           } else {
             unitPrice = item.SackPrice.price;
           }
-          totalAmount = unitPrice * item.quantity;
+          totalAmount = unitPrice.mul(item.quantity);
         } else {
           priceType = 'UNKNOWN';
         }
 
         // If this item is discounted, use the discounted price instead
         if (item.isDiscounted && item.discountedPrice !== null) {
-          totalAmount = item.discountedPrice * item.quantity;
-          unitPrice = item.discountedPrice;
+          unitPrice = item.discountedPrice.div(item.quantity);
+          totalAmount = item.discountedPrice;
         }
 
         // Create a formatted sale item with time included
-        const saleDateTime = convertToManilaTime(sale.createdAt); // Convert to Manila time
-        const formattedTime = `${saleDateTime.getHours().toString().padStart(2, '0')}:${saleDateTime.getMinutes().toString().padStart(2, '0')}`;
+        const saleDateTime = formatDateForClient(sale.createdAt);
+        const formattedTime = this.formatTimeInManilaTimezone(sale.createdAt);
 
         return {
           id: item.id,
           saleId: sale.id,
-          quantity: item.quantity,
+          quantity: this.convertDecimalToString(item.quantity),
           product: {
             id: item.product?.id || item.productId,
             name: item.product?.name || 'Unknown Product',
           },
           priceType,
-          unitPrice: Number(unitPrice.toFixed(2)),
-          totalAmount: Number(totalAmount.toFixed(2)),
+          price: this.convertDecimalToString(item.price),
+          unitPrice: this.convertDecimalToString(unitPrice),
+          totalAmount: this.convertDecimalToString(totalAmount),
           paymentMethod: sale.paymentMethod,
           isSpecialPrice: item.isSpecialPrice,
-          isDiscounted: item.isDiscounted, // Add this field
-          discountedPrice: item.isDiscounted ? item.discountedPrice : null,
+          isDiscounted: item.isDiscounted,
+          discountedPrice: item.isDiscounted
+            ? this.convertDecimalToString(item.discountedPrice)
+            : null,
           saleDate: saleDateTime,
           formattedTime,
-          formattedSale: `${item.quantity} ${item.product?.name || 'Unknown Product'} ${priceType} = ${Number(totalAmount.toFixed(2))}${
+          formattedSale: `${this.convertDecimalToString(item.quantity)} ${item.product?.name || 'Unknown Product'} ${priceType} = ${this.convertDecimalToString(totalAmount)}${
             sale.paymentMethod !== 'CASH'
               ? ` (${sale.paymentMethod.replace('_', ' ')})`
               : ''
@@ -772,38 +925,42 @@ export class SalesCheckService {
 
     // Calculate totals and categorize by payment method
     const totalQuantity = allSaleItems.reduce(
-      (sum, item) => sum + item.quantity,
-      0,
+      (sum, item) => sum.add(item.quantity),
+      new Decimal(0),
     );
     const totalAmount = allSaleItems.reduce(
-      (sum, item) => sum + item.totalAmount,
-      0,
+      (sum, item) => sum.add(item.totalAmount),
+      new Decimal(0),
     );
 
     // Group by payment method
     const paymentTotals = {
-      [PaymentMethod.CASH]: 0,
-      [PaymentMethod.CHECK]: 0,
-      [PaymentMethod.BANK_TRANSFER]: 0,
+      [PaymentMethod.CASH]: new Decimal(0),
+      [PaymentMethod.CHECK]: new Decimal(0),
+      [PaymentMethod.BANK_TRANSFER]: new Decimal(0),
     };
 
     allSaleItems.forEach((item) => {
-      paymentTotals[item.paymentMethod] += item.totalAmount;
+      paymentTotals[item.paymentMethod] = paymentTotals[item.paymentMethod].add(
+        item.totalAmount,
+      );
     });
 
-    const nonCashTotal = paymentTotals.CHECK + paymentTotals.BANK_TRANSFER;
-    const cashTotal = totalAmount - nonCashTotal;
+    const nonCashTotal = paymentTotals.CHECK.add(paymentTotals.BANK_TRANSFER);
+    const cashTotal = totalAmount.sub(nonCashTotal);
 
     // Return formatted data for the UI
     return {
       items: allSaleItems,
       summary: {
-        totalQuantity: Number(totalQuantity.toFixed(2)),
-        totalAmount: Number(totalAmount.toFixed(2)),
+        totalQuantity: this.convertDecimalToString(totalQuantity),
+        totalAmount: this.convertDecimalToString(totalAmount),
         paymentTotals: {
-          cash: Number(cashTotal.toFixed(2)),
-          check: Number(paymentTotals.CHECK.toFixed(2)),
-          bankTransfer: Number(paymentTotals.BANK_TRANSFER.toFixed(2)),
+          cash: this.convertDecimalToString(cashTotal),
+          check: this.convertDecimalToString(paymentTotals.CHECK),
+          bankTransfer: this.convertDecimalToString(
+            paymentTotals.BANK_TRANSFER,
+          ),
         },
       },
     };
@@ -811,8 +968,6 @@ export class SalesCheckService {
 
   // New method for getting all cashier sales under a user
   async getAllCashierSalesByDate(userId: string, date?: string) {
-    const { startOfDay, endOfDay } = getManilaDateRangeForQuery(date);
-
     // Get all cashiers under this user
     const cashiers = await this.prisma.cashier.findMany({
       where: { userId },

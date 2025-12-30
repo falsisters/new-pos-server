@@ -120,13 +120,14 @@ export class InventoryController {
   async createCalculationRow(
     @Body() addCalculationRowDto: AddCalculationRowDto,
   ) {
-    const { sheetId, inventoryId, rowIndex, description } =
+    const { sheetId, inventoryId, rowIndex, description, date } =
       addCalculationRowDto;
     return this.inventoryService.addCalculationRow(
       sheetId,
       rowIndex,
       description || '',
       inventoryId,
+      date,
     );
   }
 
@@ -135,13 +136,14 @@ export class InventoryController {
   async createUserCalculationRow(
     @Body() addCalculationRowDto: AddCalculationRowDto,
   ) {
-    const { sheetId, inventoryId, rowIndex, description } =
+    const { sheetId, inventoryId, rowIndex, description, date } =
       addCalculationRowDto;
     return this.inventoryService.addCalculationRow(
       sheetId,
       rowIndex,
       description || '',
       inventoryId,
+      date,
     );
   }
 
@@ -150,7 +152,7 @@ export class InventoryController {
   async createCalculationRows(
     @Body() addCalculationRowDto: AddInventoryRowsDto,
   ) {
-    const { sheetId, inventoryId, rowIndexes } = addCalculationRowDto;
+    const { sheetId, inventoryId, rowIndexes, date } = addCalculationRowDto;
     return Promise.all(
       rowIndexes.map((rowIndex) =>
         this.inventoryService.addCalculationRow(
@@ -158,6 +160,7 @@ export class InventoryController {
           rowIndex,
           '',
           inventoryId,
+          date,
         ),
       ),
     );
@@ -168,7 +171,7 @@ export class InventoryController {
   async createUserCalculationRows(
     @Body() addCalculationRowDto: AddInventoryRowsDto,
   ) {
-    const { sheetId, inventoryId, rowIndexes } = addCalculationRowDto;
+    const { sheetId, inventoryId, rowIndexes, date } = addCalculationRowDto;
     return Promise.all(
       rowIndexes.map((rowIndex) =>
         this.inventoryService.addCalculationRow(
@@ -176,6 +179,7 @@ export class InventoryController {
           rowIndex,
           '',
           inventoryId,
+          date,
         ),
       ),
     );
@@ -465,5 +469,59 @@ export class InventoryController {
     }
 
     return { results, errors };
+  }
+
+  @UseGuards(JwtCashierAuthGuard)
+  @Get('expenses/one-date')
+  async getExpensesSheetByOneDate(@Request() req) {
+    const cashierId = req.user.id;
+    const { date: dateStr } = req.query;
+
+    // Handle null/undefined values for date
+    const date = dateStr ? new Date(dateStr as string) : undefined;
+
+    return this.inventoryService.getExpensesSheetsByOneDate(cashierId, date);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('user/expenses/one-date')
+  async getUserExpensesSheetByOneDate(@Request() req) {
+    const userId = req.user.id;
+    const { date: dateStr } = req.query;
+
+    // Handle null/undefined values for date
+    const date = dateStr ? new Date(dateStr as string) : undefined;
+
+    return this.inventoryService.getExpensesSheetsForUserByOneDate(
+      userId,
+      date,
+    );
+  }
+
+  @UseGuards(JwtCashierAuthGuard)
+  @Get('one-date')
+  async getSheetByOneDate(@Request() req) {
+    const cashierId = req.user.id;
+    const { date: dateStr } = req.query;
+
+    // Handle null/undefined values for date
+    const date = dateStr ? new Date(dateStr as string) : undefined;
+
+    return this.inventoryService.getInventorySheetsByOneDate(cashierId, date);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('user/one-date')
+  async getUserSheetByOneDate(@Request() req) {
+    const userId = req.user.id;
+    const { date: dateStr } = req.query;
+
+    // Handle null/undefined values for date
+    const date = dateStr ? new Date(dateStr as string) : undefined;
+
+    return this.inventoryService.getInventorySheetsForUserByOneDate(
+      userId,
+      date,
+    );
   }
 }
