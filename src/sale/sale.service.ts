@@ -63,7 +63,6 @@ export class SaleService {
 
   private formatSale(sale: any) {
     if (!sale) return null;
-    // Return sale data with raw UTC timestamps - frontend handles timezone conversion
     const formatted = {
       ...sale,
       createdAt: formatDateForClient(sale.createdAt),
@@ -701,7 +700,7 @@ export class SaleService {
     return this.formatSales(sales);
   }
 
-  async getSalesByCashierId(userId: string, cashierId: string, date?: string) {
+  async getSalesByCashierId(userId: string, cashierId: string) {
     // First verify that the cashier belongs to the user
     const cashier = await this.prisma.cashier.findFirst({
       where: {
@@ -745,9 +744,6 @@ export class SaleService {
             SackPrice: true,
           },
         },
-      },
-      orderBy: {
-        createdAt: 'desc',
       },
     });
     return this.formatSales(sales);
@@ -847,9 +843,6 @@ export class SaleService {
         voidedAt: 'desc',
       },
     });
-
-    console.log(`📊 Sales by Cashier - Found ${sales.length} sales for ${date || 'today'}`);
-
     return this.formatSales(sales);
   }
 }

@@ -72,10 +72,9 @@ export class SaleController {
   async getSalesByCashierId(
     @Request() req,
     @Param('cashierId') cashierId: string,
-    @Query() filters: RecentSalesFilterDto,
   ) {
     const userId = req.user.id;
-    return this.saleService.getSalesByCashierId(userId, cashierId, filters.date);
+    return this.saleService.getSalesByCashierId(userId, cashierId);
   }
 
   @UseGuards(JwtCashierAuthGuard)
