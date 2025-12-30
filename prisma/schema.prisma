@@ -60,7 +60,6 @@ enum CashierPermissions {
   BILLS
   ATTACHMENTS
   SALES_HISTORY
-  VOID
 }
 
 model Shift {
