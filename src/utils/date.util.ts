@@ -81,58 +81,42 @@ export function parseManilaDateRange(
   let end: Date | undefined;
 
   if (startDate) {
-    // Parse "YYYY-MM-DD" format
-    const parts = startDate.split('-');
-    const year = parseInt(parts[0], 10);
-    const month = parseInt(parts[1], 10) - 1;
-    const day = parseInt(parts[2], 10);
-    // Manila start of day to UTC
-    start = new Date(Date.UTC(year, month, day, 0, 0, 0, 0) - 8 * 60 * 60 * 1000);
+    // Parse the date string and treat it as Manila Time
+    const startManilaDate = new Date(startDate);
+    // Convert Manila Time to UTC by subtracting 8 hours
+    start = new Date(startManilaDate.getTime() - 8 * 60 * 60 * 1000);
+    start.setHours(0, 0, 0, 0); // Set to start of day in UTC
   }
 
   if (endDate) {
-    // Parse "YYYY-MM-DD" format
-    const parts = endDate.split('-');
-    const year = parseInt(parts[0], 10);
-    const month = parseInt(parts[1], 10) - 1;
-    const day = parseInt(parts[2], 10);
-    // Manila end of day to UTC
-    end = new Date(Date.UTC(year, month, day, 23, 59, 59, 999) - 8 * 60 * 60 * 1000);
+    // Parse the date string and treat it as Manila Time
+    const endManilaDate = new Date(endDate);
+    // Convert Manila Time to UTC by subtracting 8 hours
+    end = new Date(endManilaDate.getTime() - 8 * 60 * 60 * 1000);
+    end.setHours(23, 59, 59, 999); // Set to end of day in UTC
   }
 
   return { startDate: start, endDate: end };
 }
 
 export function parseManilaDateToUTC(dateString: string): Date {
-  // Parse "YYYY-MM-DD" format and convert Manila midnight to UTC
-  const parts = dateString.split('-');
-  const year = parseInt(parts[0], 10);
-  const month = parseInt(parts[1], 10) - 1;
-  const day = parseInt(parts[2], 10);
-  // Manila midnight to UTC (subtract 8 hours)
-  return new Date(Date.UTC(year, month, day, 0, 0, 0, 0) - 8 * 60 * 60 * 1000);
+  // Parse the date string and treat it as Manila Time
+  const manilaDate = new Date(dateString);
+  // Convert Manila Time to UTC by subtracting 8 hours
+  return new Date(manilaDate.getTime() - 8 * 60 * 60 * 1000);
 }
 
 export function getManilaDateBounds(dateString?: string): {
   startOfDay: Date;
   endOfDay: Date;
 } {
-  let year: number, month: number, day: number;
-  
-  if (dateString) {
-    const parts = dateString.split('-');
-    year = parseInt(parts[0], 10);
-    month = parseInt(parts[1], 10) - 1;
-    day = parseInt(parts[2], 10);
-  } else {
-    const nowInManila = new Date(Date.now() + 8 * 60 * 60 * 1000);
-    year = nowInManila.getUTCFullYear();
-    month = nowInManila.getUTCMonth();
-    day = nowInManila.getUTCDate();
-  }
+  const targetDate = dateString ? parseManilaDateToUTC(dateString) : new Date();
 
-  const startOfDay = new Date(Date.UTC(year, month, day, 0, 0, 0, 0) - 8 * 60 * 60 * 1000);
-  const endOfDay = new Date(Date.UTC(year, month, day, 23, 59, 59, 999) - 8 * 60 * 60 * 1000);
+  const startOfDay = new Date(targetDate);
+  startOfDay.setHours(0, 0, 0, 0);
+
+  const endOfDay = new Date(targetDate);
+  endOfDay.setHours(23, 59, 59, 999);
 
   return { startOfDay, endOfDay };
 }
@@ -141,24 +125,20 @@ export function parseManilaDateToUTCRange(dateString?: string): {
   startOfDay: Date;
   endOfDay: Date;
 } {
-  // Parse the date string to get year, month, day components
-  let year: number, month: number, day: number;
-  
-  if (dateString) {
-    const parts = dateString.split('-');
-    year = parseInt(parts[0], 10);
-    month = parseInt(parts[1], 10) - 1;
-    day = parseInt(parts[2], 10);
-  } else {
-    const nowInManila = new Date(Date.now() + 8 * 60 * 60 * 1000);
-    year = nowInManila.getUTCFullYear();
-    month = nowInManila.getUTCMonth();
-    day = nowInManila.getUTCDate();
-  }
+  const targetDate = dateString ? new Date(dateString) : new Date();
 
-  // Manila midnight to UTC
-  const startOfDayUTC = new Date(Date.UTC(year, month, day, 0, 0, 0, 0) - 8 * 60 * 60 * 1000);
-  const endOfDayUTC = new Date(Date.UTC(year, month, day, 23, 59, 59, 999) - 8 * 60 * 60 * 1000);
+  // Create Manila Time dates
+  const startOfDayManila = new Date(targetDate);
+  startOfDayManila.setHours(0, 0, 0, 0);
+
+  const endOfDayManila = new Date(targetDate);
+  endOfDayManila.setHours(23, 59, 59, 999);
+
+  // Convert Manila Time to UTC by subtracting 8 hours
+  const startOfDayUTC = new Date(
+    startOfDayManila.getTime() - 8 * 60 * 60 * 1000,
+  );
+  const endOfDayUTC = new Date(endOfDayManila.getTime() - 8 * 60 * 60 * 1000);
 
   return {
     startOfDay: startOfDayUTC,
@@ -177,33 +157,25 @@ export function parseManilaDateRangeToUTC(
   let endDate: Date;
 
   if (startDateString) {
-    const parts = startDateString.split('-');
-    const year = parseInt(parts[0], 10);
-    const month = parseInt(parts[1], 10) - 1;
-    const day = parseInt(parts[2], 10);
-    startDate = new Date(Date.UTC(year, month, day, 0, 0, 0, 0) - 8 * 60 * 60 * 1000);
+    const startDateManila = new Date(startDateString);
+    startDateManila.setHours(0, 0, 0, 0);
+    startDate = new Date(startDateManila.getTime() - 8 * 60 * 60 * 1000);
   } else {
     // Default to today's start in Manila Time
-    const nowInManila = new Date(Date.now() + 8 * 60 * 60 * 1000);
-    const year = nowInManila.getUTCFullYear();
-    const month = nowInManila.getUTCMonth();
-    const day = nowInManila.getUTCDate();
-    startDate = new Date(Date.UTC(year, month, day, 0, 0, 0, 0) - 8 * 60 * 60 * 1000);
+    const todayManila = new Date();
+    todayManila.setHours(0, 0, 0, 0);
+    startDate = new Date(todayManila.getTime() - 8 * 60 * 60 * 1000);
   }
 
   if (endDateString) {
-    const parts = endDateString.split('-');
-    const year = parseInt(parts[0], 10);
-    const month = parseInt(parts[1], 10) - 1;
-    const day = parseInt(parts[2], 10);
-    endDate = new Date(Date.UTC(year, month, day, 23, 59, 59, 999) - 8 * 60 * 60 * 1000);
+    const endDateManila = new Date(endDateString);
+    endDateManila.setHours(23, 59, 59, 999);
+    endDate = new Date(endDateManila.getTime() - 8 * 60 * 60 * 1000);
   } else {
     // Default to today's end in Manila Time
-    const nowInManila = new Date(Date.now() + 8 * 60 * 60 * 1000);
-    const year = nowInManila.getUTCFullYear();
-    const month = nowInManila.getUTCMonth();
-    const day = nowInManila.getUTCDate();
-    endDate = new Date(Date.UTC(year, month, day, 23, 59, 59, 999) - 8 * 60 * 60 * 1000);
+    const todayManila = new Date();
+    todayManila.setHours(23, 59, 59, 999);
+    endDate = new Date(todayManila.getTime() - 8 * 60 * 60 * 1000);
   }
 
   return { startDate, endDate };
@@ -225,33 +197,20 @@ export function getManilaDateRangeForQuery(dateString?: string): {
   startOfDay: Date;
   endOfDay: Date;
 } {
-  // Parse the date string to get year, month, day components
-  // This is timezone-independent
-  let year: number, month: number, day: number;
-  
-  if (dateString) {
-    // Parse "YYYY-MM-DD" format
-    const parts = dateString.split('-');
-    year = parseInt(parts[0], 10);
-    month = parseInt(parts[1], 10) - 1; // JS months are 0-indexed
-    day = parseInt(parts[2], 10);
-  } else {
-    // Use current date in Manila timezone
-    // Manila is UTC+8, so we add 8 hours to get Manila time
-    const nowInManila = new Date(Date.now() + 8 * 60 * 60 * 1000);
-    year = nowInManila.getUTCFullYear();
-    month = nowInManila.getUTCMonth();
-    day = nowInManila.getUTCDate();
-  }
+  const targetDate = dateString ? new Date(dateString) : new Date();
 
-  // Create start of day 00:00:00.000 in Manila timezone
-  // Manila is UTC+8, so Manila midnight = UTC 16:00 previous day
-  // e.g., Manila 2024-12-20 00:00:00 = UTC 2024-12-19 16:00:00
-  const startOfDayUTC = new Date(Date.UTC(year, month, day, 0, 0, 0, 0) - 8 * 60 * 60 * 1000);
-  
-  // Create end of day 23:59:59.999 in Manila timezone
-  // e.g., Manila 2024-12-20 23:59:59 = UTC 2024-12-20 15:59:59
-  const endOfDayUTC = new Date(Date.UTC(year, month, day, 23, 59, 59, 999) - 8 * 60 * 60 * 1000);
+  // Create start and end of day in Manila time
+  const startOfDayManila = new Date(targetDate);
+  startOfDayManila.setHours(0, 0, 0, 0);
+
+  const endOfDayManila = new Date(targetDate);
+  endOfDayManila.setHours(23, 59, 59, 999);
+
+  // Convert to UTC for database queries
+  const startOfDayUTC = new Date(
+    startOfDayManila.getTime() - 8 * 60 * 60 * 1000,
+  );
+  const endOfDayUTC = new Date(endOfDayManila.getTime() - 8 * 60 * 60 * 1000);
 
   return {
     startOfDay: startOfDayUTC,

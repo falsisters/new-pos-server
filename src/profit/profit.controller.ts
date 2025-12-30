@@ -45,15 +45,6 @@ export class ProfitController {
     return this.profitService.getCashierProfitsWithFilter(cashierId, filterDto);
   }
 
-    @UseGuards(JwtAuthGuard)
-  @Get('cashier/:cashierId/dashboard-summary')
-  async getCashierProfitDashboardSummary(
-    @Param('cashierId') cashierId: string,
-    @Query('date') date: string,
-  ): Promise<any> {
-    return this.profitService.getCashierProfitDashboardSummary(cashierId, date);
-  }
-
   @UseGuards(JwtAuthGuard)
   @Get('cashier/:cashierId')
   async getProfitsByCashierId(
