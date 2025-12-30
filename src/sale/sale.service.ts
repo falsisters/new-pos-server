@@ -703,7 +703,7 @@ export class SaleService {
     return this.formatSales(sales);
   }
 
-  async getSalesByCashierId(userId: string, cashierId: string) {
+  async getSalesByCashierId(userId: string, cashierId: string, date?: string) {
     // First verify that the cashier belongs to the user
     const cashier = await this.prisma.cashier.findFirst({
       where: {
@@ -849,6 +849,7 @@ export class SaleService {
         voidedAt: 'desc',
       },
     });
+
     return this.formatSales(sales);
   }
 }
