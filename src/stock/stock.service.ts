@@ -11,7 +11,7 @@ export interface ProductStock {
   productName: string;
   stockSold: number;
   stockTransferredKahon: number;
-  stockOwnConsumption: number;
+  stockOthers: number; // Combines OWN_CONSUMPTION, RETURN_TO_WAREHOUSE, REPACK
   total: number;
   totalPrice?: number; // For plastic products, we track total price instead of stock
 }
@@ -54,7 +54,7 @@ export class StockService {
     productStocks: ProductStock[],
     totalStockSold: number,
     totalStockTransferredKahon: number,
-    totalStockOwnConsumption: number,
+    totalStockOthers: number,
     grandTotal: number,
     date: string,
     title: string,
@@ -64,7 +64,7 @@ export class StockService {
     totals: {
       sold: number;
       transferredKahon: number;
-      ownConsumption: number;
+      others: number;
       total: number;
     };
   } {
@@ -88,6 +88,7 @@ export class StockService {
         );
       } else {
         // Build the equation dynamically, excluding zero values
+        // Format: Sold + Kahon + Others = Total
         const parts: string[] = [];
 
         if (product.stockSold > 0) {
@@ -96,8 +97,8 @@ export class StockService {
         if (product.stockTransferredKahon > 0) {
           parts.push(`${product.stockTransferredKahon}`);
         }
-        if (product.stockOwnConsumption > 0) {
-          parts.push(`${product.stockOwnConsumption}`);
+        if (product.stockOthers > 0) {
+          parts.push(`${product.stockOthers}`);
         }
 
         const equation =
@@ -122,8 +123,8 @@ export class StockService {
       if (totalStockTransferredKahon > 0) {
         totalParts.push(`${totalStockTransferredKahon}`);
       }
-      if (totalStockOwnConsumption > 0) {
-        totalParts.push(`${totalStockOwnConsumption}`);
+      if (totalStockOthers > 0) {
+        totalParts.push(`${totalStockOthers}`);
       }
 
       const totalEquation =
@@ -142,7 +143,7 @@ export class StockService {
       totals: {
         sold: totalStockSold,
         transferredKahon: totalStockTransferredKahon,
-        ownConsumption: totalStockOwnConsumption,
+        others: totalStockOthers,
         total: grandTotal,
       },
     };
@@ -174,14 +175,11 @@ export class StockService {
       },
     });
 
-    // Get all transfers for the date with specific types
+    // Get all transfers for the date with all types
     const transfers = await this.prisma.transfer.findMany({
       where: {
         cashierId,
         createdAt: dateFilter,
-        type: {
-          in: ['OWN_CONSUMPTION', 'KAHON'],
-        },
       },
       include: {
         product: true,
@@ -232,7 +230,7 @@ export class StockService {
             productName,
             stockSold: 0,
             stockTransferredKahon: 0,
-            stockOwnConsumption: 0,
+            stockOthers: 0,
             total: 0,
             totalPrice: 0,
           });
@@ -247,7 +245,7 @@ export class StockService {
       });
     });
 
-    // Process transfers - separate KAHON and OWN_CONSUMPTION
+    // Process transfers - all types
     // Now using product relationship instead of parsing transfer names
     transfers.forEach((transfer) => {
       // Skip transfers without product link (legacy data)
@@ -271,7 +269,7 @@ export class StockService {
           productName,
           stockSold: 0,
           stockTransferredKahon: 0,
-          stockOwnConsumption: 0,
+          stockOthers: 0,
           total: 0,
           totalPrice: 0,
         });
@@ -281,8 +279,9 @@ export class StockService {
 
       if (transfer.type === 'KAHON') {
         productStock.stockTransferredKahon += quantity;
-      } else if (transfer.type === 'OWN_CONSUMPTION') {
-        productStock.stockOwnConsumption += quantity;
+      } else {
+        // All other types (OWN_CONSUMPTION, RETURN_TO_WAREHOUSE, REPACK) go to stockOthers
+        productStock.stockOthers += quantity;
       }
 
       productStock.total += quantity;
@@ -312,14 +311,14 @@ export class StockService {
         (acc, product) => {
           acc.stockSold += product.stockSold;
           acc.stockTransferredKahon += product.stockTransferredKahon;
-          acc.stockOwnConsumption += product.stockOwnConsumption;
+          acc.stockOthers += product.stockOthers;
           acc.total += product.total;
           return acc;
         },
         {
           stockSold: 0,
           stockTransferredKahon: 0,
-          stockOwnConsumption: 0,
+          stockOthers: 0,
           total: 0,
         },
       );
@@ -334,7 +333,7 @@ export class StockService {
       regularProducts,
       regularTotals.stockSold,
       regularTotals.stockTransferredKahon,
-      regularTotals.stockOwnConsumption,
+      regularTotals.stockOthers,
       regularTotals.total,
       targetDate,
       'REGULAR PRODUCTS STOCK REPORT',
@@ -344,7 +343,7 @@ export class StockService {
       asinProducts,
       asinTotals.stockSold,
       asinTotals.stockTransferredKahon,
-      asinTotals.stockOwnConsumption,
+      asinTotals.stockOthers,
       asinTotals.total,
       targetDate,
       'ASIN PRODUCTS STOCK REPORT',
@@ -354,7 +353,7 @@ export class StockService {
       plasticProducts,
       plasticTotals.stockSold,
       plasticTotals.stockTransferredKahon,
-      plasticTotals.stockOwnConsumption,
+      plasticTotals.stockOthers,
       plasticTotals.total,
       targetDate,
       'PLASTIC PRODUCTS STOCK REPORT',
@@ -423,16 +422,13 @@ export class StockService {
       },
     });
 
-    // Get all transfers for the date with specific types
+    // Get all transfers for the date with all types
     const transfers = await this.prisma.transfer.findMany({
       where: {
         cashierId: {
           in: cashierIds,
         },
         createdAt: dateFilter,
-        type: {
-          in: ['OWN_CONSUMPTION', 'KAHON'],
-        },
       },
       include: {
         product: true,
@@ -483,7 +479,7 @@ export class StockService {
             productName,
             stockSold: 0,
             stockTransferredKahon: 0,
-            stockOwnConsumption: 0,
+            stockOthers: 0,
             total: 0,
             totalPrice: 0,
           });
@@ -498,7 +494,7 @@ export class StockService {
       });
     });
 
-    // Process transfers - separate KAHON and OWN_CONSUMPTION
+    // Process transfers - all types
     // Now using product relationship instead of parsing transfer names
     transfers.forEach((transfer) => {
       // Skip transfers without product link (legacy data)
@@ -520,7 +516,7 @@ export class StockService {
           productName,
           stockSold: 0,
           stockTransferredKahon: 0,
-          stockOwnConsumption: 0,
+          stockOthers: 0,
           total: 0,
           totalPrice: 0,
         });
@@ -530,8 +526,9 @@ export class StockService {
 
       if (transfer.type === 'KAHON') {
         productStock.stockTransferredKahon += quantity;
-      } else if (transfer.type === 'OWN_CONSUMPTION') {
-        productStock.stockOwnConsumption += quantity;
+      } else {
+        // All other types (OWN_CONSUMPTION, RETURN_TO_WAREHOUSE, REPACK) go to stockOthers
+        productStock.stockOthers += quantity;
       }
 
       productStock.total += quantity;
@@ -561,14 +558,14 @@ export class StockService {
         (acc, product) => {
           acc.stockSold += product.stockSold;
           acc.stockTransferredKahon += product.stockTransferredKahon;
-          acc.stockOwnConsumption += product.stockOwnConsumption;
+          acc.stockOthers += product.stockOthers;
           acc.total += product.total;
           return acc;
         },
         {
           stockSold: 0,
           stockTransferredKahon: 0,
-          stockOwnConsumption: 0,
+          stockOthers: 0,
           total: 0,
         },
       );
@@ -583,7 +580,7 @@ export class StockService {
       regularProducts,
       regularTotals.stockSold,
       regularTotals.stockTransferredKahon,
-      regularTotals.stockOwnConsumption,
+      regularTotals.stockOthers,
       regularTotals.total,
       targetDate,
       'REGULAR PRODUCTS STOCK REPORT',
@@ -593,7 +590,7 @@ export class StockService {
       asinProducts,
       asinTotals.stockSold,
       asinTotals.stockTransferredKahon,
-      asinTotals.stockOwnConsumption,
+      asinTotals.stockOthers,
       asinTotals.total,
       targetDate,
       'ASIN PRODUCTS STOCK REPORT',
@@ -603,7 +600,7 @@ export class StockService {
       plasticProducts,
       plasticTotals.stockSold,
       plasticTotals.stockTransferredKahon,
-      plasticTotals.stockOwnConsumption,
+      plasticTotals.stockOthers,
       plasticTotals.total,
       targetDate,
       'PLASTIC PRODUCTS STOCK REPORT',
