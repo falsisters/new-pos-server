@@ -3,7 +3,11 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateEmployeeDto } from './dto/create.dto';
 import { EditEmployeeDto } from './dto/edit.dto';
 import { EmployeeAttendanceFilterDto } from './dto/employee-attendance.dto';
-import { convertToManilaTime, parseManilaDateRange } from 'src/utils/date.util';
+import { EmployeeFilterDto } from './dto/filter.dto';
+import {
+  formatDateForClient,
+  createManilaDateRangeFilter,
+} from 'src/utils/date.util';
 
 @Injectable()
 export class EmployeeService {
@@ -13,20 +17,20 @@ export class EmployeeService {
     if (!employee) return null;
     return {
       ...employee,
-      createdAt: convertToManilaTime(employee.createdAt),
-      updatedAt: convertToManilaTime(employee.updatedAt),
+      createdAt: formatDateForClient(employee.createdAt),
+      updatedAt: formatDateForClient(employee.updatedAt),
       ShiftEmployee: employee.ShiftEmployee
         ? employee.ShiftEmployee.map((se) => ({
             ...se,
-            createdAt: convertToManilaTime(se.createdAt),
-            updatedAt: convertToManilaTime(se.updatedAt),
+            createdAt: formatDateForClient(se.createdAt),
+            updatedAt: formatDateForClient(se.updatedAt),
             shift: se.shift
               ? {
                   ...se.shift,
-                  startTime: convertToManilaTime(se.shift.startTime),
-                  endTime: convertToManilaTime(se.shift.endTime),
-                  createdAt: convertToManilaTime(se.shift.createdAt),
-                  updatedAt: convertToManilaTime(se.shift.updatedAt),
+                  startTime: formatDateForClient(se.shift.startTime),
+                  endTime: formatDateForClient(se.shift.endTime),
+                  createdAt: formatDateForClient(se.shift.createdAt),
+                  updatedAt: formatDateForClient(se.shift.updatedAt),
                 }
               : null,
           }))
@@ -84,11 +88,18 @@ export class EmployeeService {
     return this.formatEmployee(employee);
   }
 
-  async getAllEmployees(userId: string) {
+  async getAllEmployees(userId: string, filterDto?: EmployeeFilterDto) {
+    const whereClause: any = {
+      userId,
+    };
+
+    // Add branch filter if provided
+    if (filterDto?.branch) {
+      whereClause.branch = filterDto.branch;
+    }
+
     const employees = await this.prisma.employee.findMany({
-      where: {
-        userId,
-      },
+      where: whereClause,
       include: {
         ShiftEmployee: {
           include: {
@@ -121,7 +132,7 @@ export class EmployeeService {
     filters: EmployeeAttendanceFilterDto,
   ) {
     // Parse Manila Time date parameters properly
-    const { startDate, endDate } = parseManilaDateRange(
+    const { startDate, endDate } = createManilaDateRangeFilter(
       filters.startDate,
       filters.endDate,
     );
@@ -161,8 +172,8 @@ export class EmployeeService {
 
     // Format the attendance data
     const attendanceData = shifts.map((shift) => {
-      const manilaStartTime = convertToManilaTime(shift.startTime);
-      const manilaEndTime = convertToManilaTime(shift.endTime);
+      const manilaStartTime = formatDateForClient(shift.startTime);
+      const manilaEndTime = formatDateForClient(shift.endTime);
 
       const shiftDate = manilaStartTime.toISOString().split('T')[0];
       const shiftStartTime = manilaStartTime.toLocaleTimeString('en-US', {
@@ -188,13 +199,14 @@ export class EmployeeService {
         employees: shift.employee.map((shiftEmployee) => ({
           id: shiftEmployee.employee.id,
           name: shiftEmployee.employee.name,
-          joinedAt: convertToManilaTime(shiftEmployee.createdAt),
-          createdAt: convertToManilaTime(shiftEmployee.createdAt),
-          updatedAt: convertToManilaTime(shiftEmployee.updatedAt),
+          branch: shiftEmployee.employee.branch,
+          joinedAt: formatDateForClient(shiftEmployee.createdAt),
+          createdAt: formatDateForClient(shiftEmployee.createdAt),
+          updatedAt: formatDateForClient(shiftEmployee.updatedAt),
         })),
         totalEmployees: shift.employee.length,
-        createdAt: convertToManilaTime(shift.createdAt),
-        updatedAt: convertToManilaTime(shift.updatedAt),
+        createdAt: formatDateForClient(shift.createdAt),
+        updatedAt: formatDateForClient(shift.updatedAt),
       };
     });
 

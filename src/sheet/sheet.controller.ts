@@ -82,8 +82,8 @@ export class SheetController {
   async createCalculationRow(
     @Body() addCalculationRowDto: AddCalculationRowDto,
   ) {
-    const { sheetId, rowIndex } = addCalculationRowDto;
-    return this.sheetService.addCalculationRow(sheetId, rowIndex);
+    const { sheetId, rowIndex, date } = addCalculationRowDto;
+    return this.sheetService.addCalculationRow(sheetId, rowIndex, '', date);
   }
 
   @UseGuards(JwtAuthGuard)
@@ -91,8 +91,8 @@ export class SheetController {
   async createUserCalculationRow(
     @Body() addCalculationRowDto: AddCalculationRowDto,
   ) {
-    const { sheetId, rowIndex } = addCalculationRowDto;
-    return this.sheetService.addCalculationRow(sheetId, rowIndex);
+    const { sheetId, rowIndex, date } = addCalculationRowDto;
+    return this.sheetService.addCalculationRow(sheetId, rowIndex, '', date);
   }
 
   @UseGuards(JwtCashierAuthGuard)
@@ -100,10 +100,10 @@ export class SheetController {
   async createCalculationRows(
     @Body() addCalculationRowDto: AddCalculationRowsDto,
   ) {
-    const { sheetId, rowIndexes } = addCalculationRowDto;
+    const { sheetId, rowIndexes, date } = addCalculationRowDto;
     return Promise.all(
       rowIndexes.map((rowIndex) =>
-        this.sheetService.addCalculationRow(sheetId, rowIndex),
+        this.sheetService.addCalculationRow(sheetId, rowIndex, '', date),
       ),
     );
   }
@@ -113,10 +113,10 @@ export class SheetController {
   async createUserCalculationRows(
     @Body() addCalculationRowDto: AddCalculationRowsDto,
   ) {
-    const { sheetId, rowIndexes } = addCalculationRowDto;
+    const { sheetId, rowIndexes, date } = addCalculationRowDto;
     return Promise.all(
       rowIndexes.map((rowIndex) =>
-        this.sheetService.addCalculationRow(sheetId, rowIndex),
+        this.sheetService.addCalculationRow(sheetId, rowIndex, '', date),
       ),
     );
   }
@@ -382,6 +382,42 @@ export class SheetController {
       return { success: true };
     } catch (error) {
       return { success: false, error: error.message };
+    }
+  }
+
+  @UseGuards(JwtCashierAuthGuard)
+  @Get('one-date')
+  async getSheetByOneDate(@Request() req) {
+    const cashierId = req.user.id;
+    const { date: dateStr } = req.query;
+
+    // Handle null/undefined values for date
+    const date = dateStr ? new Date(dateStr as string) : undefined;
+
+    return this.sheetService.getSheetsByOneDate(cashierId, date);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('user/one-date')
+  async getUserSheetByOneDate(@Request() req) {
+    try {
+      const userId = req.user.id;
+      const { date: dateStr } = req.query;
+
+      // Handle null/undefined values for date
+      const date = dateStr ? new Date(dateStr as string) : undefined;
+
+      const result = await this.sheetService.getSheetsForUserByOneDate(
+        userId,
+        date,
+      );
+
+      // Ensure we always return a valid response
+      return Array.isArray(result) ? result : [];
+    } catch (error) {
+      console.error('Error in getUserSheetByOneDate:', error);
+      // Return empty array instead of letting the error bubble up
+      return [];
     }
   }
 }

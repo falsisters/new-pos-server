@@ -3,8 +3,10 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { createObjectCsvStringifier } from 'csv-writer';
 import JSZip from 'jszip';
 import {
+  formatDateForClient,
+  createManilaDateFilter,
+  // Legacy function for backward compatibility (used for CSV exports)
   convertToManilaTime,
-  parseManilaDateToUTCRange,
 } from 'src/utils/date.util';
 
 @Injectable()

@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { ProfitFilterDto } from './dto/profit-filter.dto';
-import { PaymentMethod, SackType } from '@prisma/client';
+import { PaymentMethod, Prisma, SackType } from '@prisma/client';
 import {
   getManilaDateRangeForQuery,
 } from '../utils/date.util';
@@ -10,8 +10,8 @@ interface ProfitSummary {
   id: string;
   productId: string;
   productName: string;
-  totalQuantitySold: number;
-  totalProfit: number;
+  totalQuantitySold: string; // Changed to string for Decimal
+  totalProfit: string; // Changed to string for Decimal
   priceType: string;
   paymentMethod: PaymentMethod;
   isSpecialPrice: boolean;
@@ -21,9 +21,9 @@ interface ProfitSummary {
 interface GroupedProfit {
   productName: string;
   priceType: string;
-  profitPerUnit: number;
-  totalQuantity: number;
-  totalProfit: number;
+  profitPerUnit: string; // Changed to string for Decimal
+  totalQuantity: string; // Changed to string for Decimal
+  totalProfit: string; // Changed to string for Decimal
   orders: number;
 }
 
@@ -31,9 +31,24 @@ interface GroupedProfit {
 export class ProfitService {
   constructor(private prisma: PrismaService) {}
 
+  // Helper method to convert Decimal to string
+  private decimalToString(value: Prisma.Decimal | null | undefined): string {
+    return value ? value.toString() : '0';
+  }
+
+  // Helper method to add decimal strings
+  private addDecimalStrings(a: string, b: string): string {
+    return (parseFloat(a) + parseFloat(b)).toString();
+  }
+
+  // Helper method to multiply decimal strings
+  private multiplyDecimalStrings(a: string, b: string): string {
+    return (parseFloat(a) * parseFloat(b)).toString();
+  }
+
   async getProfitsWithFilter(userId: string, filters: ProfitFilterDto) {
-    // Use consistent date range conversion
-    const { startOfDay, endOfDay } = getManilaDateRangeForQuery(filters.date);
+    // Use timezone-aware date filtering
+    const dateFilter = createManilaDateFilter(filters.date);
 
     // Build the query conditions
     const whereConditions: any = {
@@ -44,10 +59,10 @@ export class ProfitService {
           },
         },
         {
-          createdAt: {
-            gte: startOfDay,
-            lte: endOfDay,
-          },
+          isVoid: false,
+        },
+        {
+          createdAt: dateFilter,
         },
       ],
     };
@@ -71,6 +86,8 @@ export class ProfitService {
         createdAt: 'desc',
       },
     });
+
+    console.log('Filtered Sales:', sales);
 
     // Process and calculate profits for each sale item
     const profitItems = sales.flatMap((sale) => {
@@ -117,8 +134,8 @@ export class ProfitService {
 
         return true;
       }).map((item) => {
-        let totalProfit = 0;
-        let profitPerUnit = 0;
+        let totalProfit = '0';
+        let profitPerUnit = '0';
         let priceType: SackType | null = null; // This will store the SackType enum
         let formattedPriceType = '';
 
@@ -128,11 +145,16 @@ export class ProfitService {
           priceType = item.sackType; // Store the enum value
 
           if (item.isSpecialPrice && sackPriceInfo.specialPrice) {
-            profitPerUnit = sackPriceInfo.specialPrice.profit ?? 0;
+            profitPerUnit = this.decimalToString(
+              sackPriceInfo.specialPrice.profit,
+            );
           } else {
-            profitPerUnit = sackPriceInfo.profit ?? 0;
+            profitPerUnit = this.decimalToString(sackPriceInfo.profit);
           }
-          totalProfit = profitPerUnit * item.quantity;
+          totalProfit = this.multiplyDecimalStrings(
+            profitPerUnit,
+            this.decimalToString(item.quantity),
+          );
 
           switch (item.sackType) {
             case 'FIFTY_KG':
@@ -153,7 +175,7 @@ export class ProfitService {
           id: item.id,
           productId: item.productId,
           productName: item.product?.name || 'Unknown Product',
-          quantity: item.quantity,
+          quantity: this.decimalToString(item.quantity),
           profitPerUnit,
           totalProfit,
           priceType: priceType || '', // Ensure it's a string or the enum, handle null if no sackType
@@ -183,14 +205,20 @@ export class ProfitService {
           productName: item.productName,
           priceType: item.formattedPriceType,
           profitPerUnit: item.profitPerUnit,
-          totalQuantity: 0,
-          totalProfit: 0,
+          totalQuantity: '0',
+          totalProfit: '0',
           orders: 0,
         };
       }
 
-      groupedProfits[key].totalQuantity += item.quantity;
-      groupedProfits[key].totalProfit += item.totalProfit;
+      groupedProfits[key].totalQuantity = this.addDecimalStrings(
+        groupedProfits[key].totalQuantity,
+        item.quantity,
+      );
+      groupedProfits[key].totalProfit = this.addDecimalStrings(
+        groupedProfits[key].totalProfit,
+        item.totalProfit,
+      );
       groupedProfits[key].orders += 1;
     });
 
@@ -208,14 +236,14 @@ export class ProfitService {
 
     // Calculate totals
     const sackTotal = sackProducts.reduce(
-      (sum, item) => sum + item.totalProfit,
-      0,
+      (sum, item) => this.addDecimalStrings(sum, item.totalProfit),
+      '0',
     );
     const asinTotal = asinProducts.reduce(
-      (sum, item) => sum + item.totalProfit,
-      0,
+      (sum, item) => this.addDecimalStrings(sum, item.totalProfit),
+      '0',
     );
-    const overallTotal = sackTotal + asinTotal;
+    const overallTotal = this.addDecimalStrings(sackTotal, asinTotal);
 
     // Format the response
     return {
@@ -251,8 +279,8 @@ export class ProfitService {
     cashierId: string,
     filters: ProfitFilterDto,
   ) {
-    // Use consistent date range conversion
-    const { startOfDay, endOfDay } = getManilaDateRangeForQuery(filters.date);
+    // Use timezone-aware date filtering
+    const dateFilter = createManilaDateFilter(filters.date);
 
     // Build the query conditions for specific cashier
     const whereConditions: any = {
@@ -261,10 +289,10 @@ export class ProfitService {
           cashierId,
         },
         {
-          createdAt: {
-            gte: startOfDay,
-            lte: endOfDay,
-          },
+          isVoid: false,
+        },
+        {
+          createdAt: dateFilter,
         },
       ],
     };
@@ -334,8 +362,8 @@ export class ProfitService {
 
         return true;
       }).map((item) => {
-        let totalProfit = 0;
-        let profitPerUnit = 0;
+        let totalProfit = '0';
+        let profitPerUnit = '0';
         let priceType: SackType | null = null;
         let formattedPriceType = '';
 
@@ -345,11 +373,16 @@ export class ProfitService {
           priceType = item.sackType;
 
           if (item.isSpecialPrice && sackPriceInfo.specialPrice) {
-            profitPerUnit = sackPriceInfo.specialPrice.profit ?? 0;
+            profitPerUnit = this.decimalToString(
+              sackPriceInfo.specialPrice.profit,
+            );
           } else {
-            profitPerUnit = sackPriceInfo.profit ?? 0;
+            profitPerUnit = this.decimalToString(sackPriceInfo.profit);
           }
-          totalProfit = profitPerUnit * item.quantity;
+          totalProfit = this.multiplyDecimalStrings(
+            profitPerUnit,
+            this.decimalToString(item.quantity),
+          );
 
           switch (item.sackType) {
             case 'FIFTY_KG':
@@ -370,7 +403,7 @@ export class ProfitService {
           id: item.id,
           productId: item.productId,
           productName: item.product?.name || 'Unknown Product',
-          quantity: item.quantity,
+          quantity: this.decimalToString(item.quantity),
           profitPerUnit,
           totalProfit,
           priceType: priceType || '',
@@ -400,14 +433,20 @@ export class ProfitService {
           productName: item.productName,
           priceType: item.formattedPriceType,
           profitPerUnit: item.profitPerUnit,
-          totalQuantity: 0,
-          totalProfit: 0,
+          totalQuantity: '0',
+          totalProfit: '0',
           orders: 0,
         };
       }
 
-      groupedProfits[key].totalQuantity += item.quantity;
-      groupedProfits[key].totalProfit += item.totalProfit;
+      groupedProfits[key].totalQuantity = this.addDecimalStrings(
+        groupedProfits[key].totalQuantity,
+        item.quantity,
+      );
+      groupedProfits[key].totalProfit = this.addDecimalStrings(
+        groupedProfits[key].totalProfit,
+        item.totalProfit,
+      );
       groupedProfits[key].orders += 1;
     });
 
@@ -425,14 +464,14 @@ export class ProfitService {
 
     // Calculate totals
     const sackTotal = sackProducts.reduce(
-      (sum, item) => sum + item.totalProfit,
-      0,
+      (sum, item) => this.addDecimalStrings(sum, item.totalProfit),
+      '0',
     );
     const asinTotal = asinProducts.reduce(
-      (sum, item) => sum + item.totalProfit,
-      0,
+      (sum, item) => this.addDecimalStrings(sum, item.totalProfit),
+      '0',
     );
-    const overallTotal = sackTotal + asinTotal;
+    const overallTotal = this.addDecimalStrings(sackTotal, asinTotal);
 
     // Format the response
     return {

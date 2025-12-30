@@ -4,10 +4,10 @@ import { CreateSaleDto } from './dto/create.dto';
 import { EditSaleDto } from './dto/edit.dto';
 import { OrderService } from 'src/order/order.service';
 import { RecentSalesFilterDto } from './dto/recent-sales.dto';
+import { Decimal } from '@prisma/client/runtime/library';
 import {
-  convertObjectDatesToManilaTime,
-  convertArrayDatesToManilaTime,
-  getManilaDateRangeForQuery,
+  formatDateForClient,
+  createManilaDateFilter,
 } from '../utils/date.util';
 
 @Injectable()
@@ -17,19 +17,111 @@ export class SaleService {
     private order: OrderService,
   ) {}
 
+  private convertDecimalToString(
+    value: Decimal | null | undefined,
+  ): string | null {
+    if (value === null || value === undefined) return null;
+    return value.toString();
+  }
+
+  private convertDecimalFieldsToString(obj: any): any {
+    if (!obj) return obj;
+
+    const converted = { ...obj };
+
+    // Convert known decimal fields to strings
+    if (converted.totalAmount !== undefined) {
+      converted.totalAmount = this.convertDecimalToString(
+        converted.totalAmount,
+      );
+    }
+    if (converted.changeAmount !== undefined) {
+      converted.changeAmount = this.convertDecimalToString(
+        converted.changeAmount,
+      );
+    }
+    if (converted.discountedPrice !== undefined) {
+      converted.discountedPrice = this.convertDecimalToString(
+        converted.discountedPrice,
+      );
+    }
+    if (converted.quantity !== undefined) {
+      converted.quantity = this.convertDecimalToString(converted.quantity);
+    }
+    if (converted.price !== undefined) {
+      converted.price = this.convertDecimalToString(converted.price);
+    }
+    if (converted.profit !== undefined) {
+      converted.profit = this.convertDecimalToString(converted.profit);
+    }
+    if (converted.stock !== undefined) {
+      converted.stock = this.convertDecimalToString(converted.stock);
+    }
+
+    return converted;
+  }
+
   private formatSale(sale: any) {
     if (!sale) return null;
     // Return sale data with raw UTC timestamps - frontend handles timezone conversion
     const formatted = {
       ...sale,
+      createdAt: formatDateForClient(sale.createdAt),
+      updatedAt: formatDateForClient(sale.updatedAt),
+      voidedAt: sale.voidedAt ? formatDateForClient(sale.voidedAt) : null,
       SaleItem: sale.SaleItem
-        ? sale.SaleItem.map((item: any) => ({
-            ...item,
-            product: item.product || null,
-          }))
+        ? sale.SaleItem.map((item) => {
+            const convertedItem = this.convertDecimalFieldsToString(item);
+
+            // Use item.price as the primary price source, but maintain structure for frontend compatibility
+            const itemPrice = item.price
+              ? this.convertDecimalToString(item.price)
+              : null;
+
+            return {
+              ...convertedItem,
+              createdAt: formatDateForClient(item.createdAt),
+              updatedAt: formatDateForClient(item.updatedAt),
+              product: item.product
+                ? {
+                    ...this.convertDecimalFieldsToString(item.product),
+                    createdAt: formatDateForClient(item.product.createdAt),
+                    updatedAt: formatDateForClient(item.product.updatedAt),
+                  }
+                : null,
+              // If item has perKiloPrice relation, maintain structure but use item.price as the primary price value
+              perKiloPrice: item.perKiloPrice
+                ? {
+                    ...this.convertDecimalFieldsToString(item.perKiloPrice),
+                    quantity: this.convertDecimalToString(item.quantity),
+                    // Always use SaleItem.price if available, otherwise fall back to perKiloPrice.price
+                    price:
+                      itemPrice ||
+                      this.convertDecimalToString(item.perKiloPrice.price),
+                    createdAt: formatDateForClient(item.perKiloPrice.createdAt),
+                    updatedAt: formatDateForClient(item.perKiloPrice.updatedAt),
+                  }
+                : null,
+              // If item has SackPrice relation, maintain structure but use item.price as the primary price value
+              SackPrice: item.SackPrice
+                ? {
+                    ...this.convertDecimalFieldsToString(item.SackPrice),
+                    // Always use SaleItem.price if available, otherwise fall back to SackPrice.price
+                    price:
+                      itemPrice ||
+                      this.convertDecimalToString(item.SackPrice.price),
+                    createdAt: formatDateForClient(item.SackPrice.createdAt),
+                    updatedAt: formatDateForClient(item.SackPrice.updatedAt),
+                  }
+                : null,
+            };
+          })
         : [],
     };
-    return formatted;
+
+    console.log('sales: ', this.convertDecimalFieldsToString(formatted));
+
+    return this.convertDecimalFieldsToString(formatted);
   }
 
   private formatSales(sales: any[]) {
@@ -49,17 +141,17 @@ export class SaleService {
             await tx.perKiloPrice.update({
               where: { id: item.perKiloPrice.id },
               data: {
-                stock: { decrement: item.perKiloPrice.quantity },
+                stock: { decrement: new Decimal(item.perKiloPrice.quantity) },
               },
             });
           }
 
           if (item.sackPrice) {
-            // Update sack price stock
+            // Update sack price stock - convert to number for integer stock
             await tx.sackPrice.update({
               where: { id: item.sackPrice.id },
               data: {
-                stock: { decrement: item.sackPrice.quantity },
+                stock: { decrement: Number(item.sackPrice.quantity) },
               },
             });
           }
@@ -68,7 +160,7 @@ export class SaleService {
         // 2. Create the sale with items
         const sale = await tx.sale.create({
           data: {
-            totalAmount,
+            totalAmount: new Decimal(totalAmount),
             paymentMethod,
             cashier: {
               connect: { id: cashierId },
@@ -82,8 +174,10 @@ export class SaleService {
             SaleItem: {
               create: saleItem.map((item) => {
                 const quantity = item.perKiloPrice
-                  ? item.perKiloPrice.quantity
-                  : item.sackPrice?.quantity || 0;
+                  ? new Decimal(item.perKiloPrice.quantity)
+                  : item.sackPrice?.quantity
+                    ? new Decimal(item.sackPrice.quantity)
+                    : new Decimal(0);
 
                 // Base item data
                 const saleItemData = {
@@ -92,10 +186,16 @@ export class SaleService {
                   isSpecialPrice: item.isSpecialPrice,
                   // Ensure isDiscounted is always a boolean
                   isDiscounted: item.isDiscounted ?? false,
-                  // Only add discountedPrice if it's defined
-                  ...(item.discountedPrice !== undefined && {
-                    discountedPrice: item.discountedPrice,
-                  }),
+                  // Only add price if it's defined AND not null
+                  ...(item.price !== undefined &&
+                    item.price !== null && {
+                      price: new Decimal(item.price),
+                    }),
+                  // Only add discountedPrice if it's defined AND not null
+                  ...(item.discountedPrice !== undefined &&
+                    item.discountedPrice !== null && {
+                      discountedPrice: new Decimal(item.discountedPrice),
+                    }),
                   product: {
                     connect: { id: item.id },
                   },
@@ -138,6 +238,8 @@ export class SaleService {
                     },
                   },
                 },
+                perKiloPrice: true,
+                SackPrice: true,
               },
             },
           },
@@ -154,7 +256,7 @@ export class SaleService {
           ...(metadata && { metadata }),
         };
 
-        // Format the result to convert dates to Manila time
+        // Format the result to convert dates to Manila time and decimals to strings
         return this.formatSale(saleWithMetadata);
       },
       {
@@ -217,7 +319,7 @@ export class SaleService {
             await tx.sackPrice.update({
               where: { id: item.product.SackPrice[0].id },
               data: {
-                stock: { increment: item.quantity },
+                stock: { increment: Number(item.quantity) },
               },
             });
           }
@@ -231,25 +333,27 @@ export class SaleService {
         // Decrement with new stock and create the new sale items
         for (const item of saleItem) {
           const quantity = item.perKiloPrice
-            ? item.perKiloPrice.quantity
-            : item.sackPrice?.quantity || 0;
+            ? new Decimal(item.perKiloPrice.quantity)
+            : item.sackPrice?.quantity
+              ? new Decimal(item.sackPrice.quantity)
+              : new Decimal(0);
 
           if (item.perKiloPrice) {
             // Update per kilo stock
             await tx.perKiloPrice.update({
               where: { id: item.perKiloPrice.id },
               data: {
-                stock: { decrement: item.perKiloPrice.quantity },
+                stock: { decrement: new Decimal(item.perKiloPrice.quantity) },
               },
             });
           }
 
           if (item.sackPrice) {
-            // Update sack price stock
+            // Update sack price stock - convert to number for integer stock
             await tx.sackPrice.update({
               where: { id: item.sackPrice.id },
               data: {
-                stock: { decrement: item.sackPrice.quantity },
+                stock: { decrement: Number(item.sackPrice.quantity) },
               },
             });
           }
@@ -261,10 +365,16 @@ export class SaleService {
             isSpecialPrice: item.isSpecialPrice,
             // Ensure isDiscounted is always a boolean
             isDiscounted: item.isDiscounted ?? false,
-            // Only add discountedPrice if it's defined
-            ...(item.discountedPrice !== undefined && {
-              discountedPrice: item.discountedPrice,
-            }),
+            // Only add price if it's defined AND not null
+            ...(item.price !== undefined &&
+              item.price !== null && {
+                price: new Decimal(item.price),
+              }),
+            // Only add discountedPrice if it's defined AND not null
+            ...(item.discountedPrice !== undefined &&
+              item.discountedPrice !== null && {
+                discountedPrice: new Decimal(item.discountedPrice),
+              }),
             product: {
               connect: { id: item.id },
             },
@@ -302,8 +412,8 @@ export class SaleService {
 
         // Update the sale with new data and connect/disconnect order if needed
         const updateData: any = {
-          totalAmount,
-          paymentMethod,
+          ...(totalAmount && { totalAmount: new Decimal(totalAmount) }),
+          ...(paymentMethod && { paymentMethod }),
         };
 
         // Handle order connection/disconnection
@@ -335,13 +445,15 @@ export class SaleService {
                     },
                   },
                 },
+                perKiloPrice: true,
+                SackPrice: true,
               },
             },
             Order: true,
           },
         });
 
-        // Format the result to convert dates to Manila time
+        // Format the result to convert dates to Manila time and decimals to strings
         return this.formatSale(updatedSale);
       },
       {
@@ -391,7 +503,7 @@ export class SaleService {
             await tx.sackPrice.update({
               where: { id: item.sackPriceId },
               data: {
-                stock: { increment: item.quantity },
+                stock: { increment: Number(item.quantity) },
               },
             });
           }
@@ -405,10 +517,34 @@ export class SaleService {
           });
         }
 
-        // 4. Delete the sale (this will cascade delete the SaleItems)
-        return tx.sale.delete({
+        // 4. Mark the sale as void instead of deleting
+        const voidedSale = await tx.sale.update({
           where: { id },
+          data: {
+            isVoid: true,
+            voidedAt: new Date(),
+          },
+          include: {
+            SaleItem: {
+              include: {
+                product: {
+                  include: {
+                    perKiloPrice: true,
+                    SackPrice: {
+                      include: {
+                        specialPrice: true,
+                      },
+                    },
+                  },
+                },
+                perKiloPrice: true,
+                SackPrice: true,
+              },
+            },
+          },
         });
+
+        return this.formatSale(voidedSale);
       },
       {
         timeout: 20000, // 20 seconds in milliseconds
@@ -418,7 +554,10 @@ export class SaleService {
 
   async getSale(id: string) {
     const result = await this.prisma.sale.findUnique({
-      where: { id },
+      where: {
+        id,
+        isVoid: false,
+      },
       include: {
         SaleItem: {
           include: {
@@ -432,6 +571,8 @@ export class SaleService {
                 },
               },
             },
+            perKiloPrice: true,
+            SackPrice: true,
           },
         },
       },
@@ -441,8 +582,8 @@ export class SaleService {
 
   async getSalesByDate(cashierId: string, filters: RecentSalesFilterDto) {
     try {
-      // Use standardized date range query utility
-      const { startOfDay, endOfDay } = getManilaDateRangeForQuery(filters.date);
+      // Use timezone-aware date filtering
+      const dateFilter = createManilaDateFilter(filters.date);
 
       const sales = await this.prisma.sale.findMany({
         where: {
@@ -451,10 +592,10 @@ export class SaleService {
               cashierId,
             },
             {
-              createdAt: {
-                gte: startOfDay,
-                lte: endOfDay,
-              },
+              createdAt: dateFilter,
+            },
+            {
+              isVoid: false,
             },
           ],
         },
@@ -493,12 +634,22 @@ export class SaleService {
   }
 
   async getAllSales(userId: string) {
-    const sales = await this.prisma.sale.findMany({
-      where: {
-        cashier: {
-          userId,
+    // Build the query conditions using the same logic as sales-check service
+    const whereConditions: any = {
+      AND: [
+        {
+          cashier: {
+            userId,
+          },
         },
-      },
+        {
+          isVoid: false,
+        },
+      ],
+    };
+
+    const sales = await this.prisma.sale.findMany({
+      where: whereConditions,
       include: {
         SaleItem: {
           include: {
@@ -512,8 +663,13 @@ export class SaleService {
                 },
               },
             },
+            perKiloPrice: true,
+            SackPrice: true,
           },
         },
+      },
+      orderBy: {
+        createdAt: 'desc',
       },
     });
     return this.formatSales(sales);
@@ -523,6 +679,7 @@ export class SaleService {
     const sales = await this.prisma.sale.findMany({
       where: {
         cashierId,
+        isVoid: false,
       },
       include: {
         SaleItem: {
@@ -557,23 +714,20 @@ export class SaleService {
       throw new Error('Cashier not found or does not belong to this user');
     }
 
-    // Use date range filtering like profit service
-    const { startOfDay, endOfDay } = getManilaDateRangeForQuery(date);
-
-    console.log(`📅 Sales by Cashier - Manila date range for ${date || 'today'}:`, {
-      cashierId,
-      startUTC: startOfDay.toISOString(),
-      endUTC: endOfDay.toISOString(),
-    });
+    // Build the query conditions using the same logic as sales-check service
+    const whereConditions: any = {
+      AND: [
+        {
+          cashierId,
+        },
+        {
+          isVoid: false,
+        },
+      ],
+    };
 
     const sales = await this.prisma.sale.findMany({
-      where: {
-        cashierId,
-        createdAt: {
-          gte: startOfDay,
-          lte: endOfDay,
-        },
-      },
+      where: whereConditions,
       include: {
         SaleItem: {
           include: {
@@ -587,11 +741,110 @@ export class SaleService {
                 },
               },
             },
+            perKiloPrice: true,
+            SackPrice: true,
           },
         },
       },
       orderBy: {
         createdAt: 'desc',
+      },
+    });
+    return this.formatSales(sales);
+  }
+
+  async getTotalCashForDate(cashierId: string, date?: string) {
+    // Use timezone-aware date filtering
+    const dateFilter = createManilaDateFilter(date);
+
+    const cashSales = await this.prisma.sale.findMany({
+      where: {
+        paymentMethod: 'CASH',
+        cashierId,
+        createdAt: dateFilter,
+        isVoid: false,
+      },
+      select: {
+        totalAmount: true,
+      },
+    });
+
+    // Use exact decimal values for calculation, then round at the end
+    const total = cashSales.reduce(
+      (sum, sale) => sum + Number(sale.totalAmount),
+      0,
+    );
+
+    return {
+      totalCash: Math.round(total),
+      salesCount: cashSales.length,
+      breakdown: cashSales.map((sale) => ({
+        amount: Math.round(Number(sale.totalAmount)),
+      })),
+    };
+  }
+
+  async getVoidedSalesByCashier(cashierId: string) {
+    const sales = await this.prisma.sale.findMany({
+      where: {
+        cashierId,
+        isVoid: true,
+      },
+      include: {
+        cashier: true,
+        SaleItem: {
+          include: {
+            product: {
+              include: {
+                perKiloPrice: true,
+                SackPrice: {
+                  include: {
+                    specialPrice: true,
+                  },
+                },
+              },
+            },
+            perKiloPrice: true,
+            SackPrice: true,
+          },
+        },
+      },
+      orderBy: {
+        voidedAt: 'desc',
+      },
+    });
+    return this.formatSales(sales);
+  }
+
+  async getVoidedSalesByUser(userId: string) {
+    const sales = await this.prisma.sale.findMany({
+      where: {
+        cashier: {
+          userId,
+        },
+        isVoid: true,
+      },
+      include: {
+        cashier: true,
+        SaleItem: {
+          include: {
+            product: {
+              include: {
+                perKiloPrice: true,
+                SackPrice: {
+                  include: {
+                    specialPrice: true,
+                  },
+                },
+              },
+            },
+            perKiloPrice: true,
+            SackPrice: true,
+          },
+        },
+      },
+      orderBy: {
+        voidedAt: 'desc',
       },
     });
 

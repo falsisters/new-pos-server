@@ -2,9 +2,13 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateOrderDto } from './dto/createOrder.dto';
 import {
+  formatObjectDatesForClient,
+  formatArrayDatesForClient,
+  // Legacy functions for backward compatibility
   convertObjectDatesToManilaTime,
   convertArrayDatesToManilaTime,
 } from '../utils/date.util';
+import { Decimal } from '@prisma/client/runtime/library';
 
 @Injectable()
 export class OrderService {
@@ -172,7 +176,7 @@ export class OrderService {
     const result = await this.prisma.$transaction(
       async (tx) => {
         // Calculate total price based on order items
-        let totalPrice = 0;
+        let totalPrice = new Decimal(0);
 
         // Verify that all products exist and calculate total
         for (const item of orderItem) {
@@ -215,7 +219,9 @@ export class OrderService {
                 ? sackPrice.specialPrice.price
                 : sackPrice.price;
 
-            totalPrice += price * item.quantity;
+            totalPrice = totalPrice.add(
+              new Decimal(price).mul(new Decimal(item.quantity)),
+            );
           }
 
           if (item.perKiloPriceId) {
@@ -235,7 +241,9 @@ export class OrderService {
               );
             }
 
-            totalPrice += perKiloPrice.price * item.quantity;
+            totalPrice = totalPrice.add(
+              new Decimal(perKiloPrice.price).mul(new Decimal(item.quantity)),
+            );
           }
         }
 
@@ -309,7 +317,7 @@ export class OrderService {
         }
 
         // Calculate new total price
-        let totalPrice = 0;
+        let totalPrice = new Decimal(0);
 
         // Verify that all products exist and calculate total
         for (const item of orderItem) {
@@ -352,7 +360,9 @@ export class OrderService {
                 ? sackPrice.specialPrice.price
                 : sackPrice.price;
 
-            totalPrice += price * item.quantity;
+            totalPrice = totalPrice.add(
+              new Decimal(price).mul(new Decimal(item.quantity)),
+            );
           }
 
           if (item.perKiloPriceId) {
@@ -372,7 +382,9 @@ export class OrderService {
               );
             }
 
-            totalPrice += perKiloPrice.price * item.quantity;
+            totalPrice = totalPrice.add(
+              new Decimal(perKiloPrice.price).mul(new Decimal(item.quantity)),
+            );
           }
         }
 

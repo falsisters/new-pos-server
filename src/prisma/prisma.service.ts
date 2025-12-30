@@ -63,4 +63,48 @@ export class PrismaService
     await super.$disconnect();
     this.isConnected = false;
   }
+
+  /**
+   * Execute a timezone-aware query using PostgreSQL's AT TIME ZONE functionality.
+   * This is useful for complex date queries that need precise timezone handling.
+   *
+   * Example:
+   * ```typescript
+   * const result = await prisma.queryWithTimezone(`
+   *   SELECT * FROM "Sale"
+   *   WHERE "createdAt" AT TIME ZONE 'Asia/Manila' >= $1::date
+   *   AND "createdAt" AT TIME ZONE 'Asia/Manila' < $2::date + interval '1 day'
+   * `, ['2024-03-15', '2024-03-15']);
+   * ```
+   */
+  async queryWithTimezone<T = any>(
+    query: string,
+    values: any[] = [],
+  ): Promise<T[]> {
+    return this.$queryRawUnsafe<T[]>(query, ...values);
+  }
+
+  /**
+   * Helper method to get records within a date range in Manila timezone.
+   * This uses PostgreSQL's timezone conversion for accurate filtering.
+   */
+  async findManyWithDateFilter<T>(
+    tableName: string,
+    dateColumn: string = 'createdAt',
+    dateValue: string,
+    additionalWhere: string = '',
+    values: any[] = [],
+  ): Promise<T[]> {
+    const whereClause = additionalWhere ? `AND ${additionalWhere}` : '';
+
+    const query = `
+      SELECT * FROM "${tableName}"
+      WHERE "${dateColumn}" AT TIME ZONE 'Asia/Manila' >= $1::date
+      AND "${dateColumn}" AT TIME ZONE 'Asia/Manila' < $1::date + interval '1 day'
+      ${whereClause}
+      ORDER BY "${dateColumn}" DESC
+    `;
+
+    return this.queryWithTimezone<T>(query, [dateValue, ...values]);
+  }
 }

@@ -5,7 +5,11 @@ import { InvalidCredentialsException } from './auth.exception';
 import { User } from '@prisma/client';
 import { JwtService } from '@nestjs/jwt';
 import { RegisterDto } from './dto/register.dto';
-import { convertToManilaTime } from 'src/utils/date.util';
+import {
+  formatDateForClient,
+  // Legacy function for backward compatibility
+  convertToManilaTime,
+} from 'src/utils/date.util';
 
 @Injectable()
 export class AuthService {

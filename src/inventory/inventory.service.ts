@@ -1,9 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import {
-  convertObjectDatesToManilaTime,
-  convertArrayDatesToManilaTime,
-  getManilaDateRangeForQuery,
+  formatDateForClient,
+  createManilaDateFilter,
 } from '../utils/date.util';
 
 @Injectable()
@@ -12,31 +11,39 @@ export class InventoryService {
 
   private formatInventorySheet(sheet: any) {
     if (!sheet) return null;
-    const formatted = {
+    return {
       ...sheet,
+      createdAt: formatDateForClient(sheet.createdAt),
+      updatedAt: formatDateForClient(sheet.updatedAt),
       Rows: sheet.Rows
-        ? convertArrayDatesToManilaTime(
-            sheet.Rows.map((row) => ({
-              ...row,
-              Cells: row.Cells ? convertArrayDatesToManilaTime(row.Cells) : [],
-            })),
-          )
+        ? sheet.Rows.map((row) => ({
+            ...row,
+            createdAt: formatDateForClient(row.createdAt),
+            updatedAt: formatDateForClient(row.updatedAt),
+            Cells: row.Cells
+              ? row.Cells.map((cell) => ({
+                  ...cell,
+                  createdAt: formatDateForClient(cell.createdAt),
+                  updatedAt: formatDateForClient(cell.updatedAt),
+                }))
+              : [],
+          }))
         : [],
     };
-    return convertObjectDatesToManilaTime(formatted);
   }
 
   private formatInventory(inventory: any) {
     if (!inventory) return null;
-    const formatted = {
+    return {
       ...inventory,
+      createdAt: formatDateForClient(inventory.createdAt),
+      updatedAt: formatDateForClient(inventory.updatedAt),
       InventorySheet: inventory.InventorySheet
         ? inventory.InventorySheet.map((sheet) =>
             this.formatInventorySheet(sheet),
           )
         : [],
     };
-    return convertObjectDatesToManilaTime(formatted);
   }
 
   async findInventoryByCashier(cashierId: string, name: string = 'Inventory') {
@@ -129,7 +136,11 @@ export class InventoryService {
         inventory: { connect: { id: inventoryId } },
       },
     });
-    return convertObjectDatesToManilaTime(result);
+    return {
+      ...result,
+      createdAt: formatDateForClient(result.createdAt),
+      updatedAt: formatDateForClient(result.updatedAt),
+    };
   }
 
   async getInventorySheetWithData(sheetId: string) {
@@ -154,24 +165,24 @@ export class InventoryService {
     startDate?: Date,
     endDate?: Date,
   ) {
-    // Use standardized date range query utility
-    let startOfDay: Date, endOfDay: Date;
+    // Use createManilaDateFilter for date filtering
+    let dateFilter: any = {};
 
     if (startDate && endDate) {
-      // Convert provided dates to proper query range
-      const startRange = getManilaDateRangeForQuery(
-        startDate.toISOString().split('T')[0],
-      );
-      const endRange = getManilaDateRangeForQuery(
-        endDate.toISOString().split('T')[0],
-      );
-      startOfDay = startRange.startOfDay;
-      endOfDay = endRange.endOfDay;
+      // Create date range filter for multiple days
+      const startDateStr = startDate.toISOString().split('T')[0];
+      const endDateStr = endDate.toISOString().split('T')[0];
+
+      const startFilter = createManilaDateFilter(startDateStr);
+      const endFilter = createManilaDateFilter(endDateStr);
+
+      dateFilter = {
+        gte: startFilter.gte,
+        lte: endFilter.lte,
+      };
     } else {
       // Default to current day
-      const currentRange = getManilaDateRangeForQuery();
-      startOfDay = currentRange.startOfDay;
-      endOfDay = currentRange.endOfDay;
+      dateFilter = createManilaDateFilter();
     }
 
     let inventory = await this.prisma.inventory.findFirst({
@@ -198,10 +209,7 @@ export class InventoryService {
       include: {
         Rows: {
           where: {
-            createdAt: {
-              gte: startOfDay,
-              lte: endOfDay,
-            },
+            createdAt: dateFilter,
           },
           orderBy: { rowIndex: 'asc' },
           include: {
@@ -221,24 +229,24 @@ export class InventoryService {
     startDate?: Date,
     endDate?: Date,
   ) {
-    // Use standardized date range query utility
-    let startOfDay: Date, endOfDay: Date;
+    // Use createManilaDateFilter for date filtering
+    let dateFilter: any = {};
 
     if (startDate && endDate) {
-      // Convert provided dates to proper query range
-      const startRange = getManilaDateRangeForQuery(
-        startDate.toISOString().split('T')[0],
-      );
-      const endRange = getManilaDateRangeForQuery(
-        endDate.toISOString().split('T')[0],
-      );
-      startOfDay = startRange.startOfDay;
-      endOfDay = endRange.endOfDay;
+      // Create date range filter for multiple days
+      const startDateStr = startDate.toISOString().split('T')[0];
+      const endDateStr = endDate.toISOString().split('T')[0];
+
+      const startFilter = createManilaDateFilter(startDateStr);
+      const endFilter = createManilaDateFilter(endDateStr);
+
+      dateFilter = {
+        gte: startFilter.gte,
+        lte: endFilter.lte,
+      };
     } else {
       // Default to current day
-      const currentRange = getManilaDateRangeForQuery();
-      startOfDay = currentRange.startOfDay;
-      endOfDay = currentRange.endOfDay;
+      dateFilter = createManilaDateFilter();
     }
 
     // Find the inventory for this cashier
@@ -267,10 +275,7 @@ export class InventoryService {
       include: {
         Rows: {
           where: {
-            createdAt: {
-              gte: startOfDay,
-              lte: endOfDay,
-            },
+            createdAt: dateFilter,
           },
           orderBy: { rowIndex: 'asc' },
           include: {
@@ -310,7 +315,11 @@ export class InventoryService {
       ],
     });
 
-    return convertObjectDatesToManilaTime(row);
+    return {
+      ...row,
+      createdAt: formatDateForClient(row.createdAt),
+      updatedAt: formatDateForClient(row.updatedAt),
+    };
   }
 
   async addCalculationRow(
@@ -318,6 +327,7 @@ export class InventoryService {
     rowIndex?: number,
     description: string = '',
     inventoryId?: string,
+    date?: Date,
   ) {
     let targetSheetId = sheetId;
 
@@ -362,13 +372,21 @@ export class InventoryService {
       throw new Error('Inventory sheet not found');
     }
 
+    // Prepare creation data with optional date
+    const createData: any = {
+      rowIndex,
+      isItemRow: false,
+      inventorySheet: { connect: { id: targetSheetId } },
+    };
+
+    // Set createdAt if date is provided
+    if (date) {
+      createData.createdAt = date;
+    }
+
     // Create a calculation row (totals, etc.)
     const row = await this.prisma.inventoryRow.create({
-      data: {
-        rowIndex,
-        isItemRow: false,
-        inventorySheet: { connect: { id: targetSheetId } },
-      },
+      data: createData,
     });
 
     // Create cells for all columns in the sheet
@@ -383,7 +401,11 @@ export class InventoryService {
       data: cellsData,
     });
 
-    return convertObjectDatesToManilaTime(row);
+    return {
+      ...row,
+      createdAt: formatDateForClient(row.createdAt),
+      updatedAt: formatDateForClient(row.updatedAt),
+    };
   }
 
   async deleteRow(rowId: string) {
@@ -397,7 +419,11 @@ export class InventoryService {
       where: { id: rowId },
     });
 
-    return convertObjectDatesToManilaTime(result);
+    return {
+      ...result,
+      createdAt: formatDateForClient(result.createdAt),
+      updatedAt: formatDateForClient(result.updatedAt),
+    };
   }
 
   async updateCell(
@@ -459,7 +485,11 @@ export class InventoryService {
     });
 
     console.log('Inventory cell updated successfully:', result);
-    return convertObjectDatesToManilaTime(result);
+    return {
+      ...result,
+      createdAt: formatDateForClient(result.createdAt),
+      updatedAt: formatDateForClient(result.updatedAt),
+    };
   }
 
   async addCell(
@@ -507,7 +537,11 @@ export class InventoryService {
     });
 
     console.log('Inventory cell created successfully:', result);
-    return convertObjectDatesToManilaTime(result);
+    return {
+      ...result,
+      createdAt: formatDateForClient(result.createdAt),
+      updatedAt: formatDateForClient(result.updatedAt),
+    };
   }
 
   async addCells(
@@ -539,7 +573,11 @@ export class InventoryService {
     const result = await this.prisma.inventoryCell.delete({
       where: { id: cellId },
     });
-    return convertObjectDatesToManilaTime(result);
+    return {
+      ...result,
+      createdAt: formatDateForClient(result.createdAt),
+      updatedAt: formatDateForClient(result.updatedAt),
+    };
   }
 
   // For batch updating all cells at once
@@ -559,7 +597,11 @@ export class InventoryService {
     });
 
     const results = await Promise.all(updatePromises);
-    return convertArrayDatesToManilaTime(results);
+    return results.map((result) => ({
+      ...result,
+      createdAt: formatDateForClient(result.createdAt),
+      updatedAt: formatDateForClient(result.updatedAt),
+    }));
   }
 
   async updateRowPosition(rowId: string, newRowIndex: number) {
@@ -567,7 +609,11 @@ export class InventoryService {
       where: { id: rowId },
       data: { rowIndex: newRowIndex },
     });
-    return convertObjectDatesToManilaTime(result);
+    return {
+      ...result,
+      createdAt: formatDateForClient(result.createdAt),
+      updatedAt: formatDateForClient(result.updatedAt),
+    };
   }
 
   async getExpensesSheetsForUserByDateRange(
@@ -613,6 +659,152 @@ export class InventoryService {
         startDate,
         endDate,
       );
+      if (sheet) {
+        resultSheets.push({
+          cashierName: cashier.name,
+          cashierId: cashier.id,
+          sheet,
+        });
+      }
+    }
+    return resultSheets;
+  }
+
+  async getExpensesSheetsByOneDate(cashierId: string, date?: Date) {
+    // Use createManilaDateFilter for single date
+    let dateFilter: any = {};
+
+    if (date) {
+      // Convert provided date to date string and use createManilaDateFilter
+      const dateString = date.toISOString().split('T')[0];
+      dateFilter = createManilaDateFilter(dateString);
+    } else {
+      // Default to current day
+      dateFilter = createManilaDateFilter();
+    }
+
+    let inventory = await this.prisma.inventory.findFirst({
+      where: { cashierId, name: 'Expenses' },
+    });
+
+    if (!inventory) {
+      inventory = await this.prisma.inventory.create({
+        data: {
+          cashierId,
+          name: 'Expenses',
+          InventorySheet: {
+            create: {
+              name: 'Expenses Sheet',
+              columns: 20,
+            },
+          },
+        },
+      });
+    }
+
+    const result = await this.prisma.inventorySheet.findFirst({
+      where: { inventoryId: inventory.id },
+      include: {
+        Rows: {
+          where: {
+            createdAt: dateFilter,
+          },
+          orderBy: { rowIndex: 'asc' },
+          include: {
+            Cells: {
+              orderBy: { columnIndex: 'asc' },
+            },
+          },
+        },
+      },
+    });
+
+    return this.formatInventorySheet(result);
+  }
+
+  async getInventorySheetsByOneDate(cashierId: string, date?: Date) {
+    // Use createManilaDateFilter for single date
+    let dateFilter: any = {};
+
+    if (date) {
+      // Convert provided date to date string and use createManilaDateFilter
+      const dateString = date.toISOString().split('T')[0];
+      dateFilter = createManilaDateFilter(dateString);
+    } else {
+      // Default to current day
+      dateFilter = createManilaDateFilter();
+    }
+
+    // Find the inventory for this cashier
+    let inventory = await this.prisma.inventory.findFirst({
+      where: { cashierId, name: 'Inventory' },
+    });
+
+    if (!inventory) {
+      // Create a new inventory if it doesn't exist
+      inventory = await this.prisma.inventory.create({
+        data: {
+          cashierId,
+          name: 'Inventory',
+          InventorySheet: {
+            create: {
+              name: 'Inventory Sheet',
+              columns: 20,
+            },
+          },
+        },
+      });
+    }
+
+    const result = await this.prisma.inventorySheet.findFirst({
+      where: { inventoryId: inventory.id },
+      include: {
+        Rows: {
+          where: {
+            createdAt: dateFilter,
+          },
+          orderBy: { rowIndex: 'asc' },
+          include: {
+            Cells: {
+              orderBy: { columnIndex: 'asc' },
+            },
+          },
+        },
+      },
+    });
+
+    return this.formatInventorySheet(result);
+  }
+
+  async getExpensesSheetsForUserByOneDate(userId: string, date?: Date) {
+    const cashiers = await this.prisma.cashier.findMany({
+      where: { userId },
+      select: { id: true, name: true },
+    });
+
+    const resultSheets = [];
+    for (const cashier of cashiers) {
+      const sheet = await this.getExpensesSheetsByOneDate(cashier.id, date);
+      if (sheet) {
+        resultSheets.push({
+          cashierName: cashier.name,
+          cashierId: cashier.id,
+          sheet,
+        });
+      }
+    }
+    return resultSheets;
+  }
+
+  async getInventorySheetsForUserByOneDate(userId: string, date?: Date) {
+    const cashiers = await this.prisma.cashier.findMany({
+      where: { userId },
+      select: { id: true, name: true },
+    });
+
+    const resultSheets = [];
+    for (const cashier of cashiers) {
+      const sheet = await this.getInventorySheetsByOneDate(cashier.id, date);
       if (sheet) {
         resultSheets.push({
           cashierName: cashier.name,
@@ -681,6 +873,10 @@ export class InventoryService {
     });
 
     const results = await Promise.all(updatePromises);
-    return convertArrayDatesToManilaTime(results);
+    return results.map((result) => ({
+      ...result,
+      createdAt: formatDateForClient(result.createdAt),
+      updatedAt: formatDateForClient(result.updatedAt),
+    }));
   }
 }

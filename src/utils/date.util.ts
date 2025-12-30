@@ -1,16 +1,28 @@
-export function convertToManilaTime(
+/**
+ * The Manila timezone identifier for PostgreSQL
+ */
+export const MANILA_TIMEZONE = 'Asia/Manila';
+
+/**
+ * Since we're using @db.Timestamptz, PostgreSQL automatically handles timezone conversions.
+ * This function is now primarily for formatting dates in client responses.
+ * The database stores all timestamps in UTC and converts them based on the timezone context.
+ */
+export function formatDateForClient(
   date: Date | string | null | undefined,
 ): Date | null {
   if (!date) {
     return null;
   }
-  const dateObj = typeof date === 'string' ? new Date(date) : date;
-  // Add 8 hours to convert UTC to Philippine Time (UTC +8)
-  const manilaTime = new Date(dateObj.getTime() + 8 * 60 * 60 * 1000);
-  return manilaTime;
+  // Return the date as-is since Prisma and PostgreSQL handle the timezone conversion
+  return typeof date === 'string' ? new Date(date) : date;
 }
 
-export function convertObjectDatesToManilaTime<T extends Record<string, any>>(
+/**
+ * Convert objects with date fields for client response
+ * Note: With @db.Timestamptz, this is mainly for consistency in response formatting
+ */
+export function formatObjectDatesForClient<T extends Record<string, any>>(
   obj: T,
   dateFields: (keyof T)[] = [
     'createdAt',
@@ -23,19 +35,19 @@ export function convertObjectDatesToManilaTime<T extends Record<string, any>>(
 ): T {
   if (!obj) return obj;
 
-  const converted = { ...obj } as Record<string, any>;
+  const formatted = { ...obj } as Record<string, any>;
 
   // Process each property of the object
-  Object.keys(converted).forEach((key) => {
-    const value = converted[key];
+  Object.keys(formatted).forEach((key) => {
+    const value = formatted[key];
 
-    // If it's a date field, convert it
+    // If it's a date field, format it
     if (dateFields.includes(key as keyof T) && value) {
-      converted[key] = convertToManilaTime(value as any);
+      formatted[key] = formatDateForClient(value as any);
     }
     // If it's an array, recursively process it
     else if (Array.isArray(value)) {
-      converted[key] = convertArrayDatesToManilaTime(value, dateFields as any);
+      formatted[key] = formatArrayDatesForClient(value, dateFields as any);
     }
     // If it's a nested object, recursively process it
     else if (
@@ -43,14 +55,17 @@ export function convertObjectDatesToManilaTime<T extends Record<string, any>>(
       typeof value === 'object' &&
       value.constructor === Object
     ) {
-      converted[key] = convertObjectDatesToManilaTime(value, dateFields as any);
+      formatted[key] = formatObjectDatesForClient(value, dateFields as any);
     }
   });
 
-  return converted as T;
+  return formatted as T;
 }
 
-export function convertArrayDatesToManilaTime<T extends Record<string, any>>(
+/**
+ * Convert array items with date fields for client response
+ */
+export function formatArrayDatesForClient<T extends Record<string, any>>(
   array: T[],
   dateFields: (keyof T)[] = [
     'createdAt',
@@ -63,10 +78,15 @@ export function convertArrayDatesToManilaTime<T extends Record<string, any>>(
 ): T[] {
   if (!Array.isArray(array)) return array;
 
-  return array.map((item) => convertObjectDatesToManilaTime(item, dateFields));
+  return array.map((item) => formatObjectDatesForClient(item, dateFields));
 }
 
-export function parseManilaDateRange(
+/**
+ * Create a date range for PostgreSQL queries with proper timezone handling.
+ * Since we're using @db.Timestamptz, we can create proper Date objects that
+ * PostgreSQL will handle correctly with timezone awareness.
+ */
+export function createManilaDateRangeFilter(
   startDate?: string,
   endDate?: string,
 ): {
@@ -77,95 +97,180 @@ export function parseManilaDateRange(
     return {};
   }
 
-  let start: Date | undefined;
-  let end: Date | undefined;
+  const result: { startDate?: Date; endDate?: Date } = {};
 
   if (startDate) {
-    // Parse "YYYY-MM-DD" format
-    const parts = startDate.split('-');
-    const year = parseInt(parts[0], 10);
-    const month = parseInt(parts[1], 10) - 1;
-    const day = parseInt(parts[2], 10);
-    // Manila start of day to UTC
-    start = new Date(Date.UTC(year, month, day, 0, 0, 0, 0) - 8 * 60 * 60 * 1000);
+    // Create start of day: YYYY-MM-DD 00:00:00 in Manila timezone
+    // We interpret the input date string as Manila local time
+    const startDateTime = new Date(`${startDate}T00:00:00+08:00`);
+    result.startDate = startDateTime;
   }
 
   if (endDate) {
-    // Parse "YYYY-MM-DD" format
-    const parts = endDate.split('-');
-    const year = parseInt(parts[0], 10);
-    const month = parseInt(parts[1], 10) - 1;
-    const day = parseInt(parts[2], 10);
-    // Manila end of day to UTC
-    end = new Date(Date.UTC(year, month, day, 23, 59, 59, 999) - 8 * 60 * 60 * 1000);
+    // Create end of day: YYYY-MM-DD 23:59:59.999 in Manila timezone
+    const endDateTime = new Date(`${endDate}T23:59:59.999+08:00`);
+    result.endDate = endDateTime;
   }
 
-  return { startDate: start, endDate: end };
+  return result;
 }
 
-export function parseManilaDateToUTC(dateString: string): Date {
-  // Parse "YYYY-MM-DD" format and convert Manila midnight to UTC
-  const parts = dateString.split('-');
-  const year = parseInt(parts[0], 10);
-  const month = parseInt(parts[1], 10) - 1;
-  const day = parseInt(parts[2], 10);
-  // Manila midnight to UTC (subtract 8 hours)
-  return new Date(Date.UTC(year, month, day, 0, 0, 0, 0) - 8 * 60 * 60 * 1000);
+/**
+ * Create date range for a single date in Manila timezone.
+ * This is the main function you should use for YYYY-MM-DD date filtering.
+ */
+export function createManilaDateFilter(dateString?: string): {
+  gte: Date;
+  lte: Date;
+} {
+  if (!dateString) {
+    // Return today's date range in Manila timezone
+    const today = getCurrentManilaDate();
+    const { startDate, endDate } = createManilaDateRangeFilter(today, today);
+    return { gte: startDate!, lte: endDate! };
+  }
+
+  const { startDate, endDate } = createManilaDateRangeFilter(
+    dateString,
+    dateString,
+  );
+  return { gte: startDate!, lte: endDate! };
 }
 
-export function getManilaDateBounds(dateString?: string): {
+/**
+ * For backward compatibility and simpler cases where you need JavaScript Date objects.
+ * Use this when you can't use the PostgreSQL AT TIME ZONE approach.
+ */
+export function parseDateInManilaTimezone(dateString: string): {
   startOfDay: Date;
   endOfDay: Date;
 } {
-  let year: number, month: number, day: number;
-  
-  if (dateString) {
-    const parts = dateString.split('-');
-    year = parseInt(parts[0], 10);
-    month = parseInt(parts[1], 10) - 1;
-    day = parseInt(parts[2], 10);
-  } else {
-    const nowInManila = new Date(Date.now() + 8 * 60 * 60 * 1000);
-    year = nowInManila.getUTCFullYear();
-    month = nowInManila.getUTCMonth();
-    day = nowInManila.getUTCDate();
-  }
+  // Parse date as YYYY-MM-DD and create Manila timezone dates
+  const [year, month, day] = dateString.split('-').map(Number);
 
-  const startOfDay = new Date(Date.UTC(year, month, day, 0, 0, 0, 0) - 8 * 60 * 60 * 1000);
-  const endOfDay = new Date(Date.UTC(year, month, day, 23, 59, 59, 999) - 8 * 60 * 60 * 1000);
+  // Create dates in Manila timezone context
+  // Note: We'll create them as local dates and then adjust
+  const baseDate = new Date(year, month - 1, day);
+
+  const startOfDay = new Date(baseDate);
+  startOfDay.setHours(0, 0, 0, 0);
+
+  const endOfDay = new Date(baseDate);
+  endOfDay.setHours(23, 59, 59, 999);
 
   return { startOfDay, endOfDay };
 }
 
+/**
+ * Get current date in Manila timezone for date range queries
+ */
+export function getCurrentManilaDate(): string {
+  // Get current time and format as YYYY-MM-DD in Manila timezone
+  const now = new Date();
+  // This is a simplified approach - for production, consider using a proper timezone library
+  const manilaOffset = 8 * 60; // Manila is UTC+8
+  const manilaTime = new Date(now.getTime() + manilaOffset * 60 * 1000);
+  return manilaTime.toISOString().split('T')[0];
+}
+
+/**
+ * Create a date range query for "today" in Manila timezone
+ */
+export function createTodayManilaFilter(): {
+  gte: Date;
+  lte: Date;
+} {
+  const today = getCurrentManilaDate();
+  return createManilaDateFilter(today);
+}
+
+/**
+ * Legacy function - use createManilaDateFilter instead
+ * @deprecated Use createManilaDateFilter for new implementations
+ */
+export function getManilaDateRangeForQuery(dateString?: string): {
+  startOfDay: Date;
+  endOfDay: Date;
+} {
+  const targetDate = dateString || getCurrentManilaDate();
+  const { startOfDay, endOfDay } = parseDateInManilaTimezone(targetDate);
+  return { startOfDay, endOfDay };
+}
+
+/**
+ * Legacy compatibility functions - these maintain the old API but use the new timezone-aware logic
+ */
+
+/**
+ * @deprecated Use formatDateForClient instead
+ */
+export function convertToManilaTime(
+  date: Date | string | null | undefined,
+): Date | null {
+  return formatDateForClient(date);
+}
+
+/**
+ * @deprecated Use formatObjectDatesForClient instead
+ */
+export function convertObjectDatesToManilaTime<T extends Record<string, any>>(
+  obj: T,
+  dateFields: (keyof T)[] = [
+    'createdAt',
+    'updatedAt',
+    'startTime',
+    'endTime',
+    'saleDate',
+    'deliveryTimeStart',
+  ],
+): T {
+  return formatObjectDatesForClient(obj, dateFields);
+}
+
+/**
+ * @deprecated Use formatArrayDatesForClient instead
+ */
+export function convertArrayDatesToManilaTime<T extends Record<string, any>>(
+  array: T[],
+  dateFields: (keyof T)[] = [
+    'createdAt',
+    'updatedAt',
+    'startTime',
+    'endTime',
+    'saleDate',
+    'deliveryTimeStart',
+  ],
+): T[] {
+  return formatArrayDatesForClient(array, dateFields);
+}
+
+/**
+ * @deprecated Use createManilaDateRangeFilter instead
+ */
+export function parseManilaDateRange(
+  startDate?: string,
+  endDate?: string,
+): {
+  startDate?: Date;
+  endDate?: Date;
+} {
+  return createManilaDateRangeFilter(startDate, endDate);
+}
+
+/**
+ * @deprecated Use createManilaDateFilter instead
+ */
 export function parseManilaDateToUTCRange(dateString?: string): {
   startOfDay: Date;
   endOfDay: Date;
 } {
-  // Parse the date string to get year, month, day components
-  let year: number, month: number, day: number;
-  
-  if (dateString) {
-    const parts = dateString.split('-');
-    year = parseInt(parts[0], 10);
-    month = parseInt(parts[1], 10) - 1;
-    day = parseInt(parts[2], 10);
-  } else {
-    const nowInManila = new Date(Date.now() + 8 * 60 * 60 * 1000);
-    year = nowInManila.getUTCFullYear();
-    month = nowInManila.getUTCMonth();
-    day = nowInManila.getUTCDate();
-  }
-
-  // Manila midnight to UTC
-  const startOfDayUTC = new Date(Date.UTC(year, month, day, 0, 0, 0, 0) - 8 * 60 * 60 * 1000);
-  const endOfDayUTC = new Date(Date.UTC(year, month, day, 23, 59, 59, 999) - 8 * 60 * 60 * 1000);
-
-  return {
-    startOfDay: startOfDayUTC,
-    endOfDay: endOfDayUTC,
-  };
+  const targetDate = dateString || getCurrentManilaDate();
+  return parseDateInManilaTimezone(targetDate);
 }
 
+/**
+ * @deprecated Use createManilaDateRangeFilter instead
+ */
 export function parseManilaDateRangeToUTC(
   startDateString?: string,
   endDateString?: string,
@@ -173,88 +278,31 @@ export function parseManilaDateRangeToUTC(
   startDate: Date;
   endDate: Date;
 } {
-  let startDate: Date;
-  let endDate: Date;
-
-  if (startDateString) {
-    const parts = startDateString.split('-');
-    const year = parseInt(parts[0], 10);
-    const month = parseInt(parts[1], 10) - 1;
-    const day = parseInt(parts[2], 10);
-    startDate = new Date(Date.UTC(year, month, day, 0, 0, 0, 0) - 8 * 60 * 60 * 1000);
-  } else {
-    // Default to today's start in Manila Time
-    const nowInManila = new Date(Date.now() + 8 * 60 * 60 * 1000);
-    const year = nowInManila.getUTCFullYear();
-    const month = nowInManila.getUTCMonth();
-    const day = nowInManila.getUTCDate();
-    startDate = new Date(Date.UTC(year, month, day, 0, 0, 0, 0) - 8 * 60 * 60 * 1000);
-  }
-
-  if (endDateString) {
-    const parts = endDateString.split('-');
-    const year = parseInt(parts[0], 10);
-    const month = parseInt(parts[1], 10) - 1;
-    const day = parseInt(parts[2], 10);
-    endDate = new Date(Date.UTC(year, month, day, 23, 59, 59, 999) - 8 * 60 * 60 * 1000);
-  } else {
-    // Default to today's end in Manila Time
-    const nowInManila = new Date(Date.now() + 8 * 60 * 60 * 1000);
-    const year = nowInManila.getUTCFullYear();
-    const month = nowInManila.getUTCMonth();
-    const day = nowInManila.getUTCDate();
-    endDate = new Date(Date.UTC(year, month, day, 23, 59, 59, 999) - 8 * 60 * 60 * 1000);
-  }
-
-  return { startDate, endDate };
-}
-
-export function parseManilaDateForStorage(dateString?: string): Date {
-  if (!dateString) {
-    // Current Manila time converted to UTC for storage
-    const now = new Date();
-    return new Date(now.getTime() - 8 * 60 * 60 * 1000);
-  }
-
-  // Parse the date string as Manila time and convert to UTC for storage
-  const manilaDate = new Date(dateString);
-  return new Date(manilaDate.getTime() - 8 * 60 * 60 * 1000);
-}
-
-export function getManilaDateRangeForQuery(dateString?: string): {
-  startOfDay: Date;
-  endOfDay: Date;
-} {
-  // Parse the date string to get year, month, day components
-  // This is timezone-independent
-  let year: number, month: number, day: number;
-  
-  if (dateString) {
-    // Parse "YYYY-MM-DD" format
-    const parts = dateString.split('-');
-    year = parseInt(parts[0], 10);
-    month = parseInt(parts[1], 10) - 1; // JS months are 0-indexed
-    day = parseInt(parts[2], 10);
-  } else {
-    // Use current date in Manila timezone
-    // Manila is UTC+8, so we add 8 hours to get Manila time
-    const nowInManila = new Date(Date.now() + 8 * 60 * 60 * 1000);
-    year = nowInManila.getUTCFullYear();
-    month = nowInManila.getUTCMonth();
-    day = nowInManila.getUTCDate();
-  }
-
-  // Create start of day 00:00:00.000 in Manila timezone
-  // Manila is UTC+8, so Manila midnight = UTC 16:00 previous day
-  // e.g., Manila 2024-12-20 00:00:00 = UTC 2024-12-19 16:00:00
-  const startOfDayUTC = new Date(Date.UTC(year, month, day, 0, 0, 0, 0) - 8 * 60 * 60 * 1000);
-  
-  // Create end of day 23:59:59.999 in Manila timezone
-  // e.g., Manila 2024-12-20 23:59:59 = UTC 2024-12-20 15:59:59
-  const endOfDayUTC = new Date(Date.UTC(year, month, day, 23, 59, 59, 999) - 8 * 60 * 60 * 1000);
+  const range = createManilaDateRangeFilter(startDateString, endDateString);
+  const today = getCurrentManilaDate();
+  const todayRange = createManilaDateRangeFilter(today, today);
 
   return {
-    startOfDay: startOfDayUTC,
-    endOfDay: endOfDayUTC,
+    startDate: range.startDate || todayRange.startDate!,
+    endDate: range.endDate || todayRange.endDate!,
   };
+}
+
+/**
+ * @deprecated With @db.Timestamptz, you can store dates directly
+ */
+export function parseManilaDateForStorage(dateString?: string): Date {
+  if (!dateString) {
+    return new Date();
+  }
+  return new Date(`${dateString}T00:00:00+08:00`);
+}
+
+/**
+ * @deprecated Use formatDateForClient instead
+ */
+export function formatManilaDateTime(
+  date: Date | string | null | undefined,
+): Date | null {
+  return formatDateForClient(date);
 }
