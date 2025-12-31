@@ -568,56 +568,68 @@ export class ProfitService {
     // Selected day range (for current day profits)
     const selectedDayRange = createManilaDateRange(year, month, day);
 
-    // Start of the Month (e.g., Dec 1)
-    const startOfMonthRange = createManilaDateRange(year, month, 1);
-
-    // Previous day (day - 1)
-    // Handle month boundary: if day is 1, previousDayDate will correctly go to previous month
-    const previousDayDate = new Date(Date.UTC(year, month - 1, day - 1));
-    const previousDayRange = createManilaDateRange(
-      previousDayDate.getUTCFullYear(),
-      previousDayDate.getUTCMonth() + 1,
-      previousDayDate.getUTCDate(),
-    );
-
     console.log(`🔍 Dashboard Summary for ${dateString}:`, {
       selectedDay: day,
-      startOfMonthStart: startOfMonthRange.startOfDay.toISOString(),
-      previousDayEnd: previousDayRange.endOfDay.toISOString(),
       currentDayStart: selectedDayRange.startOfDay.toISOString(),
       currentDayEnd: selectedDayRange.endOfDay.toISOString(),
     });
 
-    // 2. Query: Previous Days (Start of Month to Day Before Selected)
-    // Only query if selected day is not the 1st of the month
-    let previousDaysSales: any[] = [];
+    // 2. Calculate Previous Days profit by batching day-by-day to avoid connection pool timeout
+    // Only calculate if selected day is not the 1st of the month
+    let previousDaysProfitData = {
+      rawItems: [] as any[],
+      sackTotal: 0,
+      asinTotal: 0,
+      overallTotal: 0,
+    };
+
     if (day > 1) {
       console.log(
-        `📊 Querying previous days from ${startOfMonthRange.startOfDay.toISOString()} to ${previousDayRange.endOfDay.toISOString()}`,
+        `📊 Calculating previous days profit from day 1 to day ${day - 1} (batched by day)`,
       );
-      previousDaysSales = await this.prisma.sale.findMany({
-        where: {
-          cashierId,
-          createdAt: {
-            gte: startOfMonthRange.startOfDay,
-            lte: previousDayRange.endOfDay, // Up to end of previous day
+
+      // Process each day sequentially to avoid connection pool exhaustion
+      for (let d = 1; d < day; d++) {
+        const dayRange = createManilaDateRange(year, month, d);
+
+        const daySales = await this.prisma.sale.findMany({
+          where: {
+            cashierId,
+            isVoid: false,
+            createdAt: {
+              gte: dayRange.startOfDay,
+              lte: dayRange.endOfDay,
+            },
           },
-        },
-        include: {
-          SaleItem: {
-            include: {
-              product: { select: { id: true, name: true } },
-              SackPrice: {
-                include: {
-                  specialPrice: true,
+          include: {
+            SaleItem: {
+              include: {
+                product: { select: { id: true, name: true } },
+                SackPrice: {
+                  include: {
+                    specialPrice: true,
+                  },
                 },
               },
             },
           },
-        },
-      });
+        });
+
+        if (daySales.length > 0) {
+          const dayProfitData = this.calculateProfitFromSales(daySales);
+          previousDaysProfitData.rawItems.push(...dayProfitData.rawItems);
+          previousDaysProfitData.sackTotal += dayProfitData.sackTotal;
+          previousDaysProfitData.asinTotal += dayProfitData.asinTotal;
+          previousDaysProfitData.overallTotal += dayProfitData.overallTotal;
+        }
+
+        console.log(
+          `📊 Day ${d}: ${daySales.length} sales, running total: ${previousDaysProfitData.overallTotal}`,
+        );
+      }
+
       console.log(
-        `📊 Found ${previousDaysSales.length} sales in previous days`,
+        `📊 Previous days total profit: ${previousDaysProfitData.overallTotal}`,
       );
     }
 
@@ -625,6 +637,7 @@ export class ProfitService {
     const currentDaySales = await this.prisma.sale.findMany({
       where: {
         cashierId,
+        isVoid: false,
         createdAt: {
           gte: selectedDayRange.startOfDay,
           lte: selectedDayRange.endOfDay,
@@ -644,9 +657,7 @@ export class ProfitService {
       },
     });
 
-    // 4. Calculate profits using helper method
-    const previousDaysProfitData =
-      this.calculateProfitFromSales(previousDaysSales);
+    // 4. Calculate current day profits using helper method
     const currentDayProfitData = this.calculateProfitFromSales(currentDaySales);
 
     return {

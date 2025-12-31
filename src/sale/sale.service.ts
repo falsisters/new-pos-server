@@ -635,8 +635,11 @@ export class SaleService {
     }
   }
 
-  async getAllSales(userId: string) {
-    // Build the query conditions using the same logic as sales-check service
+  async getAllSales(userId: string, date?: string) {
+    // Use timezone-aware date filtering (defaults to today if no date provided)
+    const dateFilter = createManilaDateFilter(date);
+
+    // Build the query conditions using the same logic as profit service
     const whereConditions: any = {
       AND: [
         {
@@ -646,6 +649,9 @@ export class SaleService {
         },
         {
           isVoid: false,
+        },
+        {
+          createdAt: dateFilter,
         },
       ],
     };
@@ -677,11 +683,15 @@ export class SaleService {
     return this.formatSales(sales);
   }
 
-  async getSalesByCashier(cashierId: string) {
+  async getSalesByCashier(cashierId: string, date?: string) {
+    // Use timezone-aware date filtering (defaults to today if no date provided)
+    const dateFilter = createManilaDateFilter(date);
+
     const sales = await this.prisma.sale.findMany({
       where: {
         cashierId,
         isVoid: false,
+        createdAt: dateFilter,
       },
       include: {
         SaleItem: {
@@ -716,7 +726,10 @@ export class SaleService {
       throw new Error('Cashier not found or does not belong to this user');
     }
 
-    // Build the query conditions using the same logic as sales-check service
+    // Use timezone-aware date filtering (defaults to today if no date provided)
+    const dateFilter = createManilaDateFilter(date);
+
+    // Build the query conditions using the same logic as profit service
     const whereConditions: any = {
       AND: [
         {
@@ -724,6 +737,9 @@ export class SaleService {
         },
         {
           isVoid: false,
+        },
+        {
+          createdAt: dateFilter,
         },
       ],
     };
