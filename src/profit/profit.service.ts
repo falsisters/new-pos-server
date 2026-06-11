@@ -4,6 +4,7 @@ import { ProfitFilterDto } from './dto/profit-filter.dto';
 import { PaymentMethod, Prisma, SackType } from '@prisma/client';
 import {
   convertToManilaTime,
+  createManilaDateFilter,
   getManilaDateRangeForQuery,
 } from '../utils/date.util';
 
@@ -201,10 +202,10 @@ export class ProfitService {
     const groupedProfits: Record<string, GroupedProfit> = {};
 
     profitItems.forEach((item) => {
-      if (item.totalProfit <= 0) return; // Skip items with no profit
+      if (parseFloat(item.totalProfit) <= 0) return; // Skip items with no profit
 
       // Skip items where profit is null, undefined, or zero
-      if (item.profitPerUnit == null || item.profitPerUnit === 0) return;
+      if (item.profitPerUnit == null || parseFloat(item.profitPerUnit) === 0) return;
 
       const key = item.isAsin
         ? `ASIN_${item.productName}`
@@ -438,10 +439,10 @@ export class ProfitService {
     const groupedProfits: Record<string, GroupedProfit> = {};
 
     profitItems.forEach((item) => {
-      if (item.totalProfit <= 0) return;
+      if (parseFloat(item.totalProfit) <= 0) return;
 
       // Skip items where profit is null, undefined, or zero
-      if (item.profitPerUnit == null || item.profitPerUnit === 0) return;
+      if (item.profitPerUnit == null || parseFloat(item.profitPerUnit) === 0) return;
 
       const key = item.isAsin
         ? `ASIN_${item.productName}`
