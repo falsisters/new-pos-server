@@ -108,31 +108,39 @@ export class ProfitService {
           return false;
         }
 
-        // Handle priceType specific filters
-        if (filters.priceType === 'ASIN') {
-          if (!item.product.name.toLowerCase().includes('asin')) return false;
-        } else if (filters.priceType === 'SACK') {
-          if (item.product.name.toLowerCase().includes('asin')) return false; // Must not be ASIN
-          if (!item.sackPriceId) return false; // Must be a sack sale
-          if (filters.sackType && item.sackType !== filters.sackType) {
-            return false;
-          }
-        } else if (filters.priceType) {
-          if (
-            filters.sackType &&
-            (!item.sackPriceId || item.sackType !== filters.sackType)
-          ) {
-            return false;
-          }
-        } else {
-          if (
-            filters.sackType &&
-            (!item.sackPriceId || item.sackType !== filters.sackType)
-          ) {
-            return false;
-          }
+        const isAsin = item.product.name.toLowerCase().includes('asin');
+
+        // Sack type filter (excludes asin products)
+        const passesSackFilter = !filters.sackType
+          || (!isAsin && item.sackPriceId && item.sackType === filters.sackType);
+
+        // Asin type filter (independent from sack filter)
+        let passesAsinFilter = true;
+        if (filters.asinType === 'ASIN') {
+          passesAsinFilter = isAsin;
+        } else if (filters.asinType === 'ASIN_50KG') {
+          passesAsinFilter = isAsin && item.sackType === 'FIFTY_KG';
+        } else if (filters.asinType === 'ASIN_25KG') {
+          passesAsinFilter = isAsin && item.sackType === 'TWENTY_FIVE_KG';
         }
 
+        // Combine sack + asin: OR when both active, AND otherwise
+        let passesFilters: boolean;
+        if (filters.sackType && filters.asinType) {
+          passesFilters = passesSackFilter || passesAsinFilter;
+        } else {
+          passesFilters = passesSackFilter && passesAsinFilter;
+        }
+
+        // Backward compat: priceType applies additional filter on top
+        if (filters.priceType === 'ASIN') {
+          if (!isAsin) return false;
+        } else if (filters.priceType === 'SACK') {
+          if (isAsin) return false;
+          if (!item.sackPriceId) return false;
+        }
+
+        if (!passesFilters) return false;
         return true;
       }).map((item) => {
         let totalProfit = '0';
@@ -337,31 +345,39 @@ export class ProfitService {
           return false;
         }
 
-        // Handle priceType specific filters
-        if (filters.priceType === 'ASIN') {
-          if (!item.product.name.toLowerCase().includes('asin')) return false;
-        } else if (filters.priceType === 'SACK') {
-          if (item.product.name.toLowerCase().includes('asin')) return false;
-          if (!item.sackPriceId) return false;
-          if (filters.sackType && item.sackType !== filters.sackType) {
-            return false;
-          }
-        } else if (filters.priceType) {
-          if (
-            filters.sackType &&
-            (!item.sackPriceId || item.sackType !== filters.sackType)
-          ) {
-            return false;
-          }
-        } else {
-          if (
-            filters.sackType &&
-            (!item.sackPriceId || item.sackType !== filters.sackType)
-          ) {
-            return false;
-          }
+        const isAsin = item.product.name.toLowerCase().includes('asin');
+
+        // Sack type filter (excludes asin products)
+        const passesSackFilter = !filters.sackType
+          || (!isAsin && item.sackPriceId && item.sackType === filters.sackType);
+
+        // Asin type filter (independent from sack filter)
+        let passesAsinFilter = true;
+        if (filters.asinType === 'ASIN') {
+          passesAsinFilter = isAsin;
+        } else if (filters.asinType === 'ASIN_50KG') {
+          passesAsinFilter = isAsin && item.sackType === 'FIFTY_KG';
+        } else if (filters.asinType === 'ASIN_25KG') {
+          passesAsinFilter = isAsin && item.sackType === 'TWENTY_FIVE_KG';
         }
 
+        // Combine sack + asin: OR when both active, AND otherwise
+        let passesFilters: boolean;
+        if (filters.sackType && filters.asinType) {
+          passesFilters = passesSackFilter || passesAsinFilter;
+        } else {
+          passesFilters = passesSackFilter && passesAsinFilter;
+        }
+
+        // Backward compat: priceType applies additional filter on top
+        if (filters.priceType === 'ASIN') {
+          if (!isAsin) return false;
+        } else if (filters.priceType === 'SACK') {
+          if (isAsin) return false;
+          if (!item.sackPriceId) return false;
+        }
+
+        if (!passesFilters) return false;
         return true;
       }).map((item) => {
         let totalProfit = '0';

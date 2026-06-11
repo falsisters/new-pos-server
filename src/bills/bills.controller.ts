@@ -46,6 +46,13 @@ export class BillsController {
   }
 
   @UseGuards(JwtCashierAuthGuard)
+  @Get('payment-summary')
+  async getPaymentSummary(@Request() req, @Query('date') date?: string) {
+    const cashierId = req.user.id;
+    return this.billsService.getPaymentSummary(cashierId, date);
+  }
+
+  @UseGuards(JwtCashierAuthGuard)
   @Get(':id')
   async getBillCountById(@Param('id') id: string) {
     return this.billsService.getBillCountById(id);

@@ -21,4 +21,8 @@ export class ProfitFilterDto {
   @IsOptional()
   @IsEnum(SackType)
   sackType?: SackType;
+
+  @IsOptional()
+  @IsString()
+  asinType?: 'ASIN' | 'ASIN_50KG' | 'ASIN_25KG';
 }

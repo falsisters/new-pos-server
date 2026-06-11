@@ -563,6 +563,45 @@ export class BillsService {
     return Math.round(total);
   }
 
+  async getPaymentSummary(cashierId: string, date?: string) {
+    const dateFilter = createManilaDateFilter(date);
+
+    const sales = await this.prisma.sale.findMany({
+      where: {
+        cashierId,
+        createdAt: dateFilter,
+        isVoid: false,
+      },
+      select: {
+        paymentMethod: true,
+        totalAmount: true,
+      },
+    });
+
+    const paymentTotals: Record<string, number> = {
+      cash: 0,
+      bankTransfer: 0,
+      check: 0,
+    };
+
+    sales.forEach((sale) => {
+      const amount = this.convertDecimalToNumber(sale.totalAmount);
+      const method = sale.paymentMethod as string;
+      const key = method === PaymentMethod.CASH
+        ? 'cash'
+        : method === PaymentMethod.CHECK
+          ? 'check'
+          : 'bankTransfer';
+      paymentTotals[key] += amount;
+    });
+
+    return {
+      cash: Math.round(paymentTotals.cash),
+      bankTransfer: Math.round(paymentTotals.bankTransfer),
+      check: Math.round(paymentTotals.check),
+    };
+  }
+
   private async formatBillCountResponse(
     billCount: any,
     ownerId: string,
