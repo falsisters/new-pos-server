@@ -23,16 +23,16 @@ export class SaleController {
 
   @UseGuards(JwtAuthGuard)
   @Get('user')
-  async getAllSalesByUser(@Request() req) {
+  async getAllSalesByUser(@Request() req, @Query('date') date?: string) {
     const userId = req.user.id;
-    return this.saleService.getAllSales(userId);
+    return this.saleService.getAllSales(userId, date);
   }
 
   @UseGuards(JwtCashierAuthGuard)
   @Get('cashier')
-  async getAllSalesByCashier(@Request() req) {
+  async getAllSalesByCashier(@Request() req, @Query('date') date?: string) {
     const cashierId = req.user.id;
-    return this.saleService.getSalesByCashier(cashierId);
+    return this.saleService.getSalesByCashier(cashierId, date);
   }
 
   @UseGuards(JwtCashierAuthGuard)
@@ -72,9 +72,10 @@ export class SaleController {
   async getSalesByCashierId(
     @Request() req,
     @Param('cashierId') cashierId: string,
+    @Query() filters: RecentSalesFilterDto,
   ) {
     const userId = req.user.id;
-    return this.saleService.getSalesByCashierId(userId, cashierId);
+    return this.saleService.getSalesByCashierId(userId, cashierId, filters.date);
   }
 
   @UseGuards(JwtCashierAuthGuard)

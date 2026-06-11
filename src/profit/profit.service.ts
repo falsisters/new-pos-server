@@ -552,4 +552,254 @@ export class ProfitService {
 
     return cashierProfits;
   }
+  async getCashierProfitDashboardSummary(
+    cashierId: string,
+    dateString: string,
+  ) {
+    // 1. Parse the selected date properly to avoid timezone issues
+    // dateString format: "YYYY-MM-DD"
+    const [year, month, day] = dateString.split('-').map(Number);
+
+    // Helper to create proper Manila time range for a specific date
+    // Uses Date.UTC() to avoid server timezone issues
+    const createManilaDateRange = (y: number, m: number, d: number) => {
+      // Manila is UTC+8
+      // Dec 1 00:00:00 Manila = Nov 30 16:00:00 UTC (subtract 8 hours)
+      // Dec 1 23:59:59 Manila = Dec 1 15:59:59 UTC (subtract 8 hours)
+
+      // Create UTC timestamps first, then subtract 8 hours to convert Manila -> UTC
+      const startOfDayUTC = new Date(
+        Date.UTC(y, m - 1, d, 0, 0, 0, 0) - 8 * 60 * 60 * 1000,
+      );
+      const endOfDayUTC = new Date(
+        Date.UTC(y, m - 1, d, 23, 59, 59, 999) - 8 * 60 * 60 * 1000,
+      );
+
+      console.log(`📅 Manila date range for ${y}-${m}-${d}:`, {
+        startUTC: startOfDayUTC.toISOString(),
+        endUTC: endOfDayUTC.toISOString(),
+      });
+
+      return { startOfDay: startOfDayUTC, endOfDay: endOfDayUTC };
+    };
+
+    // Selected day range (for current day profits)
+    const selectedDayRange = createManilaDateRange(year, month, day);
+
+    console.log(`🔍 Dashboard Summary for ${dateString}:`, {
+      selectedDay: day,
+      currentDayStart: selectedDayRange.startOfDay.toISOString(),
+      currentDayEnd: selectedDayRange.endOfDay.toISOString(),
+    });
+
+    // 2. Calculate Previous Days profit by batching day-by-day to avoid connection pool timeout
+    // Only calculate if selected day is not the 1st of the month
+    let previousDaysProfitData = {
+      rawItems: [] as any[],
+      sackTotal: 0,
+      asinTotal: 0,
+      overallTotal: 0,
+    };
+
+    if (day > 1) {
+      console.log(
+        `📊 Calculating previous days profit from day 1 to day ${day - 1} (batched by day)`,
+      );
+
+      // Process each day sequentially to avoid connection pool exhaustion
+      for (let d = 1; d < day; d++) {
+        const dayRange = createManilaDateRange(year, month, d);
+
+        const daySales = await this.prisma.sale.findMany({
+          where: {
+            cashierId,
+            isVoid: false,
+            createdAt: {
+              gte: dayRange.startOfDay,
+              lte: dayRange.endOfDay,
+            },
+          },
+          include: {
+            SaleItem: {
+              include: {
+                product: { select: { id: true, name: true } },
+                SackPrice: {
+                  include: {
+                    specialPrice: true,
+                  },
+                },
+              },
+            },
+          },
+        });
+
+        if (daySales.length > 0) {
+          const dayProfitData = this.calculateProfitFromSales(daySales);
+          previousDaysProfitData.rawItems.push(...dayProfitData.rawItems);
+          previousDaysProfitData.sackTotal += dayProfitData.sackTotal;
+          previousDaysProfitData.asinTotal += dayProfitData.asinTotal;
+          previousDaysProfitData.overallTotal += dayProfitData.overallTotal;
+        }
+
+        console.log(
+          `📊 Day ${d}: ${daySales.length} sales, running total: ${previousDaysProfitData.overallTotal}`,
+        );
+      }
+
+      console.log(
+        `📊 Previous days total profit: ${previousDaysProfitData.overallTotal}`,
+      );
+    }
+
+    // 3. Query: Current Day
+    const currentDaySales = await this.prisma.sale.findMany({
+      where: {
+        cashierId,
+        isVoid: false,
+        createdAt: {
+          gte: selectedDayRange.startOfDay,
+          lte: selectedDayRange.endOfDay,
+        },
+      },
+      include: {
+        SaleItem: {
+          include: {
+            product: { select: { id: true, name: true } },
+            SackPrice: {
+              include: {
+                specialPrice: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    // 4. Calculate current day profits using helper method
+    const currentDayProfitData = this.calculateProfitFromSales(currentDaySales);
+
+    return {
+      date: dateString,
+      previousDaysProfit: {
+        sackTotal: previousDaysProfitData.sackTotal,
+        asinTotal: previousDaysProfitData.asinTotal,
+        overallTotal: previousDaysProfitData.overallTotal,
+        rawItems: previousDaysProfitData.rawItems,
+      },
+      currentDayProfit: {
+        sackTotal: currentDayProfitData.sackTotal,
+        asinTotal: currentDayProfitData.asinTotal,
+        overallTotal: currentDayProfitData.overallTotal,
+        rawItems: currentDayProfitData.rawItems,
+      },
+      overallProfit:
+        previousDaysProfitData.overallTotal + currentDayProfitData.overallTotal,
+    };
+  }
+
+  /**
+   * Helper method to calculate profit from a list of sales
+   */
+  private calculateProfitFromSales(sales: any[]) {
+    const profitItems: any[] = [];
+    let totalSaleItems = 0;
+    let skippedNoProduct = 0;
+    let sackItemsWithProfit = 0;
+    let sackItemsWithoutSackPrice = 0;
+
+    sales.forEach((sale) => {
+      sale.SaleItem.forEach((item: any) => {
+        totalSaleItems++;
+
+        if (!item.product) {
+          skippedNoProduct++;
+          return;
+        }
+
+        let totalProfit = 0;
+        let profitPerUnit = 0;
+        let priceType: SackType | null = null;
+        let formattedPriceType = '';
+
+        // Calculate profit only for sack sales with available SackPrice information
+        if (item.sackPriceId && item.SackPrice && item.sackType) {
+          sackItemsWithProfit++;
+          const sackPriceInfo = item.SackPrice;
+          priceType = item.sackType;
+
+          if (item.isSpecialPrice && sackPriceInfo.specialPrice) {
+            profitPerUnit = sackPriceInfo.specialPrice.profit ?? 0;
+          } else {
+            profitPerUnit = sackPriceInfo.profit ?? 0;
+          }
+          totalProfit = profitPerUnit * item.quantity;
+
+          switch (item.sackType) {
+            case 'FIFTY_KG':
+              formattedPriceType = '50KG';
+              break;
+            case 'TWENTY_FIVE_KG':
+              formattedPriceType = '25KG';
+              break;
+            case 'FIVE_KG':
+              formattedPriceType = '5KG';
+              break;
+            default:
+              formattedPriceType = item.sackType;
+          }
+        } else if (item.sackPriceId || item.sackType) {
+          // Item has sackPriceId or sackType but missing SackPrice relationship
+          sackItemsWithoutSackPrice++;
+          console.log(`⚠️ Sack item missing SackPrice:`, {
+            productName: item.product?.name,
+            sackPriceId: item.sackPriceId,
+            sackType: item.sackType,
+            hasSackPrice: !!item.SackPrice,
+          });
+        }
+
+        // Push ALL items regardless of profit
+        profitItems.push({
+          id: item.id,
+          productId: item.productId,
+          productName: item.product?.name || 'Unknown Product',
+          quantity: item.quantity,
+          profitPerUnit,
+          totalProfit,
+          priceType: priceType || '',
+          formattedPriceType,
+          paymentMethod: sale.paymentMethod,
+          isSpecialPrice: item.isSpecialPrice,
+          saleDate: sale.createdAt,
+          isAsin: item.product?.name.toLowerCase().includes('asin') || false,
+          sackType: item.sackType || null,
+        });
+      });
+    });
+
+    console.log(`📊 Profit calculation summary:`, {
+      totalSales: sales.length,
+      totalSaleItems,
+      skippedNoProduct,
+      sackItemsWithProfit,
+      sackItemsWithoutSackPrice,
+      finalProfitItems: profitItems.length,
+    });
+
+    // Calculate totals
+    const sackTotal = profitItems
+      .filter((item) => !item.isAsin)
+      .reduce((sum, item) => sum + item.totalProfit, 0);
+
+    const asinTotal = profitItems
+      .filter((item) => item.isAsin)
+      .reduce((sum, item) => sum + item.totalProfit, 0);
+
+    return {
+      rawItems: profitItems,
+      sackTotal,
+      asinTotal,
+      overallTotal: sackTotal + asinTotal,
+    };
+  }
 }

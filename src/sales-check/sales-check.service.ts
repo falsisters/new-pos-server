@@ -34,8 +34,8 @@ export class SalesCheckService {
   }
 
   async getSalesWithFilter(userId: string, filters: SalesCheckFilterDto) {
-    // Use timezone-aware date filtering
-    const dateFilter = filters.date ? createManilaDateFilter(filters.date) : {};
+    // Use timezone-aware date filtering (defaults to today if no date provided)
+    const dateFilter = createManilaDateFilter(filters.date);
 
     // Build the query conditions
     const whereConditions: any = {
@@ -48,9 +48,9 @@ export class SalesCheckService {
         {
           isVoid: false,
         },
-        ...(Object.keys(dateFilter).length > 0
-          ? [{ createdAt: dateFilter }]
-          : []),
+        {
+          createdAt: dateFilter,
+        },
       ],
     };
 
@@ -278,8 +278,8 @@ export class SalesCheckService {
     cashierId: string,
     filters: SalesCheckFilterDto,
   ) {
-    // Use timezone-aware date filtering
-    const dateFilter = filters.date ? createManilaDateFilter(filters.date) : {};
+    // Use timezone-aware date filtering (defaults to today if no date provided)
+    const dateFilter = createManilaDateFilter(filters.date);
 
     // Build the query conditions for specific cashier
     const whereConditions: any = {
@@ -290,9 +290,9 @@ export class SalesCheckService {
         {
           isVoid: false,
         },
-        ...(Object.keys(dateFilter).length > 0
-          ? [{ createdAt: dateFilter }]
-          : []),
+        {
+          createdAt: dateFilter,
+        },
       ],
     };
 
@@ -516,8 +516,8 @@ export class SalesCheckService {
   }
 
   async getTotalSales(userId: string, filters: TotalSalesFilterDto) {
-    // Use timezone-aware date filtering
-    const dateFilter = filters.date ? createManilaDateFilter(filters.date) : {};
+    // Use timezone-aware date filtering (defaults to today if no date provided)
+    const dateFilter = createManilaDateFilter(filters.date);
 
     // Build the query conditions
     const whereConditions: any = {
@@ -530,9 +530,9 @@ export class SalesCheckService {
         {
           isVoid: false,
         },
-        ...(Object.keys(dateFilter).length > 0
-          ? [{ createdAt: dateFilter }]
-          : []),
+        {
+          createdAt: dateFilter,
+        },
       ],
     };
 
@@ -743,8 +743,8 @@ export class SalesCheckService {
 
   // New method for cashier-specific total sales using cashier ID
   async getCashierTotalSales(cashierId: string, filters: TotalSalesFilterDto) {
-    // Use timezone-aware date filtering
-    const dateFilter = filters.date ? createManilaDateFilter(filters.date) : {};
+    // Use timezone-aware date filtering (defaults to today if no date provided)
+    const dateFilter = createManilaDateFilter(filters.date);
 
     // Build the query conditions for specific cashier
     const whereConditions: any = {
@@ -755,9 +755,9 @@ export class SalesCheckService {
         {
           isVoid: false,
         },
-        ...(Object.keys(dateFilter).length > 0
-          ? [{ createdAt: dateFilter }]
-          : []),
+        {
+          createdAt: dateFilter,
+        },
       ],
     };
 
