@@ -134,9 +134,7 @@ export class SalesCheckService {
           totalAmount = unitPrice;
 
           // Determine price type based on what's connected
-          if (item.perKiloPriceId && item.perKiloPrice) {
-            priceType = 'KG';
-          } else if (item.sackPriceId && item.SackPrice) {
+          if (item.sackPriceId && item.SackPrice) {
             switch (item.sackType) {
               case 'FIFTY_KG':
                 priceType = '50KG';
@@ -150,13 +148,11 @@ export class SalesCheckService {
               default:
                 priceType = item.sackType || 'SACK';
             }
+          } else if (item.perKiloPriceId && item.perKiloPrice) {
+            priceType = 'KG';
           } else {
             priceType = 'CUSTOM';
           }
-        } else if (item.perKiloPriceId && item.perKiloPrice) {
-          priceType = 'KG';
-          unitPrice = item.perKiloPrice.price;
-          totalAmount = unitPrice.mul(item.quantity);
         } else if (item.sackPriceId && item.SackPrice) {
           switch (item.sackType) {
             case 'FIFTY_KG':
@@ -177,6 +173,10 @@ export class SalesCheckService {
           } else {
             unitPrice = item.SackPrice.price;
           }
+          totalAmount = unitPrice.mul(item.quantity);
+        } else if (item.perKiloPriceId && item.perKiloPrice) {
+          priceType = 'KG';
+          unitPrice = item.perKiloPrice.price;
           totalAmount = unitPrice.mul(item.quantity);
         } else {
           priceType = 'UNKNOWN';
@@ -376,9 +376,7 @@ export class SalesCheckService {
           totalAmount = unitPrice;
 
           // Determine price type based on what's connected
-          if (item.perKiloPriceId && item.perKiloPrice) {
-            priceType = 'KG';
-          } else if (item.sackPriceId && item.SackPrice) {
+          if (item.sackPriceId && item.SackPrice) {
             switch (item.sackType) {
               case 'FIFTY_KG':
                 priceType = '50KG';
@@ -392,13 +390,11 @@ export class SalesCheckService {
               default:
                 priceType = item.sackType || 'SACK';
             }
+          } else if (item.perKiloPriceId && item.perKiloPrice) {
+            priceType = 'KG';
           } else {
             priceType = 'CUSTOM';
           }
-        } else if (item.perKiloPriceId && item.perKiloPrice) {
-          priceType = 'KG';
-          unitPrice = item.perKiloPrice.price;
-          totalAmount = unitPrice.mul(item.quantity);
         } else if (item.sackPriceId && item.SackPrice) {
           switch (item.sackType) {
             case 'FIFTY_KG':
@@ -419,6 +415,10 @@ export class SalesCheckService {
           } else {
             unitPrice = item.SackPrice.price;
           }
+          totalAmount = unitPrice.mul(item.quantity);
+        } else if (item.perKiloPriceId && item.perKiloPrice) {
+          priceType = 'KG';
+          unitPrice = item.perKiloPrice.price;
           totalAmount = unitPrice.mul(item.quantity);
         } else {
           priceType = 'UNKNOWN';
@@ -611,9 +611,7 @@ export class SalesCheckService {
           totalAmount = unitPrice;
 
           // Determine price type based on what's connected
-          if (item.perKiloPriceId && item.perKiloPrice) {
-            priceType = 'KG';
-          } else if (item.sackPriceId && item.SackPrice) {
+          if (item.sackPriceId && item.SackPrice) {
             switch (item.sackType) {
               case 'FIFTY_KG':
                 priceType = '50KG';
@@ -627,13 +625,11 @@ export class SalesCheckService {
               default:
                 priceType = item.sackType || 'SACK';
             }
+          } else if (item.perKiloPriceId && item.perKiloPrice) {
+            priceType = 'KG';
           } else {
             priceType = 'CUSTOM';
           }
-        } else if (item.perKiloPriceId && item.perKiloPrice) {
-          priceType = 'KG';
-          unitPrice = item.perKiloPrice.price;
-          totalAmount = unitPrice.mul(item.quantity);
         } else if (item.sackPriceId && item.SackPrice) {
           switch (item.sackType) {
             case 'FIFTY_KG':
@@ -654,6 +650,10 @@ export class SalesCheckService {
           } else {
             unitPrice = item.SackPrice.price;
           }
+          totalAmount = unitPrice.mul(item.quantity);
+        } else if (item.perKiloPriceId && item.perKiloPrice) {
+          priceType = 'KG';
+          unitPrice = item.perKiloPrice.price;
           totalAmount = unitPrice.mul(item.quantity);
         } else {
           priceType = 'UNKNOWN';
@@ -836,9 +836,7 @@ export class SalesCheckService {
           totalAmount = unitPrice;
 
           // Determine price type based on what's connected
-          if (item.perKiloPriceId && item.perKiloPrice) {
-            priceType = 'KG';
-          } else if (item.sackPriceId && item.SackPrice) {
+          if (item.sackPriceId && item.SackPrice) {
             switch (item.sackType) {
               case 'FIFTY_KG':
                 priceType = '50KG';
@@ -852,13 +850,11 @@ export class SalesCheckService {
               default:
                 priceType = item.sackType || 'SACK';
             }
+          } else if (item.perKiloPriceId && item.perKiloPrice) {
+            priceType = 'KG';
           } else {
             priceType = 'CUSTOM';
           }
-        } else if (item.perKiloPriceId && item.perKiloPrice) {
-          priceType = 'KG';
-          unitPrice = item.perKiloPrice.price;
-          totalAmount = unitPrice.mul(item.quantity);
         } else if (item.sackPriceId && item.SackPrice) {
           switch (item.sackType) {
             case 'FIFTY_KG':
@@ -879,6 +875,10 @@ export class SalesCheckService {
           } else {
             unitPrice = item.SackPrice.price;
           }
+          totalAmount = unitPrice.mul(item.quantity);
+        } else if (item.perKiloPriceId && item.perKiloPrice) {
+          priceType = 'KG';
+          unitPrice = item.perKiloPrice.price;
           totalAmount = unitPrice.mul(item.quantity);
         } else {
           priceType = 'UNKNOWN';

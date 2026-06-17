@@ -608,9 +608,21 @@ export class BillsService {
     targetDateUTC: Date,
     isUser: boolean = false,
   ) {
-    // Calculate total amount from all bills
+    // Calculate total amount from bills (excluding coins)
     const billsTotal = billCount.Bills.reduce(
-      (sum, bill) => sum + bill.amount * this.getBillValue(bill.type),
+      (sum, bill) =>
+        bill.type !== BillType.COINS
+          ? sum + bill.amount * this.getBillValue(bill.type)
+          : sum,
+      0,
+    );
+
+    // Calculate coins total separately
+    const coinsTotal = billCount.Bills.reduce(
+      (sum, bill) =>
+        bill.type === BillType.COINS
+          ? sum + bill.amount * this.getBillValue(bill.type)
+          : sum,
       0,
     );
 
@@ -670,6 +682,7 @@ export class BillsService {
       })),
       billsByType,
       billsTotal,
+      coinsTotal,
       summaryStep1,
       summaryFinal,
     };
