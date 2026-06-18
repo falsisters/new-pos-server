@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { Cron } from '@nestjs/schedule';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { UploadService } from 'src/upload/upload.service';
 import { CreateAttachmentFormData } from './types/createAttachment.type';
@@ -113,6 +114,7 @@ export class AttachmentService {
     return attachments;
   }
 
+  @Cron('0 16 * * *')
   async deleteYesterdayAttachments() {
     try {
       const yesterdayAttachments = await this.getYesterdayAttachments();

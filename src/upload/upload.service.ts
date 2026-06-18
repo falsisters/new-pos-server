@@ -2,7 +2,9 @@ import {
   PutObjectCommand,
   S3Client,
   DeleteObjectCommand,
+  GetObjectCommand,
 } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { Injectable } from '@nestjs/common';
 import sharp from 'sharp';
 
@@ -10,7 +12,7 @@ import sharp from 'sharp';
 export class UploadService {
   private readonly s3Client: S3Client;
   private readonly defaultBucket: string;
-  private readonly supabaseProjectUrl: string;
+  private readonly supabaseProjectUrl: string | undefined;
 
   // Supported image formats
   private readonly supportedFormats = [
@@ -29,22 +31,48 @@ export class UploadService {
   ];
 
   constructor() {
+    const endpoint =
+      process.env.S3_ENDPOINT || process.env.SUPABASE_S3_ENDPOINT;
+    const region =
+      process.env.S3_REGION ||
+      process.env.SUPABASE_REGION ||
+      'us-east-1';
+    const accessKeyId =
+      process.env.S3_ACCESS_KEY_ID || process.env.SUPABASE_ACCESS_KEY_ID;
+    const secretAccessKey =
+      process.env.S3_SECRET_ACCESS_KEY || process.env.SUPABASE_SECRET_ACCESS_KEY;
+    const forcePathStyle =
+      process.env.S3_FORCE_PATH_STYLE === 'true' ||
+      !!process.env.SUPABASE_S3_ENDPOINT;
+
     this.s3Client = new S3Client({
-      region: `${process.env.SUPABASE_REGION}`, // Usually 'us-east-1' for Supabase
-      endpoint: `${process.env.SUPABASE_S3_ENDPOINT}`, // e.g., https://your-project.supabase.co/storage/v1/s3
+      region,
+      endpoint,
       credentials: {
-        accessKeyId: `${process.env.SUPABASE_ACCESS_KEY_ID}`,
-        secretAccessKey: `${process.env.SUPABASE_SECRET_ACCESS_KEY}`,
+        accessKeyId,
+        secretAccessKey,
       },
-      forcePathStyle: true, // Required for Supabase S3 compatibility
+      forcePathStyle,
     });
 
-    this.defaultBucket = `${process.env.SUPABASE_BUCKET_NAME}`;
-    this.supabaseProjectUrl = `${process.env.SUPABASE_PROJECT_URL}`; // e.g., https://your-project.supabase.co
+    this.defaultBucket =
+      process.env.S3_BUCKET_NAME ||
+      process.env.SUPABASE_BUCKET_NAME ||
+      'falsisters-bucket';
+
+    this.supabaseProjectUrl = process.env.SUPABASE_PROJECT_URL || undefined;
   }
 
-  async getPublicUrl(key: string) {
-    return `${this.supabaseProjectUrl}/storage/v1/object/public/${this.defaultBucket}/${key}`;
+  async getPublicUrl(key: string): Promise<string> {
+    if (this.supabaseProjectUrl) {
+      return `${this.supabaseProjectUrl}/storage/v1/object/public/${this.defaultBucket}/${key}`;
+    }
+
+    const command = new GetObjectCommand({
+      Bucket: this.defaultBucket,
+      Key: key,
+    });
+    return getSignedUrl(this.s3Client, command, { expiresIn: 3600 });
   }
 
   private isImageFile(mimetype: string): boolean {
@@ -249,18 +277,15 @@ export class UploadService {
 
   async deleteFileFromStorage(fileUrl: string): Promise<void> {
     try {
-      // Extract the key from the public URL
-      const urlPattern = new RegExp(
-        `${this.supabaseProjectUrl}/storage/v1/object/public/${this.defaultBucket}/(.+)`,
-      );
-      const match = fileUrl.match(urlPattern);
+      const bucketPrefix = `${this.defaultBucket}/`;
+      const bucketIndex = fileUrl.indexOf(bucketPrefix);
 
-      if (!match || !match[1]) {
+      if (bucketIndex === -1) {
         console.warn(`Unable to extract key from URL: ${fileUrl}`);
         return;
       }
 
-      const key = match[1];
+      const key = fileUrl.substring(bucketIndex + bucketPrefix.length);
 
       const command = new DeleteObjectCommand({
         Bucket: this.defaultBucket,
@@ -271,7 +296,6 @@ export class UploadService {
       console.log(`Successfully deleted file: ${key}`);
     } catch (error) {
       console.error(`Failed to delete file from storage: ${error.message}`);
-      // Don't throw error to prevent blocking the deletion process
     }
   }
 }

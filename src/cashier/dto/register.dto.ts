@@ -1,9 +1,10 @@
 import { CashierPermissions } from '@prisma/client';
-import { IsNotEmpty, IsString, MinLength } from 'class-validator';
+import { IsNotEmpty, IsString, Matches, MinLength } from 'class-validator';
 
 export class RegisterCashierDto {
   @IsString()
   @MinLength(4)
+  @Matches(/^\S+$/, { message: 'Name must be a single word without spaces' })
   name: string;
 
   @IsString()

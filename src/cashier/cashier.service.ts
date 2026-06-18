@@ -1,5 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnModuleInit } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import * as bcrypt from 'bcrypt';
 import { CashierInvalidCredentialsException } from './cashier.exception';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { RegisterCashierDto } from './dto/register.dto';
@@ -8,7 +9,7 @@ import { EditCashierDto } from './dto/edit.dto';
 import { formatDateForClient } from 'src/utils/date.util';
 
 @Injectable()
-export class CashierService {
+export class CashierService implements OnModuleInit {
   constructor(
     private prisma: PrismaService,
     private jwtService: JwtService,
@@ -39,7 +40,9 @@ export class CashierService {
       throw new CashierInvalidCredentialsException();
     }
 
-    if (cashier.accessKey !== accessKey) {
+    const isPasswordValid = await bcrypt.compare(accessKey, cashier.accessKey);
+
+    if (!isPasswordValid) {
       throw new CashierInvalidCredentialsException();
     }
 
@@ -65,13 +68,16 @@ export class CashierService {
   async register(userId: string, registerCashierDto: RegisterCashierDto) {
     const { name, accessKey, permissions } = registerCashierDto;
 
+    const hashedAccessKey = await bcrypt.hash(accessKey, 10);
+
     const result = await this.prisma.$transaction(async (tx) => {
       const cashier = await tx.cashier.create({
         data: {
           name,
-          accessKey,
+          accessKey: hashedAccessKey,
           permissions,
           userId,
+          passwordVersion: 'bcrypt:v1',
         },
       });
 
@@ -142,15 +148,16 @@ export class CashierService {
   async editCashier(id: string, editCashierDto: EditCashierDto) {
     const { name, accessKey, permissions } = editCashierDto;
 
+    const updateData: Record<string, unknown> = { name, permissions };
+
+    if (accessKey) {
+      updateData.accessKey = await bcrypt.hash(accessKey, 10);
+      updateData.passwordVersion = 'bcrypt:v1';
+    }
+
     const cashier = await this.prisma.cashier.update({
-      where: {
-        id,
-      },
-      data: {
-        name,
-        accessKey,
-        permissions,
-      },
+      where: { id },
+      data: updateData,
     });
     return this.formatCashier(cashier);
   }
@@ -160,5 +167,31 @@ export class CashierService {
       where: { id },
     });
     return this.formatCashier(cashier);
+  }
+
+  async onModuleInit() {
+    const plaintextCashiers = await this.prisma.cashier.findMany({
+      where: { passwordVersion: null },
+    });
+
+    for (const cashier of plaintextCashiers) {
+      try {
+        const hashed = await bcrypt.hash(cashier.accessKey, 10);
+        await this.prisma.cashier.update({
+          where: { id: cashier.id },
+          data: { accessKey: hashed, passwordVersion: 'bcrypt:v1' },
+        });
+      } catch (error) {
+        console.error(
+          `Failed to migrate cashier ${cashier.id}: ${error.message}`,
+        );
+      }
+    }
+
+    if (plaintextCashiers.length > 0) {
+      console.log(
+        `Migrated ${plaintextCashiers.length} cashier(s) to bcrypt hashing`,
+      );
+    }
   }
 }

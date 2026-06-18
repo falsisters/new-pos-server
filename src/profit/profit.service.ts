@@ -595,7 +595,7 @@ export class ProfitService {
 
     // 2. Calculate Previous Days profit by batching day-by-day to avoid connection pool timeout
     // Only calculate if selected day is not the 1st of the month
-    let previousDaysProfitData = {
+    const previousDaysProfitData = {
       rawItems: [] as any[],
       sackTotal: 0,
       asinTotal: 0,

@@ -14,12 +14,15 @@ export class PrismaService
       return PrismaService.instance;
     }
 
+    const dbUrl = process.env.DATABASE_URL!;
+    const isVercel = !!process.env.VERCEL;
+
     super({
       datasources: {
         db: {
-          url:
-            process.env.DATABASE_URL +
-            '?connection_limit=1&pool_timeout=20&pgbouncer=true',
+          url: isVercel
+            ? `${dbUrl}?connection_limit=1&pool_timeout=20&pgbouncer=true`
+            : dbUrl,
         },
       },
     });

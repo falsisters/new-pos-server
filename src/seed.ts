@@ -1,12 +1,6 @@
 import { PrismaClient, SackType } from '@prisma/client';
 
-const prisma = new PrismaClient({
-  datasources: {
-    db: {
-      url: 'postgresql://postgres.edwjpaczxvmnrjjrtzjq:Dreamsoft2024!@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres',
-    },
-  },
-});
+const prisma = new PrismaClient();
 
 // Delete all data for sheets
 

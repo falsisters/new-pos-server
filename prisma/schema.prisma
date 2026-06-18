@@ -30,10 +30,11 @@ model User {
 }
 
 model Cashier {
-  id          String               @id @default(cuid())
-  name        String               @unique
-  accessKey   String
-  secureCode  String               @default(cuid())
+  id              String               @id @default(cuid())
+  name            String               @unique
+  accessKey       String
+  secureCode      String               @default(cuid())
+  passwordVersion String?
   permissions CashierPermissions[]
   createdAt   DateTime             @default(now()) @db.Timestamptz
   updatedAt   DateTime             @updatedAt @db.Timestamptz

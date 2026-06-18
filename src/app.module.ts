@@ -4,6 +4,7 @@ import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { ConfigModule } from '@nestjs/config';
+import { ScheduleModule } from '@nestjs/schedule';
 import { CashierModule } from './cashier/cashier.module';
 import { ShiftModule } from './shift/shift.module';
 import { EmployeeModule } from './employee/employee.module';
@@ -32,6 +33,7 @@ import { StockModule } from './stock/stock.module';
     ConfigModule.forRoot({
       isGlobal: true,
     }),
+    ScheduleModule.forRoot(),
     CashierModule,
     ShiftModule,
     EmployeeModule,
