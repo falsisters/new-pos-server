@@ -4,12 +4,9 @@ RUN apk add --no-cache python3 make g++ vips-dev vips-heif
 
 WORKDIR /app
 
-COPY package.json yarn.lock ./
-COPY prisma ./prisma
+COPY . .
 
 RUN yarn install --frozen-lockfile
-
-COPY . .
 
 RUN yarn build
 
