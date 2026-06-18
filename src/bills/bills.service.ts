@@ -608,12 +608,9 @@ export class BillsService {
     targetDateUTC: Date,
     isUser: boolean = false,
   ) {
-    // Calculate total amount from bills (excluding coins)
+    // Calculate total amount from all bills (including coins)
     const billsTotal = billCount.Bills.reduce(
-      (sum, bill) =>
-        bill.type !== BillType.COINS
-          ? sum + bill.amount * this.getBillValue(bill.type)
-          : sum,
+      (sum, bill) => sum + bill.amount * this.getBillValue(bill.type),
       0,
     );
 
