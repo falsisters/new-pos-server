@@ -26,6 +26,7 @@ import { ExpensesModule } from './expenses/expenses.module';
 import { DatabaseModule } from './database/database.module';
 import { StockModule } from './stock/stock.module';
 import { EventsModule } from './events/events.module';
+import { StorageModule } from './storage/storage.module';
 
 @Module({
   imports: [
@@ -56,6 +57,7 @@ import { EventsModule } from './events/events.module';
     DatabaseModule,
     StockModule,
     EventsModule,
+    StorageModule,
   ],
   controllers: [AppController],
   providers: [AppService],
