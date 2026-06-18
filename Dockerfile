@@ -20,7 +20,10 @@ COPY --from=builder /app/package.json /app/yarn.lock ./
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/startup.sh ./startup.sh
+
+RUN chmod +x startup.sh
 
 EXPOSE 3001
 
-CMD ["node", "dist/main.js"]
+CMD ["./startup.sh"]

@@ -25,6 +25,7 @@ import { CustomerModule } from './customer/customer.module';
 import { ExpensesModule } from './expenses/expenses.module';
 import { DatabaseModule } from './database/database.module';
 import { StockModule } from './stock/stock.module';
+import { EventsModule } from './events/events.module';
 
 @Module({
   imports: [
@@ -54,6 +55,7 @@ import { StockModule } from './stock/stock.module';
     ExpensesModule,
     DatabaseModule,
     StockModule,
+    EventsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

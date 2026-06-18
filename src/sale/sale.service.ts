@@ -5,6 +5,7 @@ import { EditSaleDto } from './dto/edit.dto';
 import { OrderService } from 'src/order/order.service';
 import { RecentSalesFilterDto } from './dto/recent-sales.dto';
 import { Decimal } from '@prisma/client/runtime/library';
+import { EventsGateway } from 'src/events/events.gateway';
 import {
   formatDateForClient,
   createManilaDateFilter,
@@ -15,6 +16,7 @@ export class SaleService {
   constructor(
     private prisma: PrismaService,
     private order: OrderService,
+    private events: EventsGateway,
   ) {}
 
   private convertDecimalToString(
@@ -263,6 +265,8 @@ export class SaleService {
       },
     );
 
+    this.events.emitSaleCreated(result);
+
     return result;
   }
 
@@ -460,11 +464,13 @@ export class SaleService {
       },
     );
 
+    this.events.emitSaleUpdated(result);
+
     return result;
   }
 
   async deleteSale(id: string) {
-    return this.prisma.$transaction(
+    const result = await this.prisma.$transaction(
       async (tx) => {
         // 1. Get the sale with all its items and product details
         const sale = await tx.sale.findUnique({
@@ -549,6 +555,10 @@ export class SaleService {
         timeout: 20000, // 20 seconds in milliseconds
       },
     );
+
+    this.events.emitSaleVoided(result);
+
+    return result;
   }
 
   async getSale(id: string) {
