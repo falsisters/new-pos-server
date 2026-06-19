@@ -485,3 +485,12 @@ model ExpenseItems {
   createdAt     DateTime    @default(now()) @db.Timestamptz
   updatedAt     DateTime    @updatedAt @db.Timestamptz
 }
+
+model IdempotencyRecord {
+  id           String   @id @default(cuid())
+  key          String   @unique
+  responseBody Json
+  statusCode   Int
+  createdAt    DateTime @default(now()) @db.Timestamptz
+  updatedAt    DateTime @updatedAt @db.Timestamptz
+}

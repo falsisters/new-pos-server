@@ -236,32 +236,30 @@ export class SheetService {
       data: createData,
     });
 
-    // Create cells for all columns
-    const cellsData = Array.from({ length: sheet.columns }, (_, i) => {
-      if (i === 1) {
-        // Add description in the name column
-        return {
+    // Create cells for all columns individually to get full entities back
+    const cellPromises = Array.from({ length: sheet.columns }, (_, i) => {
+      return this.prisma.cell.create({
+        data: {
           rowId: row.id,
           columnIndex: i,
-          value: description,
-        };
-      } else {
-        return {
-          rowId: row.id,
-          columnIndex: i,
-          value: '',
-        };
-      }
+          value: i === 1 ? description : '',
+        },
+      });
     });
 
-    await this.prisma.cell.createMany({
-      data: cellsData,
-    });
+    const cells = await Promise.all(cellPromises);
+
+    const formattedCells = cells.map((cell) => ({
+      ...cell,
+      createdAt: formatDateForClient(cell.createdAt),
+      updatedAt: formatDateForClient(cell.updatedAt),
+    }));
 
     return {
       ...row,
       createdAt: formatDateForClient(row.createdAt),
       updatedAt: formatDateForClient(row.updatedAt),
+      Cells: formattedCells,
     };
   }
 

@@ -389,22 +389,28 @@ export class InventoryService {
       data: createData,
     });
 
-    // Create cells for all columns in the sheet
-    const cellsData = Array.from({ length: sheet.columns }, (_, i) => ({
+    // Create cells for all columns individually to get full entities back
+    const cellPromises = Array.from({ length: sheet.columns }, (_, i) => ({
       inventoryRowId: row.id,
       columnIndex: i,
-      // If this is column 1 (index 1), set the description, otherwise empty value
       value: i === 1 ? description : '',
     }));
 
-    await this.prisma.inventoryCell.createMany({
-      data: cellsData,
-    });
+    const createdCells = await Promise.all(
+      cellPromises.map((data) => this.prisma.inventoryCell.create({ data })),
+    );
+
+    const formattedCells = createdCells.map((cell) => ({
+      ...cell,
+      createdAt: formatDateForClient(cell.createdAt),
+      updatedAt: formatDateForClient(cell.updatedAt),
+    }));
 
     return {
       ...row,
       createdAt: formatDateForClient(row.createdAt),
       updatedAt: formatDateForClient(row.updatedAt),
+      Cells: formattedCells,
     };
   }
 
@@ -553,20 +559,25 @@ export class InventoryService {
       color?: string;
     }[],
   ) {
-    const cellsData = cells.map((cell) => ({
-      inventoryRowId: cell.rowId,
-      columnIndex: cell.columnIndex,
-      value: cell.value,
-      formula: cell.formula,
-      color: cell.color ? cell.color : undefined,
-      isCalculated: !!cell.formula,
-    }));
-
-    const results = await this.prisma.inventoryCell.createMany({
-      data: cellsData,
+    const createPromises = cells.map((cell) => {
+      return this.prisma.inventoryCell.create({
+        data: {
+          inventoryRowId: cell.rowId,
+          columnIndex: cell.columnIndex,
+          value: cell.value,
+          formula: cell.formula,
+          color: cell.color ? cell.color : undefined,
+          isCalculated: !!cell.formula,
+        },
+      });
     });
 
-    return results; // createMany returns count, not actual records
+    const results = await Promise.all(createPromises);
+    return results.map((result) => ({
+      ...result,
+      createdAt: formatDateForClient(result.createdAt),
+      updatedAt: formatDateForClient(result.updatedAt),
+    }));
   }
 
   async deleteCell(cellId: string) {

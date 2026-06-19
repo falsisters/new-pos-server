@@ -8,8 +8,8 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
 
 @Module({
-  imports: [AuthModule, CashierModule, PrismaModule, InventoryModule],
+  imports: [AuthModule, CashierModule, PrismaModule],
   controllers: [InventoryController],
-  providers: [InventoryService, PrismaService, JwtService, InventoryService],
+  providers: [InventoryService, PrismaService, JwtService],
 })
 export class InventoryModule {}
